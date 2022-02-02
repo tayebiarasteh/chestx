@@ -1,3 +1,6 @@
 /.idea/
 /central/.idea/
 /central/config/__pycache__/
+/central/__pycache__/
+/central/data/__pycache__/
+/central/models/__pycache__/

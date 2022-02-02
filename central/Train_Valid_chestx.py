@@ -9,17 +9,20 @@ https://github.com/tayebiarasteh/
 import os.path
 import time
 import pdb
+import numpy as np
 from enum import Enum
 from tensorboardX import SummaryWriter
 import torch
 import torch.nn.functional as F
 import torchmetrics
 import torchio as tio
+from sklearn.metrics import multilabel_confusion_matrix
 
-from config.serde import *
+from config.serde import read_config, write_config
 
 import warnings
 warnings.filterwarnings('ignore')
+epsilon = 1e-15
 
 
 
@@ -164,7 +167,7 @@ class Training:
         loss_function: loss file
             The loss function
         """
-        checkpoint = torch.load(os.path.join(self.params['target_dir'], self.params['network_output_path']) + '/' + self.params['checkpoint_name'])
+        checkpoint = torch.load(os.path.join(self.params['target_dir'], self.params['network_output_path']), self.params['checkpoint_name'])
         self.device = None
         self.model_info = checkpoint['model_info']
         self.setup_cuda()
@@ -182,80 +185,7 @@ class Training:
             self.params['target_dir'], self.params['tb_logs_path'])), purge_step=self.iteration + 1)
 
 
-    def execute_training(self, validation=False, augmentation=False, batch_size=1, benchmark=False):
-        """Executes training by running training and validation at each iteration.
-        This is the pipeline based on our own iteration-wise implementation.
-
-        Parameters
-        ----------
-        validation: bool
-            If we would like to do validation
-
-        augmentation: bool
-            If we would like to have date augmentation
-
-        batch_size: int
-            train batch size
-
-       """
-        self.params = read_config(self.cfg_path)
-
-        total_start_time = time.time()
-        batch_count = 0
-        total_train_F1 = 0
-        total_train_acc = 0
-        total_train_loss = 0
-
-        if benchmark:
-            self.train_set = benchmark_data_provider_3D(self.params["cfg_path"], mode='train')
-            self.valid_set = benchmark_data_provider_3D(self.params["cfg_path"], mode='valid')
-
-        else:
-            self.train_set = data_provider_3D(self.params["cfg_path"], train=True, batch_size=batch_size)
-            self.valid_set = data_provider_3D(self.params["cfg_path"], train=False)
-
-        for iteration in range(self.num_iterations - self.iteration):
-            self.iteration += 1
-            start_time = time.time()
-
-            # Train iteration
-            train_F1, train_acc, train_loss = self.train_iteration_3D(augmentation)
-            batch_count += 1
-            total_train_F1 += train_F1
-            total_train_acc += train_acc
-            total_train_loss += train_loss
-
-            # Validation iteration & calculate metrics
-            if (batch_count) % (self.params['valid_iteration_freq']) == 0:
-                if validation:
-                    valid_F1, valid_acc, valid_loss = self.valid_iteration_3D()
-
-                train_F1 = total_train_F1 / batch_count
-                train_acc = total_train_acc / batch_count
-                train_loss = total_train_loss / batch_count
-
-                end_time = time.time()
-                iteration_hours, iteration_mins, iteration_secs = self.time_duration(start_time, end_time)
-                total_hours, total_mins, total_secs = self.time_duration(total_start_time, end_time)
-
-                # saving the model, checkpoint, TensorBoard, etc.
-                if validation:
-                    self.calculate_tb_stats(train_F1=train_F1, train_acc=train_acc, train_loss=train_loss,
-                                            valid_F1=valid_F1, valid_acc=valid_acc, valid_loss=valid_loss)
-                    self.savings_prints(iteration_hours, iteration_mins, iteration_secs, total_hours,
-                                        total_mins, total_secs, train_F1, train_acc, train_loss,
-                                        valid_F1, valid_acc, valid_loss)
-                else:
-                    self.calculate_tb_stats(train_F1=train_F1, train_acc=train_acc, train_loss=train_loss)
-                    self.savings_prints(iteration_hours, iteration_mins, iteration_secs, total_hours,
-                                        total_mins, total_secs, train_F1, train_acc, train_loss)
-                batch_count = 0
-                total_train_F1 = 0
-                total_train_acc = 0
-                total_train_loss = 0
-
-
-    def execute_training_epochbased(self, train_loader, valid_loader=None, augment=False):
+    def execute_training(self, train_loader, valid_loader=None, batch_size=1):
         """Executes training by running training and validation at each epoch.
         This is the pipeline based on Pytorch's Dataset and Dataloader
 
@@ -274,12 +204,12 @@ class Training:
             self.iteration += 1
             start_time = time.time()
 
-            train_F1, train_acc, train_loss = self.train_epoch_3D(train_loader=train_loader, augment=augment)
+            train_F1, train_acc, train_loss = self.train_epoch(train_loader, batch_size)
             if not valid_loader == None:
-                valid_F1, valid_acc, valid_loss = self.valid_epoch_3D(valid_loader=valid_loader)
+                valid_F1, valid_acc, valid_loss = self.valid_epoch(valid_loader, batch_size)
 
             # Validation iteration & calculate metrics
-            if (self.iteration) % (self.params['epochbased_save_freq']) == 0:
+            if (self.iteration) % (self.params['network_save_freq']) == 0:
                 end_time = time.time()
                 iteration_hours, iteration_mins, iteration_secs = self.time_duration(start_time, end_time)
                 total_hours, total_mins, total_secs = self.time_duration(total_start_time, end_time)
@@ -297,231 +227,175 @@ class Training:
                                         total_mins, total_secs, train_F1, train_acc, train_loss)
 
 
-    def train_iteration_3D(self, augmentation=False):
-        """This is the pipeline based on our own iteration-wise implementation
+    def train_epoch(self, train_loader, batch_size):
+        """Training epoch
 
         Returns
         -------
-        f1_score: float
+        epoch_f1_score: float
         average training F1 score
 
-        accuracy: float
+        epoch_accuracy: float
             average training accuracy
 
-        loss.item(): float
+        epoch_loss: float
             average training loss
         """
 
-        if augmentation:
-            image, label = self.train_set.provide_train_mixed_augment()
-        else:
-            image, label = self.train_set.provide_mixed()
-        self.model.train()
+        # initializing the loss list
+        batch_loss = 0
+        batch_count = 0
+        previous_idx = 0
 
-        label = label.long()
-        image = image.float()
-        image = image.to(self.device)
-        label = label.to(self.device)
-
-        self.optimiser.zero_grad()
-
-        with torch.autograd.set_detect_anomaly(True):
-            output = self.model(image)
-            loss = self.loss_function(output, label[:, 0])
-            max_preds = output.argmax(dim=1, keepdim=True)  # get the index of the max probability (multi-class)
-
-            loss.backward()
-            self.optimiser.step()
-
-        f1_scorer = torchmetrics.F1(num_classes=output.shape[1], average='none').to(self.device)
-        f1_score = f1_scorer(max_preds.flatten(), label.flatten())[1:].mean().item()
-
-        accuracy_calculator = torchmetrics.Accuracy(num_classes=output.shape[1]).to(self.device)
-        accuracy = accuracy_calculator(max_preds.flatten(), label.flatten()).item()
-
-        return f1_score, accuracy, loss.item()
-
-
-    def train_epoch_3D(self, train_loader, augment):
-        """This is the pipeline based on Pytorch's Dataset and Dataloader
-
-        Parameters
-        ----------
-        train_loader: Pytorch dataloader object
-            training data loader
-
-        Returns
-        -------
-        average_f1_score: float
-        average training F1 score of the epoch
-
-        average_accuracy: float
-            average training accuracy of the epoch
-
-        average_loss: float
-            average training loss of the epoch
-        """
-
-        self.model.train()
-        total_loss = 0.0
-        total_accuracy = 0.0
-        total_f1_score = 0.0
+        # initializing the caches
+        logits_with_sigmoid_cache = torch.from_numpy(np.zeros((len(train_loader) * batch_size, 2)))
+        logits_no_sigmoid_cache = torch.from_numpy(np.zeros_like(logits_with_sigmoid_cache))
+        labels_cache = torch.from_numpy(np.zeros_like(logits_with_sigmoid_cache))
 
         for idx, (image, label) in enumerate(train_loader):
-
-            # transform3 = tio.transforms.RandomFlip(axes=(0, 1, 2), flip_probability=0.5)
-
-            transform3 = tio.RandomAffine(scales=(1.3, 1.3),
-                                         default_pad_value='minimum',
-                                         image_interpolation='nearest')
-
-            # transform3 = tio.RandomElasticDeformation(num_control_points=(7, 7, 7),  max_displacement=(8),
-            #                                          locked_borders=2, image_interpolation='nearest')
-            # transform2 = tio.transforms.RandomFlip(axes=(0, 1, 2), flip_probability=0.5)
-            # transform = tio.transforms.Compose((transform2, transform3, transform3))
-
-            image_transformed = transform3(image[0])
-            label_transformed = transform3(label[0])
-
-
-            io.imsave('main_image.tif', image[0,0].numpy())
-            io.imsave('transformed_image.tif', image_transformed[0].numpy())
-
-            print(torch.unique(label_transformed))
-            print(torch.unique(label))
-            pdb.set_trace()
-
-            # if we would like to have data augmentation during training
-            if augment:
-                image, label = random_augment(image, label)
-
-            label = label.long()
-            image = image.float()
             image = image.to(self.device)
             label = label.to(self.device)
 
             self.optimiser.zero_grad()
 
-            with torch.autograd.set_detect_anomaly(True):
-                output = self.model(image)
-                loss = self.loss_function(output, label[:, 0])
-                max_preds = output.argmax(dim=1, keepdim=True)  # get the index of the max probability (multi-class)
+            with torch.set_grad_enabled(True):
 
+                output = self.model(image)
+                label = label.float()
+                output_sigmoided = F.sigmoid(output)
+                output_sigmoided = (output_sigmoided > 0.5).float()
+
+                # saving the logits and labels of this batch
+                for i, batch in enumerate(output_sigmoided):
+                    logits_with_sigmoid_cache[idx * batch_size + i] = batch
+                for i, batch in enumerate(output):
+                    logits_no_sigmoid_cache[idx * batch_size + i] = batch
+                for i, batch in enumerate(label):
+                    labels_cache[idx * batch_size + i] = batch
+
+                # Loss
+                loss = self.loss_function(output, label)
+                batch_loss += loss.item()
+                batch_count += 1
+
+                #Backward and optimize
                 loss.backward()
                 self.optimiser.step()
 
-            total_loss += loss.item()
-            f1_scorer = torchmetrics.F1(num_classes=output.shape[1], average='none').to(self.device)
-            f1_score = f1_scorer(max_preds.flatten(), label.flatten())[1:]
+                # Prints loss statistics after number of steps specified.
+                if (idx + 1) % self.params['display_stats_freq'] == 0:
+                    print('Epoch {:02} | Batch {:03}-{:03} | Train loss: {:.3f}'.
+                          format(self.iteration, previous_idx, idx, batch_loss / batch_count))
+                    previous_idx = idx + 1
+                    batch_loss = 0
+                    batch_count = 0
 
-            accuracy_calculator = torchmetrics.Accuracy(num_classes=output.shape[1]).to(self.device)
-            total_accuracy += accuracy_calculator(max_preds.flatten(), label.flatten()).item()
+        # Metrics calculation (macro) over the whole set
+        crack_confusion, inactive_confusion = multilabel_confusion_matrix(labels_cache.cpu(), logits_with_sigmoid_cache.cpu())
+        # Crack class
+        TN = crack_confusion[0, 0]
+        FP = crack_confusion[0, 1]
+        FN = crack_confusion[1, 0]
+        TP = crack_confusion[1, 1]
+        accuracy_Crack = (TP + TN) / (TP + TN + FP + FN + epsilon)
+        F1_Crack = 2 * TP / (2 * TP + FN + FP + epsilon)
+        # Inactive class
+        TN_inactive = inactive_confusion[0, 0]
+        FP_inactive = inactive_confusion[0, 1]
+        FN_inactive = inactive_confusion[1, 0]
+        TP_inactive = inactive_confusion[1, 1]
+        accuracy_inactive = (TP_inactive + TN_inactive) / (TP_inactive + TN_inactive + FP_inactive + FN_inactive + epsilon)
+        F1_inactive = 2 * TP_inactive / (2 * TP_inactive + FN_inactive + FP_inactive + epsilon)
+        # Macro averaging
+        epoch_accuracy = (accuracy_Crack + accuracy_inactive) / 2
+        epoch_f1_score = (F1_Crack + F1_inactive) / 2
+        loss = self.loss_function(logits_no_sigmoid_cache.to(self.device), labels_cache.to(self.device))
+        epoch_loss = loss.item()
 
-            total_f1_score += f1_score.mean().item()
-
-        average_loss = total_loss / len(train_loader)
-        average_accuracy = total_accuracy / len(train_loader)
-        average_f1_score = total_f1_score / len(train_loader)
-
-        return average_f1_score, average_accuracy, average_loss
+        return epoch_f1_score, epoch_accuracy, epoch_loss
 
 
 
-    def valid_iteration_3D(self):
-        """This is the pipeline based on our own iteration-wise implementation
+    def valid_epoch(self, valid_loader, batch_size):
+        """Validation epoch
 
         Returns
         -------
-        average_f1_score: float
+        epoch_f1_score: float
             average validation F1 score
 
-        average_accuracy: float
+        epoch_accuracy: float
             average validation accuracy
 
-        average_loss.item(): float
+        epoch_loss: float
             average validation loss
         """
-
-        image_list, label_list = self.valid_set.provide_valid()
-
         self.model.eval()
 
-        accuracy = 0.0
-        loss = 0.0
-        f1_score = 0.0
+        previous_idx = 0
 
-        for idx in range(len(image_list)):
-            label = label_list[idx].long()
-            image = image_list[idx].to(self.device)
-            label = label.to(self.device)
+        with torch.no_grad():
+            # initializing the loss list
+            batch_loss = 0
+            batch_count = 0
 
-            with torch.no_grad():
+            # initializing the caches
+            logits_with_sigmoid_cache = torch.from_numpy(np.zeros((len(valid_loader) * batch_size, 2)))
+            logits_no_sigmoid_cache = torch.from_numpy(np.zeros_like(logits_with_sigmoid_cache))
+            labels_cache = torch.from_numpy(np.zeros_like(logits_with_sigmoid_cache))
+
+            for idx, (image, label) in enumerate(valid_loader):
+                image = image.to(self.device)
+                label = label.to(self.device)
                 output = self.model(image)
-                loss += self.loss_function(output, label[:, 0])
-                max_preds = output.argmax(dim=1, keepdim=True)  # get the index of the max probability (multi-class)
+                label = label.float()
+                output_sigmoided = F.sigmoid(output)
+                output_sigmoided = (output_sigmoided > 0.5).float()
 
-            accuracy_calculator = torchmetrics.Accuracy(num_classes=output.shape[1]).to(self.device)
-            accuracy += accuracy_calculator(max_preds.flatten(), label.flatten()).item()
-            f1_scorer = torchmetrics.F1(num_classes=output.shape[1], average='none').to(self.device)
-            f1_score += f1_scorer(max_preds.flatten(), label.flatten())[1:].mean().item()
+                # saving the logits and labels of this batch
+                for i, batch in enumerate(output_sigmoided):
+                    logits_with_sigmoid_cache[idx * batch_size + i] = batch
+                for i, batch in enumerate(output):
+                    logits_no_sigmoid_cache[idx * batch_size + i] = batch
+                for i, batch in enumerate(label):
+                    labels_cache[idx * batch_size + i] = batch
 
-        average_f1_score = f1_score / len(image_list)
-        average_accuracy = accuracy / len(image_list)
-        average_loss = loss / len(image_list)
+                # Loss
+                loss = self.loss_function(output, label)
+                batch_loss += loss.item()
+                batch_count += 1
 
-        return average_f1_score, average_accuracy, average_loss.item()
+                # Prints loss statistics after number of steps specified.
+                if (idx + 1) % self.params['display_stats_freq'] == 0:
+                    print('Epoch {:02} | Batch {:03}-{:03} | Val. loss: {:.3f}'.
+                          format(self.iteration, previous_idx, idx, batch_loss / batch_count))
+                    previous_idx = idx + 1
+                    batch_loss = 0
+                    batch_count = 0
 
+        # Metrics calculation (macro) over the whole set
+        crack_confusion, inactive_confusion = multilabel_confusion_matrix(labels_cache.cpu(), logits_with_sigmoid_cache.cpu())
+        # Crack class
+        TN = crack_confusion[0, 0]
+        FP = crack_confusion[0, 1]
+        FN = crack_confusion[1, 0]
+        TP = crack_confusion[1, 1]
+        accuracy_Crack = (TP + TN) / (TP + TN + FP + FN + epsilon)
+        F1_Crack = 2 * TP / (2 * TP + FN + FP + epsilon)
+        # Inactive class
+        TN_inactive = inactive_confusion[0, 0]
+        FP_inactive = inactive_confusion[0, 1]
+        FN_inactive = inactive_confusion[1, 0]
+        TP_inactive = inactive_confusion[1, 1]
+        accuracy_inactive = (TP_inactive + TN_inactive) / (TP_inactive + TN_inactive + FP_inactive + FN_inactive + epsilon)
+        F1_inactive = 2 * TP_inactive / (2 * TP_inactive + FN_inactive + FP_inactive + epsilon)
+        # Macro averaging
+        epoch_accuracy = (accuracy_Crack + accuracy_inactive) / 2
+        epoch_f1_score = (F1_Crack + F1_inactive) / 2
+        loss = self.loss_function(logits_no_sigmoid_cache.to(self.device), labels_cache.to(self.device))
+        epoch_loss = loss.item()
 
-    def valid_epoch_3D(self, valid_loader):
-        """This is the pipeline based on Pytorch's Dataset and Dataloader
-
-        Parameters
-        ----------
-        valid_loader: Pytorch dataloader object
-            validation data loader
-
-        Returns
-        -------
-        average_f1_score: float
-            average validation F1 score of the epoch
-
-        average_accuracy: float
-            average validation accuracy of the epoch
-
-        average_loss: float
-            average validation loss of the epoch
-        """
-
-        self.model.eval()
-        total_loss = 0.0
-        total_accuracy = 0.0
-        total_f1_score = 0.0
-
-        for idx, (image, label) in enumerate(valid_loader):
-            label = label.long()
-            image = image.float()
-            image = image.to(self.device)
-            label = label.to(self.device)
-
-            with torch.no_grad():
-                output = self.model(image)
-                loss = self.loss_function(output, label[:, 0])
-                max_preds = output.argmax(dim=1, keepdim=True)  # get the index of the max probability (multi-class)
-
-            total_loss += loss.item()
-            f1_scorer = torchmetrics.F1(num_classes=output.shape[1], average='none').to(self.device)
-            f1_score = f1_scorer(max_preds.flatten(), label.flatten())[1:]
-
-            accuracy_calculator = torchmetrics.Accuracy(num_classes=output.shape[1]).to(self.device)
-            total_accuracy += accuracy_calculator(max_preds.flatten(), label.flatten()).item()
-
-            total_f1_score += f1_score.mean().item()
-
-        average_loss = total_loss / len(valid_loader)
-        average_accuracy = total_accuracy / len(valid_loader)
-        average_f1_score = total_f1_score / len(valid_loader)
-
-        return average_f1_score, average_accuracy, average_loss
+        return epoch_f1_score, epoch_accuracy, epoch_loss
 
 
 
@@ -651,20 +525,20 @@ class Training:
         """
 
         self.writer.add_scalar('Train_F1', train_F1, self.iteration)
-        # self.writer.add_scalar('Train_Accuracy', train_acc, self.iteration)
+        self.writer.add_scalar('Train_Accuracy', train_acc, self.iteration)
         self.writer.add_scalar('Train_Loss', train_loss, self.iteration)
         if valid_F1 is not None:
             self.writer.add_scalar('Valid_F1', valid_F1, self.iteration)
-            # self.writer.add_scalar('Valid_Accuracy', valid_acc, self.iteration)
+            self.writer.add_scalar('Valid_Accuracy', valid_acc, self.iteration)
             self.writer.add_scalar('Valid_Loss', valid_loss, self.iteration)
 
 
 
 class Mode(Enum):
-    '''
+    """
     Class Enumerating the 3 modes of operation of the network.
     This is used while loading datasets
-    '''
+    """
     TRAIN = 0
     TEST = 1
     VALIDATION = 2
