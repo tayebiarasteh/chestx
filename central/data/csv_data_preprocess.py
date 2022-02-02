@@ -30,6 +30,14 @@ class csv_preprocess_mimic():
         """csv_creator"""
 
         output_path = "/home/soroosh/Documents/datasets/MIMIC/mimic_master_list.csv"
+        output_path1 = "/home/soroosh/Documents/datasets/MIMIC/mimic_master_list1.csv"
+        output_path2 = "/home/soroosh/Documents/datasets/MIMIC/mimic_master_list2.csv"
+        output_path3 = "/home/soroosh/Documents/datasets/MIMIC/mimic_master_list3.csv"
+        output_path4 = "/home/soroosh/Documents/datasets/MIMIC/mimic_master_list4.csv"
+        output_path5 = "/home/soroosh/Documents/datasets/MIMIC/mimic_master_list5.csv"
+        output_path6 = "/home/soroosh/Documents/datasets/MIMIC/mimic_master_list6.csv"
+        output_path7 = "/home/soroosh/Documents/datasets/MIMIC/mimic_master_list7.csv"
+        output_path8 = "/home/soroosh/Documents/datasets/MIMIC/mimic_master_list8.csv"
 
         metda_data_path = "/home/soroosh/Documents/datasets/MIMIC/mimic-cxr-2.0.0-metadata.csv"
         metda_data_df = pd.read_csv(metda_data_path, sep=',')
@@ -54,7 +62,8 @@ class csv_preprocess_mimic():
 
         for index, row in tqdm(metda_data_df.iterrows()):
             jpg_rel_path = os.path.join('mimic-cxr-jpg', (record_df[record_df['dicom_id'] ==
-                                                                    row['dicom_id']]['path'].values[0]).replace('.dcm', '.jpg'))
+                                                                    row['dicom_id']]['path'].values[0]).replace('.dcm',
+                                                                                                                '.jpg'))
             report_rel_path = os.path.join('mimic-cxr-reports',
                                            (study_df[study_df['study_id'] == row['study_id']]['path'].values[0]))
             subject_id = row['subject_id']
@@ -136,17 +145,105 @@ class csv_preprocess_mimic():
                                           'pleural_other', 'pneumonia', 'pneumothorax', 'support_devices'])
             final_data = final_data.append(tempp)
             # sort based on name
-            if index % 100 == 0:
+            if (index + 1) == 50000:
                 final_data = final_data.sort_values(['jpg_rel_path'])
-                final_data.to_csv(output_path, sep=',', index=False)
+                final_data.to_csv(output_path1, sep=',', index=False)
+                del final_data
+                final_data = pd.DataFrame(
+                    columns=['jpg_rel_path', 'report_rel_path', 'subject_id', 'study_id', 'split', 'view',
+                             'available_views', 'n_x_pixels', 'n_y_pixels', 'atelectasis', 'cardiomegaly',
+                             'consolidation', 'edema', 'enlarged_cardiomediastinum', 'fracture', 'lung_lesion',
+                             'lung_opacity', 'no_finding', 'pleural_effusion', 'pleural_other', 'pneumonia',
+                             'pneumothorax', 'support_devices'])
 
+            elif (index + 1) == 100000:
+                final_data = final_data.sort_values(['jpg_rel_path'])
+                final_data.to_csv(output_path2, sep=',', index=False)
+                del final_data
+                final_data = pd.DataFrame(
+                    columns=['jpg_rel_path', 'report_rel_path', 'subject_id', 'study_id', 'split', 'view',
+                             'available_views', 'n_x_pixels', 'n_y_pixels', 'atelectasis', 'cardiomegaly',
+                             'consolidation', 'edema', 'enlarged_cardiomediastinum', 'fracture', 'lung_lesion',
+                             'lung_opacity', 'no_finding', 'pleural_effusion', 'pleural_other', 'pneumonia',
+                             'pneumothorax', 'support_devices'])
+
+            elif (index + 1) == 150000:
+                final_data = final_data.sort_values(['jpg_rel_path'])
+                final_data.to_csv(output_path3, sep=',', index=False)
+                del final_data
+                final_data = pd.DataFrame(
+                    columns=['jpg_rel_path', 'report_rel_path', 'subject_id', 'study_id', 'split', 'view',
+                             'available_views', 'n_x_pixels', 'n_y_pixels', 'atelectasis', 'cardiomegaly',
+                             'consolidation', 'edema', 'enlarged_cardiomediastinum', 'fracture', 'lung_lesion',
+                             'lung_opacity', 'no_finding', 'pleural_effusion', 'pleural_other', 'pneumonia',
+                             'pneumothorax', 'support_devices'])
+
+            elif (index + 1) == 200000:
+                final_data = final_data.sort_values(['jpg_rel_path'])
+                final_data.to_csv(output_path4, sep=',', index=False)
+                del final_data
+                final_data = pd.DataFrame(
+                    columns=['jpg_rel_path', 'report_rel_path', 'subject_id', 'study_id', 'split', 'view',
+                             'available_views', 'n_x_pixels', 'n_y_pixels', 'atelectasis', 'cardiomegaly',
+                             'consolidation', 'edema', 'enlarged_cardiomediastinum', 'fracture', 'lung_lesion',
+                             'lung_opacity', 'no_finding', 'pleural_effusion', 'pleural_other', 'pneumonia',
+                             'pneumothorax', 'support_devices'])
+
+            elif (index + 1) == 250000:
+                final_data = final_data.sort_values(['jpg_rel_path'])
+                final_data.to_csv(output_path5, sep=',', index=False)
+                del final_data
+                final_data = pd.DataFrame(
+                    columns=['jpg_rel_path', 'report_rel_path', 'subject_id', 'study_id', 'split', 'view',
+                             'available_views', 'n_x_pixels', 'n_y_pixels', 'atelectasis', 'cardiomegaly',
+                             'consolidation', 'edema', 'enlarged_cardiomediastinum', 'fracture', 'lung_lesion',
+                             'lung_opacity', 'no_finding', 'pleural_effusion', 'pleural_other', 'pneumonia',
+                             'pneumothorax', 'support_devices'])
+
+            elif (index + 1) == 300000:
+                final_data = final_data.sort_values(['jpg_rel_path'])
+                final_data.to_csv(output_path6, sep=',', index=False)
+                del final_data
+                final_data = pd.DataFrame(
+                    columns=['jpg_rel_path', 'report_rel_path', 'subject_id', 'study_id', 'split', 'view',
+                             'available_views', 'n_x_pixels', 'n_y_pixels', 'atelectasis', 'cardiomegaly',
+                             'consolidation', 'edema', 'enlarged_cardiomediastinum', 'fracture', 'lung_lesion',
+                             'lung_opacity', 'no_finding', 'pleural_effusion', 'pleural_other', 'pneumonia',
+                             'pneumothorax', 'support_devices'])
+
+            elif (index + 1) == 350000:
+                final_data = final_data.sort_values(['jpg_rel_path'])
+                final_data.to_csv(output_path7, sep=',', index=False)
+                del final_data
+                final_data = pd.DataFrame(
+                    columns=['jpg_rel_path', 'report_rel_path', 'subject_id', 'study_id', 'split', 'view',
+                             'available_views', 'n_x_pixels', 'n_y_pixels', 'atelectasis', 'cardiomegaly',
+                             'consolidation', 'edema', 'enlarged_cardiomediastinum', 'fracture', 'lung_lesion',
+                             'lung_opacity', 'no_finding', 'pleural_effusion', 'pleural_other', 'pneumonia',
+                             'pneumothorax', 'support_devices'])
 
         # sort based on name
         final_data = final_data.sort_values(['jpg_rel_path'])
-        final_data.to_csv(output_path, sep=',', index=False)
+        final_data.to_csv(output_path8, sep=',', index=False)
 
+        # merging the dataframes
+        df1 = pd.read_csv(output_path1, sep=',')
+        df2 = pd.read_csv(output_path2, sep=',')
+        df3 = pd.read_csv(output_path3, sep=',')
+        df4 = pd.read_csv(output_path4, sep=',')
+        df5 = pd.read_csv(output_path5, sep=',')
+        df6 = pd.read_csv(output_path6, sep=',')
+        df7 = pd.read_csv(output_path7, sep=',')
 
+        ultimate_df = df1.append(df2)
+        ultimate_df = ultimate_df.append(df3)
+        ultimate_df = ultimate_df.append(df4)
+        ultimate_df = ultimate_df.append(df5)
+        ultimate_df = ultimate_df.append(df6)
+        ultimate_df = ultimate_df.append(df7)
+        ultimate_df = ultimate_df.append(final_data)
 
+        ultimate_df.to_csv(output_path, sep=',', index=False)
 
 
 
