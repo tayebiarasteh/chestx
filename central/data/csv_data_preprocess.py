@@ -234,7 +234,6 @@ class csv_preprocess_mimic():
         df5 = pd.read_csv(output_path5, sep=',')
         df6 = pd.read_csv(output_path6, sep=',')
         df7 = pd.read_csv(output_path7, sep=',')
-
         ultimate_df = df1.append(df2)
         ultimate_df = ultimate_df.append(df3)
         ultimate_df = ultimate_df.append(df4)
@@ -243,7 +242,88 @@ class csv_preprocess_mimic():
         ultimate_df = ultimate_df.append(df7)
         ultimate_df = ultimate_df.append(final_data)
 
+        # assigning the subset number
+        ultimate_df.loc[ultimate_df.jpg_rel_path.str.slice(20, 23) == 'p10', 'subset'] = 'p10'
+        ultimate_df.loc[ultimate_df.jpg_rel_path.str.slice(20, 23) == 'p11', 'subset'] = 'p11'
+        ultimate_df.loc[ultimate_df.jpg_rel_path.str.slice(20, 23) == 'p12', 'subset'] = 'p12'
+        ultimate_df.loc[ultimate_df.jpg_rel_path.str.slice(20, 23) == 'p13', 'subset'] = 'p13'
+        ultimate_df.loc[ultimate_df.jpg_rel_path.str.slice(20, 23) == 'p14', 'subset'] = 'p14'
+        ultimate_df.loc[ultimate_df.jpg_rel_path.str.slice(20, 23) == 'p15', 'subset'] = 'p15'
+        ultimate_df.loc[ultimate_df.jpg_rel_path.str.slice(20, 23) == 'p16', 'subset'] = 'p16'
+        ultimate_df.loc[ultimate_df.jpg_rel_path.str.slice(20, 23) == 'p17', 'subset'] = 'p17'
+        ultimate_df.loc[ultimate_df.jpg_rel_path.str.slice(20, 23) == 'p18', 'subset'] = 'p18'
+        ultimate_df.loc[ultimate_df.jpg_rel_path.str.slice(20, 23) == 'p19', 'subset'] = 'p19'
+
         ultimate_df.to_csv(output_path, sep=',', index=False)
+
+
+    def class_num_change(self):
+        """
+        Class 1 will stay 1: "positive"
+        Class 0 will become class 2: "negative"
+        Class -1 will become class 3: "not sure"
+        Class NaN will become class 0: background (not given; none of the "positive", "negative", "not sure")
+        """
+
+        output_path = "/home/soroosh/Documents/datasets/MIMIC/mimic_master_list.csv"
+        newoutput_path = "/home/soroosh/Documents/datasets/MIMIC/newmimic_master_list.csv"
+
+        df1 = pd.read_csv(output_path, sep=',')
+
+        df1[['atelectasis', 'cardiomegaly', 'consolidation', 'edema', 'enlarged_cardiomediastinum', 'fracture',
+             'lung_lesion', 'lung_opacity', 'no_finding', 'pleural_effusion', 'pleural_other', 'pneumonia',
+             'pneumothorax', 'support_devices']] = df1[
+            ['atelectasis', 'cardiomegaly', 'consolidation', 'edema', 'enlarged_cardiomediastinum', 'fracture',
+             'lung_lesion', 'lung_opacity', 'no_finding', 'pleural_effusion', 'pleural_other', 'pneumonia',
+             'pneumothorax', 'support_devices']].fillna(5).astype(int)
+
+        df1.loc[df1.atelectasis == 0, 'atelectasis'] = 2
+        df1.loc[df1.cardiomegaly == 0, 'cardiomegaly'] = 2
+        df1.loc[df1.consolidation == 0, 'consolidation'] = 2
+        df1.loc[df1.edema == 0, 'edema'] = 2
+        df1.loc[df1.enlarged_cardiomediastinum == 0, 'enlarged_cardiomediastinum'] = 2
+        df1.loc[df1.fracture == 0, 'fracture'] = 2
+        df1.loc[df1.lung_lesion == 0, 'lung_lesion'] = 2
+        df1.loc[df1.lung_opacity == 0, 'lung_opacity'] = 2
+        df1.loc[df1.no_finding == 0, 'no_finding'] = 2
+        df1.loc[df1.pleural_effusion == 0, 'pleural_effusion'] = 2
+        df1.loc[df1.pleural_other == 0, 'pleural_other'] = 2
+        df1.loc[df1.pneumonia == 0, 'pneumonia'] = 2
+        df1.loc[df1.pneumothorax == 0, 'pneumothorax'] = 2
+        df1.loc[df1.support_devices == 0, 'support_devices'] = 2
+
+        df1.loc[df1.atelectasis == -1, 'atelectasis'] = 3
+        df1.loc[df1.cardiomegaly == -1, 'cardiomegaly'] = 3
+        df1.loc[df1.consolidation == -1, 'consolidation'] = 3
+        df1.loc[df1.edema == -1, 'edema'] = 3
+        df1.loc[df1.enlarged_cardiomediastinum == -1, 'enlarged_cardiomediastinum'] = 3
+        df1.loc[df1.fracture == -1, 'fracture'] = 3
+        df1.loc[df1.lung_lesion == -1, 'lung_lesion'] = 3
+        df1.loc[df1.lung_opacity == -1, 'lung_opacity'] = 3
+        df1.loc[df1.no_finding == -1, 'no_finding'] = 3
+        df1.loc[df1.pleural_effusion == -1, 'pleural_effusion'] = 3
+        df1.loc[df1.pleural_other == -1, 'pleural_other'] = 3
+        df1.loc[df1.pneumonia == -1, 'pneumonia'] = 3
+        df1.loc[df1.pneumothorax == -1, 'pneumothorax'] = 3
+        df1.loc[df1.support_devices == -1, 'support_devices'] = 3
+
+        df1.loc[df1.atelectasis == 5, 'atelectasis'] = 0
+        df1.loc[df1.cardiomegaly == 5, 'cardiomegaly'] = 0
+        df1.loc[df1.consolidation == 5, 'consolidation'] = 0
+        df1.loc[df1.edema == 5, 'edema'] = 0
+        df1.loc[df1.enlarged_cardiomediastinum == 5, 'enlarged_cardiomediastinum'] = 0
+        df1.loc[df1.fracture == 5, 'fracture'] = 0
+        df1.loc[df1.lung_lesion == 5, 'lung_lesion'] = 0
+        df1.loc[df1.lung_opacity == 5, 'lung_opacity'] = 0
+        df1.loc[df1.no_finding == 5, 'no_finding'] = 0
+        df1.loc[df1.pleural_effusion == 5, 'pleural_effusion'] = 0
+        df1.loc[df1.pleural_other == 5, 'pleural_other'] = 0
+        df1.loc[df1.pneumonia == 5, 'pneumonia'] = 0
+        df1.loc[df1.pneumothorax == 5, 'pneumothorax'] = 0
+        df1.loc[df1.support_devices == 5, 'support_devices'] = 0
+
+        df1.to_csv(newoutput_path, sep=',', index=False)
+
 
 
 
