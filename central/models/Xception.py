@@ -1,6 +1,7 @@
 """
-Xception model.
 Xception.py
+
+Xception model.
 
 @reference: https://github.com/tstandley/Xception-PyTorch
 """
@@ -178,14 +179,3 @@ class Xception(nn.Module):
         x = self.fc(x)
 
         return x
-
-
-def xception(pretrained=False, **kwargs):
-    """
-    Construct Xception.
-    """
-
-    model = Xception(**kwargs)
-    if pretrained:
-        model.load_state_dict(model_zoo.load_url(model_urls['xception']))
-    return model
