@@ -141,8 +141,8 @@ class Training:
         self.optimiser = optimiser
 
         # Saves the model, optimiser,loss function name for writing to config file
-        # self.model_info['optimiser'] = optimiser
         # self.model_info['model'] = model.__name__
+        self.model_info['optimiser'] = optimiser.__name__
         self.model_info['total_param_num'] = total_param_num
         self.model_info['loss_function'] = loss_function.__name__
         self.model_info['num_iterations'] = self.num_iterations
@@ -241,16 +241,22 @@ class Training:
         epoch_loss: float
             average training loss
         """
+        self.model.train()
 
         # initializing the loss list
         batch_loss = 0
         batch_count = 0
         previous_idx = 0
 
+        # initializing the metrics lists
+        accuracy_disease = []
+        F1_disease = []
+
         # initializing the caches
         logits_with_sigmoid_cache = torch.from_numpy(np.zeros((len(train_loader) * batch_size, 2)))
         logits_no_sigmoid_cache = torch.from_numpy(np.zeros_like(logits_with_sigmoid_cache))
         labels_cache = torch.from_numpy(np.zeros_like(logits_with_sigmoid_cache))
+        pdb.set_trace()
 
         for idx, (image, label) in enumerate(train_loader):
             image = image.to(self.device)
@@ -291,24 +297,20 @@ class Training:
                     batch_count = 0
 
         # Metrics calculation (macro) over the whole set
-        crack_confusion, inactive_confusion = multilabel_confusion_matrix(labels_cache.cpu(), logits_with_sigmoid_cache.cpu())
-        # Crack class
-        TN = crack_confusion[0, 0]
-        FP = crack_confusion[0, 1]
-        FN = crack_confusion[1, 0]
-        TP = crack_confusion[1, 1]
-        accuracy_Crack = (TP + TN) / (TP + TN + FP + FN + epsilon)
-        F1_Crack = 2 * TP / (2 * TP + FN + FP + epsilon)
-        # Inactive class
-        TN_inactive = inactive_confusion[0, 0]
-        FP_inactive = inactive_confusion[0, 1]
-        FN_inactive = inactive_confusion[1, 0]
-        TP_inactive = inactive_confusion[1, 1]
-        accuracy_inactive = (TP_inactive + TN_inactive) / (TP_inactive + TN_inactive + FP_inactive + FN_inactive + epsilon)
-        F1_inactive = 2 * TP_inactive / (2 * TP_inactive + FN_inactive + FP_inactive + epsilon)
+        confusion = multilabel_confusion_matrix(labels_cache.cpu(), logits_with_sigmoid_cache.cpu())
+
+        for idx, disease in enumerate(confusion):
+            TN = disease[0, 0]
+            FP = disease[0, 1]
+            FN = disease[1, 0]
+            TP = disease[1, 1]
+            accuracy_disease.append((TP + TN) / (TP + TN + FP + FN + epsilon))
+            F1_disease.append(2 * TP / (2 * TP + FN + FP + epsilon))
+
         # Macro averaging
-        epoch_accuracy = (accuracy_Crack + accuracy_inactive) / 2
-        epoch_f1_score = (F1_Crack + F1_inactive) / 2
+        epoch_accuracy = accuracy_disease.mean()
+        epoch_f1_score = F1_disease.mean()
+
         loss = self.loss_function(logits_no_sigmoid_cache.to(self.device), labels_cache.to(self.device))
         epoch_loss = loss.item()
 
@@ -333,6 +335,10 @@ class Training:
         self.model.eval()
 
         previous_idx = 0
+
+        # initializing the metrics lists
+        accuracy_disease = []
+        F1_disease = []
 
         with torch.no_grad():
             # initializing the loss list
@@ -374,24 +380,20 @@ class Training:
                     batch_count = 0
 
         # Metrics calculation (macro) over the whole set
-        crack_confusion, inactive_confusion = multilabel_confusion_matrix(labels_cache.cpu(), logits_with_sigmoid_cache.cpu())
-        # Crack class
-        TN = crack_confusion[0, 0]
-        FP = crack_confusion[0, 1]
-        FN = crack_confusion[1, 0]
-        TP = crack_confusion[1, 1]
-        accuracy_Crack = (TP + TN) / (TP + TN + FP + FN + epsilon)
-        F1_Crack = 2 * TP / (2 * TP + FN + FP + epsilon)
-        # Inactive class
-        TN_inactive = inactive_confusion[0, 0]
-        FP_inactive = inactive_confusion[0, 1]
-        FN_inactive = inactive_confusion[1, 0]
-        TP_inactive = inactive_confusion[1, 1]
-        accuracy_inactive = (TP_inactive + TN_inactive) / (TP_inactive + TN_inactive + FP_inactive + FN_inactive + epsilon)
-        F1_inactive = 2 * TP_inactive / (2 * TP_inactive + FN_inactive + FP_inactive + epsilon)
+        confusion = multilabel_confusion_matrix(labels_cache.cpu(), logits_with_sigmoid_cache.cpu())
+
+        for idx, disease in enumerate(confusion):
+            TN = disease[0, 0]
+            FP = disease[0, 1]
+            FN = disease[1, 0]
+            TP = disease[1, 1]
+            accuracy_disease.append((TP + TN) / (TP + TN + FP + FN + epsilon))
+            F1_disease.append(2 * TP / (2 * TP + FN + FP + epsilon))
+
         # Macro averaging
-        epoch_accuracy = (accuracy_Crack + accuracy_inactive) / 2
-        epoch_f1_score = (F1_Crack + F1_inactive) / 2
+        epoch_accuracy = accuracy_disease.mean()
+        epoch_f1_score = F1_disease.mean()
+
         loss = self.loss_function(logits_no_sigmoid_cache.to(self.device), labels_cache.to(self.device))
         epoch_loss = loss.item()
 

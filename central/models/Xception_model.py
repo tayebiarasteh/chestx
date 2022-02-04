@@ -1,5 +1,5 @@
 """
-Xception.py
+Xception_model.py
 
 Xception model.
 
@@ -12,12 +12,6 @@ import torch.nn.functional as F
 import torch.utils.model_zoo as model_zoo
 from torch.nn import init
 import torch
-
-__all__ = ['xception']
-
-model_urls = {
-    'xception': 'https://www.dropbox.com/s/1hplpzet9d7dv29/xception-c0a72b38.pth.tar?dl=1'
-}
 
 
 class SeparableConv2d(nn.Module):
@@ -92,7 +86,7 @@ class Xception(nn.Module):
     https://arxiv.org/pdf/1610.02357.pdf
     """
 
-    def __init__(self, num_classes=1000):
+    def __init__(self, num_classes=14):
         """ Constructor
         Args:
             num_classes: number of classes

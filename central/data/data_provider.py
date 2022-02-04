@@ -6,16 +6,16 @@ data_provider.py
 https://github.com/tayebiarasteh/
 """
 
-import numpy as np
 import os
 import torch
 import pdb
-import pandas as pd
-from torch.utils.data import Dataset
 from enum import Enum
+import pandas as pd
+import numpy as np
 from skimage.io import imread
 from skimage.transform import resize
 from skimage.util import img_as_ubyte
+from torch.utils.data import Dataset
 
 from config.serde import read_config
 
@@ -64,7 +64,7 @@ class data_loader(Dataset):
             self.chosen_df = org_df[org_df['split'] == 'test']
 
         # choosing a subset due to having large data
-        self.chosen_df = self.chosen_df[self.chosen_df['subset'] == 'p10']
+        self.chosen_df = self.chosen_df[self.chosen_df['subset'] == 'p19']
 
         self.file_path_list = list(self.chosen_df['jpg_rel_path'])
 
@@ -79,6 +79,7 @@ class data_loader(Dataset):
         Parameters
         ----------
         idx: int
+
         Returns
         -------
         img: torch tensor
