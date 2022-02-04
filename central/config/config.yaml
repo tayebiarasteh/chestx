@@ -1,6 +1,6 @@
 Network:
   seed: 1
-  batch_size: 2 # number of 2D images to be loaded in the data loader
+  batch_size: 10
   lr: 3e-4
   weight_decay: 0
   amsgrad: True

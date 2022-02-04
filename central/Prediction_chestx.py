@@ -62,10 +62,10 @@ class Prediction:
 
         Returns
         -------
-        avg_f1_score: float
+        F1_disease: float array
             average validation F1 score
 
-        avg_accuracy: float
+        accuracy_disease: float array
             average validation accuracy
         """
         self.model.eval()
@@ -110,4 +110,4 @@ class Prediction:
             accuracy_disease.append((TP + TN) / (TP + TN + FP + FN + epsilon))
             F1_disease.append(2 * TP / (2 * TP + FN + FP + epsilon))
 
-        return accuracy_disease, F1_disease
+        return np.array(accuracy_disease), np.array(F1_disease)

@@ -14,6 +14,7 @@ from enum import Enum
 from tensorboardX import SummaryWriter
 import torch
 import torch.nn.functional as F
+from tqdm import tqdm
 import torchmetrics
 import torchio as tio
 from sklearn.metrics import multilabel_confusion_matrix
@@ -257,7 +258,7 @@ class Training:
         logits_no_sigmoid_cache = torch.from_numpy(np.zeros_like(logits_with_sigmoid_cache))
         labels_cache = torch.from_numpy(np.zeros_like(logits_with_sigmoid_cache))
 
-        for idx, (image, label) in enumerate(train_loader):
+        for idx, (image, label) in enumerate(tqdm(train_loader)):
 
             image = image.to(self.device)
             label = label.to(self.device)
@@ -311,8 +312,8 @@ class Training:
             F1_disease.append(2 * TP / (2 * TP + FN + FP + epsilon))
 
         # Macro averaging
-        epoch_accuracy = accuracy_disease.mean()
-        epoch_f1_score = F1_disease.mean()
+        epoch_accuracy = np.array(accuracy_disease).mean()
+        epoch_f1_score = np.array(F1_disease).mean()
 
         loss = self.loss_function(logits_no_sigmoid_cache.to(self.device), labels_cache.to(self.device))
         epoch_loss = loss.item()
@@ -396,8 +397,8 @@ class Training:
             F1_disease.append(2 * TP / (2 * TP + FN + FP + epsilon))
 
         # Macro averaging
-        epoch_accuracy = accuracy_disease.mean()
-        epoch_f1_score = F1_disease.mean()
+        epoch_accuracy = np.array(accuracy_disease).mean()
+        epoch_f1_score = np.array(F1_disease).mean()
 
         loss = self.loss_function(logits_no_sigmoid_cache.to(self.device), labels_cache.to(self.device))
         epoch_loss = loss.item()
