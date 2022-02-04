@@ -12,10 +12,11 @@ import pdb
 from enum import Enum
 import pandas as pd
 import numpy as np
-from skimage.io import imread
+from skimage.io import imread, imsave
 from skimage.transform import resize
 from skimage.util import img_as_ubyte
 from torch.utils.data import Dataset
+from skimage.color import gray2rgb
 
 from config.serde import read_config
 
@@ -64,9 +65,30 @@ class data_loader(Dataset):
             self.chosen_df = org_df[org_df['split'] == 'test']
 
         # choosing a subset due to having large data
-        self.chosen_df = self.chosen_df[self.chosen_df['subset'] == 'p19']
+        self.chosen_df = self.chosen_df[self.chosen_df['subset'] == 'p18']
 
         self.file_path_list = list(self.chosen_df['jpg_rel_path'])
+
+        # img = imread(os.path.join(self.file_base_dir, self.file_path_list[0]))
+        # img = gray2rgb(img)
+        # img = resize(img, (HEIGHT, WIDTH))
+        #
+        # # Conversion to ubyte value range (0...255) is done here, because network needs to be trained and needs to predict using the same datatype.
+        # img = img_as_ubyte(img)
+        #
+        # row = self.chosen_df[self.chosen_df['jpg_rel_path'] == self.file_path_list[0]]
+        #
+        # label = np.array([int(row['atelectasis'].values[0]), row['cardiomegaly'].values[0], int(row['consolidation']), int(row['edema'].values[0]),
+        #                   int(row['enlarged_cardiomediastinum'].values[0]), int(row['fracture'].values[0]), int(row['lung_lesion'].values[0]), int(row['lung_opacity'].values[0]),
+        #                   int(row['no_finding'].values[0]), int(row['pleural_effusion'].values[0]), int(row['pleural_other'].values[0]), int(row['pneumonia'].values[0]),
+        #                   int(row['pneumothorax'].values[0]), int(row['support_devices'].values[0])]) # (h,)
+        #
+        # # converting the problem to binary multi-label class, by setting everything else than positive, to negative (0)
+        # label[label != 1] = 0 # (h,)
+        # img = img.transpose(2, 0, 1)  # (c=3, h, w)
+        # img = torch.from_numpy(img)  # (c=3, h, w))
+        # label = torch.from_numpy(label)  # (h,)
+        # pdb.set_trace()
 
 
     def __len__(self):
@@ -85,26 +107,25 @@ class data_loader(Dataset):
         img: torch tensor
         label: torch tensor
         """
-        img = imread(os.path.join(self.file_base_dir, self.file_path_list[idx]))
-        img = resize(img, (HEIGHT, WIDTH))
+        img = imread(os.path.join(self.file_base_dir, self.file_path_list[idx])) # (h, w)
+        img = gray2rgb(img) # (h, w, c=3)
+        img = resize(img, (HEIGHT, WIDTH)) # (h, w, c=3)
 
         # Conversion to ubyte value range (0...255) is done here, because network needs to be trained and needs to predict using the same datatype.
-        img = img_as_ubyte(img)
+        img = img_as_ubyte(img) # (h, w, c=3)
 
         row = self.chosen_df[self.chosen_df['jpg_rel_path'] == self.file_path_list[idx]]
 
-        label = np.array([row['atelectasis'], row['cardiomegaly'], row['consolidation'], row['edema'],
-                          row['enlarged_cardiomediastinum'], row['fracture'], row['lung_lesion'], row['lung_opacity'],
-                          row['no_finding'], row['pleural_effusion'], row['pleural_other'], row['pneumonia'],
-                          row['pneumothorax'], row['support_devices']]) # (h, 1)
+        label = np.array([int(row['atelectasis'].values[0]), row['cardiomegaly'].values[0], int(row['consolidation']), int(row['edema'].values[0]),
+                          int(row['enlarged_cardiomediastinum'].values[0]), int(row['fracture'].values[0]), int(row['lung_lesion'].values[0]), int(row['lung_opacity'].values[0]),
+                          int(row['no_finding'].values[0]), int(row['pleural_effusion'].values[0]), int(row['pleural_other'].values[0]), int(row['pneumonia'].values[0]),
+                          int(row['pneumothorax'].values[0]), int(row['support_devices'].values[0])]) # (h,)
 
         # converting the problem to binary multi-label class, by setting everything else than positive, to negative (0)
-        label[label != 1] = 0 # (h, 1)
+        label[label != 1] = 0 # (h,)
 
-        img = torch.from_numpy(img)  # (h, w)
-        img = torch.unsqueeze(img, 0)  # (c=1, h, w)
-        label = torch.from_numpy(label)  # (h, 1)
-        label = torch.unsqueeze(label, 0)  # (c=1, h, 1)
-        label = torch.squeeze(label, 2)  # (c=1, h)
+        img = img.transpose(2, 0, 1)  # (c=3, h, w)
+        img = torch.from_numpy(img)  # (c=3, h, w))
+        label = torch.from_numpy(label)  # (h,)
 
         return img, label

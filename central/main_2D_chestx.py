@@ -81,6 +81,7 @@ def main_train_2D(global_config_path="/home/soroosh/Documents/Repositories/chest
 
 
 
+
 def main_test_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/central/config/config.yaml", experiment_name='name'):
     """Main function for prediction
 
@@ -102,11 +103,11 @@ def main_test_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx
     # Initialize prediction
     predictor = Prediction(cfg_path)
     predictor.setup_model(model=model)
-    F1_disease, accuracy_disease = predictor.evaluate_2D(test_loader)
+    accuracy_disease, F1_disease = predictor.evaluate_2D(test_loader, params['Network']['batch_size'])
 
     print('------------------------------------------------------'
           '----------------------------------')
-    print(f'\tTotal Accuracy: {F1_disease.mean() * 100:.2f}% | Total F1 (dice score): {F1_disease.mean() * 100:.2f}%')
+    print(f'\tTotal Accuracy: {accuracy_disease.mean() * 100:.2f}% | Total F1 (dice score): {F1_disease.mean() * 100:.2f}%')
     print('\nIndividual Accuracy scores:')
     print(f'\tAtelectasis: {accuracy_disease[0] * 100:.2f}% | Cardiomegaly: {accuracy_disease[1] * 100:.2f}% '
           f'| Consolidation: {accuracy_disease[2] * 100:.2f}% | Edema: {accuracy_disease[3] * 100:.2f}%')
@@ -128,7 +129,7 @@ def main_test_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx
 
     # saving the stats
     mesg = f'\n\n----------------------------------------------------------------------------------------\n' \
-           f'\tTotal Accuracy: {F1_disease.mean() * 100:.2f}% | Total F1 (dice score): {F1_disease.mean() * 100:.2f}%' \
+           f'\tTotal Accuracy: {accuracy_disease.mean() * 100:.2f}% | Total F1 (dice score): {F1_disease.mean() * 100:.2f}%' \
            f'\n\nIndividual Accuracy scores:' \
            f'\tAtelectasis: {accuracy_disease[0] * 100:.2f}% | Cardiomegaly: {accuracy_disease[1] * 100:.2f}% ' \
           f'| Consolidation: {accuracy_disease[2] * 100:.2f}% | Edema: {accuracy_disease[3] * 100:.2f}%' \

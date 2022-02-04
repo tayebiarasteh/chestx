@@ -1,12 +1,9 @@
 Network:
   seed: 1
-  batch_size: 1 # number of 2D images to be loaded in the data loader
-  test_batch_size: 1
+  batch_size: 2 # number of 2D images to be loaded in the data loader
   lr: 3e-4
   weight_decay: 0
   amsgrad: True
-  resize_shape_h_2D3D: 150
-  resize_shape_w_2D3D: 110
 network_output_path: network_data/
 output_data_path: output_data/
 tb_logs_path: tensor_board_logs/

@@ -142,7 +142,7 @@ class Training:
 
         # Saves the model, optimiser,loss function name for writing to config file
         # self.model_info['model'] = model.__name__
-        self.model_info['optimiser'] = optimiser.__name__
+        # self.model_info['optimiser'] = optimiser.__name__
         self.model_info['total_param_num'] = total_param_num
         self.model_info['loss_function'] = loss_function.__name__
         self.model_info['num_iterations'] = self.num_iterations
@@ -253,12 +253,12 @@ class Training:
         F1_disease = []
 
         # initializing the caches
-        logits_with_sigmoid_cache = torch.from_numpy(np.zeros((len(train_loader) * batch_size, 2)))
+        logits_with_sigmoid_cache = torch.from_numpy(np.zeros((len(train_loader) * batch_size, 14)))
         logits_no_sigmoid_cache = torch.from_numpy(np.zeros_like(logits_with_sigmoid_cache))
         labels_cache = torch.from_numpy(np.zeros_like(logits_with_sigmoid_cache))
-        pdb.set_trace()
 
         for idx, (image, label) in enumerate(train_loader):
+
             image = image.to(self.device)
             label = label.to(self.device)
 
@@ -266,8 +266,11 @@ class Training:
 
             with torch.set_grad_enabled(True):
 
-                output = self.model(image)
+                image = image.float()
                 label = label.float()
+
+                output = self.model(image)
+
                 output_sigmoided = F.sigmoid(output)
                 output_sigmoided = (output_sigmoided > 0.5).float()
 
@@ -346,15 +349,17 @@ class Training:
             batch_count = 0
 
             # initializing the caches
-            logits_with_sigmoid_cache = torch.from_numpy(np.zeros((len(valid_loader) * batch_size, 2)))
+            logits_with_sigmoid_cache = torch.from_numpy(np.zeros((len(valid_loader) * batch_size, 14)))
             logits_no_sigmoid_cache = torch.from_numpy(np.zeros_like(logits_with_sigmoid_cache))
             labels_cache = torch.from_numpy(np.zeros_like(logits_with_sigmoid_cache))
 
             for idx, (image, label) in enumerate(valid_loader):
                 image = image.to(self.device)
                 label = label.to(self.device)
-                output = self.model(image)
+                image = image.float()
                 label = label.float()
+
+                output = self.model(image)
                 output_sigmoided = F.sigmoid(output)
                 output_sigmoided = (output_sigmoided > 0.5).float()
 

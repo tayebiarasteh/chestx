@@ -54,7 +54,7 @@ class Prediction:
 
 
 
-    def evaluate_2D(self, test_loader):
+    def evaluate_2D(self, test_loader, batch_size):
         """Testing 2D-wise.
 
         Parameters
@@ -77,15 +77,17 @@ class Prediction:
         with torch.no_grad():
 
             # initializing the caches
-            logits_with_sigmoid_cache = torch.from_numpy(np.zeros((len(test_loader) * batch_size, 2)))
+            logits_with_sigmoid_cache = torch.from_numpy(np.zeros((len(test_loader) * batch_size, 14)))
             logits_no_sigmoid_cache = torch.from_numpy(np.zeros_like(logits_with_sigmoid_cache))
             labels_cache = torch.from_numpy(np.zeros_like(logits_with_sigmoid_cache))
 
             for idx, (image, label) in enumerate(test_loader):
                 image = image.to(self.device)
                 label = label.to(self.device)
-                output = self.model(image)
+                image = image.float()
                 label = label.float()
+
+                output = self.model(image)
                 output_sigmoided = F.sigmoid(output)
                 output_sigmoided = (output_sigmoided > 0.5).float()
 
@@ -105,7 +107,7 @@ class Prediction:
             FP = disease[0, 1]
             FN = disease[1, 0]
             TP = disease[1, 1]
-            F1_disease.append(2 * TP / (2 * TP + FN + FP + epsilon))
             accuracy_disease.append((TP + TN) / (TP + TN + FP + FN + epsilon))
+            F1_disease.append(2 * TP / (2 * TP + FN + FP + epsilon))
 
-        return F1_disease, accuracy_disease
+        return accuracy_disease, F1_disease
