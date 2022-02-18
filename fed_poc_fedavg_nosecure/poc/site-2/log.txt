@@ -1,0 +1,7 @@
+2022-02-18 16:09:36,824 - Communicator - ERROR - Action: client_registration grpc communication error. retry: 1500, First start till now: 0.002861499786376953 seconds.
+2022-02-18 16:09:41,830 - Communicator - ERROR - Action: client_registration grpc communication error. retry: 1499, First start till now: 0.0008409023284912109 seconds.
+2022-02-18 16:09:46,834 - Communicator - ERROR - Action: client_registration grpc communication error. retry: 1498, First start till now: 0.0007350444793701172 seconds.
+2022-02-18 16:09:51,839 - Communicator - ERROR - Action: client_registration grpc communication error. retry: 1497, First start till now: 0.0006291866302490234 seconds.
+2022-02-18 16:09:56,842 - Communicator - ERROR - Action: client_registration grpc communication error. retry: 1496, First start till now: 0.0005106925964355469 seconds.
+2022-02-18 16:10:01,846 - Communicator - ERROR - Action: client_registration grpc communication error. retry: 1495, First start till now: 0.0005495548248291016 seconds.
+2022-02-18 16:10:06,850 - Communicator - ERROR - Action: client_registration grpc communication error. retry: 1494, First start till now: 0.0005931854248046875 seconds.

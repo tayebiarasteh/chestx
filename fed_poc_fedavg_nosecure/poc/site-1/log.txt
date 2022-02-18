@@ -1,0 +1,10 @@
+2022-02-18 16:09:35,982 - Communicator - ERROR - Action: client_registration grpc communication error. retry: 1500, First start till now: 0.0043239593505859375 seconds.
+2022-02-18 16:09:35,982 - Communicator - ERROR - Could not connect to server: localhost:8002	Setting flag for stopping training. failed to connect to all addresses
+2022-02-18 16:09:40,988 - Communicator - ERROR - Action: client_registration grpc communication error. retry: 1499, First start till now: 0.0007045269012451172 seconds.
+2022-02-18 16:09:40,988 - Communicator - ERROR - Could not connect to server: localhost:8002	Setting flag for stopping training. failed to connect to all addresses
+2022-02-18 16:09:45,994 - Communicator - ERROR - Action: client_registration grpc communication error. retry: 1498, First start till now: 0.0005853176116943359 seconds.
+2022-02-18 16:09:45,994 - Communicator - ERROR - Could not connect to server: localhost:8002	Setting flag for stopping training. failed to connect to all addresses
+2022-02-18 16:09:51,000 - Communicator - ERROR - Action: client_registration grpc communication error. retry: 1497, First start till now: 0.0010828971862792969 seconds.
+2022-02-18 16:09:56,006 - Communicator - ERROR - Action: client_registration grpc communication error. retry: 1496, First start till now: 0.0006396770477294922 seconds.
+2022-02-18 16:10:01,010 - Communicator - ERROR - Action: client_registration grpc communication error. retry: 1495, First start till now: 0.0005948543548583984 seconds.
+2022-02-18 16:10:06,016 - Communicator - ERROR - Action: client_registration grpc communication error. retry: 1494, First start till now: 0.001287221908569336 seconds.

@@ -1,0 +1,666 @@
+"""
+Created on Feb 1, 2022.
+Training_Valid_chestx.py
+
+@author: Soroosh Tayebi Arasteh <sarasteh@ukaachen.de>
+https://github.com/tayebiarasteh/
+"""
+
+import os.path
+import time
+import pdb
+import numpy as np
+from enum import Enum
+from tensorboardX import SummaryWriter
+import torch
+import torch.nn.functional as F
+from tqdm import tqdm
+import torchmetrics
+import torchio as tio
+from sklearn.metrics import multilabel_confusion_matrix
+from torch.utils.data import Dataset
+from torch.nn import BCEWithLogitsLoss
+
+from nvflare.apis.dxo import from_shareable, DXO, DataKind, MetaKey
+from nvflare.apis.fl_constant import FLContextKey, ReturnCode, ReservedKey
+from nvflare.apis.fl_context import FLContext
+from nvflare.apis.shareable import Shareable, make_reply
+from nvflare.apis.signal import Signal
+from nvflare.app_common.abstract.model import ModelLearnable, ModelLearnableKey, make_model_learnable, model_learnable_to_dxo
+from nvflare.app_common.abstract.learner_spec import Learner
+from nvflare.app_common.app_constant import AppConstants
+from nvflare.app_common.pt.pt_fed_utils import PTModelPersistenceFormatManager
+from pt_constants import PTConstants
+
+from configs.serde import open_experiment, create_experiment, delete_experiment, write_config, read_config
+from models.Xception_model import Xception
+from Prediction_chestx import Prediction
+from data.data_provider import data_loader, Mode
+
+import warnings
+warnings.filterwarnings('ignore')
+epsilon = 1e-15
+
+
+
+class Training(Learner):
+    def __init__(self, cfg_path, epochs=5, exclude_vars=None, analytic_sender_id="analytic_sender"):
+        """This class represents training and validation processes.
+
+        Parameters
+        ----------
+        cfg_path: str
+            Config file path of the experiment
+
+        num_iterations: int
+            Total number of iterations for training
+
+        resume: bool
+            if we are resuming training from a checkpoint
+
+        torch_seed: int
+            Seed used for random generators in PyTorch functions
+        """
+        super().__init__()
+        self.params = read_config(cfg_path)
+        self.cfg_path = cfg_path
+        self.exclude_vars = exclude_vars
+        self.batch_size = self.params['Network']['batch_size']
+
+        self.model_info = self.params['Network']
+        self.epochs = epochs
+        self.best_F1 = float('inf')
+        self.analytic_sender_id = analytic_sender_id
+
+
+    def initialize(self, parts: dict, fl_ctx: FLContext,
+                   global_config_path="/home/soroosh/Documents/Repositories/chestx/fed_poc_fedavg_nosecure/poc/admin/transfer/chestxcode/custom/configs/config.yaml",
+                      valid=False, experiment_name='name'):
+        """Main function for training + validation for directly 2d-wise
+
+            Parameters
+            ----------
+            global_config_path: str
+                always global_config_path="/home/soroosh/Documents/Repositories/chestx/central/config/config.yaml"
+
+            valid: bool
+                if we want to do validation
+
+            resume: bool
+                if we are resuming training on a model
+
+            experiment_name: str
+                name of the experiment, in case of resuming training.
+                name of new experiment, in case of new training.
+        """
+        params = create_experiment(experiment_name, global_config_path)
+        cfg_path = params["cfg_path"]
+
+        # Changeable network parameters
+        model = Xception()
+        loss_function = BCEWithLogitsLoss
+        optimizer = torch.optim.Adam(model.parameters(), lr=float(params['Network']['lr']),
+                                     weight_decay=float(params['Network']['weight_decay']),
+                                     amsgrad=params['Network']['amsgrad'])
+
+        # class weights corresponding to the dataset
+        # weight_path = params['file_path']
+        # weight_path = weight_path.replace('images', 'labels')
+        # weight_path = os.path.join(weight_path, "train")
+        # WEIGHT = torch.Tensor(weight_creator(path=weight_path))
+        WEIGHT = None
+
+        train_dataset = data_loader(cfg_path=cfg_path, mode=Mode.TRAIN)
+        self.train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=self.batch_size,
+                                                   pin_memory=False, drop_last=True, shuffle=True, num_workers=4)
+        self.n_iterations = len(self.train_loader)
+
+        if valid:
+            valid_dataset = data_loader(cfg_path=cfg_path, mode=Mode.VALIDATION)
+            self.valid_loader = torch.utils.data.DataLoader(dataset=valid_dataset,
+                                                       batch_size=self.batch_size, pin_memory=False,
+                                                            drop_last=True, shuffle=False, num_workers=1)
+        else:
+            self.valid_loader = None
+
+        self.setup_cuda()
+
+        # Setup the persistence manager to save PT model.
+        # The default training configuration is used by persistence manager in case no initial model is found.
+        self.default_train_conf = {"train": {"model": type(self.model).__name__}}
+        self.persistence_manager = PTModelPersistenceFormatManager(
+            data=self.model.state_dict(), default_train_conf=self.default_train_conf)
+
+        # Tensorboard streaming setup
+        self.writer = parts.get(self.analytic_sender_id)  # user configuration from config_fed_client.json
+        if not self.writer:  # else use local TensorBoard writer only
+            self.writer = SummaryWriter(fl_ctx.get_prop(FLContextKey.APP_ROOT))
+
+        self.setup_model(model=model, optimiser=optimizer,
+                            loss_function=loss_function, weight=WEIGHT)
+
+
+
+    def setup_cuda(self, cuda_device_id=0):
+        """setup the device.
+
+        Parameters
+        ----------
+        cuda_device_id: int
+            cuda device id
+        """
+        if torch.cuda.is_available():
+            torch.backends.cudnn.fastest = True
+            torch.cuda.set_device(cuda_device_id)
+            self.device = torch.device('cuda')
+            torch.cuda.manual_seed_all(self.model_info['seed'])
+            torch.manual_seed(self.model_info['seed'])
+        else:
+            self.device = torch.device('cpu')
+
+
+    def time_duration(self, start_time, end_time):
+        """calculating the duration of training or one iteration
+
+        Parameters
+        ----------
+        start_time: float
+            starting time of the operation
+
+        end_time: float
+            ending time of the operation
+
+        Returns
+        -------
+        elapsed_hours: int
+            total hours part of the elapsed time
+
+        elapsed_mins: int
+            total minutes part of the elapsed time
+
+        elapsed_secs: int
+            total seconds part of the elapsed time
+        """
+        elapsed_time = end_time - start_time
+        elapsed_hours = int(elapsed_time / 3600)
+        if elapsed_hours >= 1:
+            elapsed_mins = int((elapsed_time / 60) - (elapsed_hours * 60))
+            elapsed_secs = int(elapsed_time - (elapsed_hours * 3600) - (elapsed_mins * 60))
+        else:
+            elapsed_mins = int(elapsed_time / 60)
+            elapsed_secs = int(elapsed_time - (elapsed_mins * 60))
+        return elapsed_hours, elapsed_mins, elapsed_secs
+
+
+    def setup_model(self, model, optimiser, loss_function, weight=None):
+        """Setting up all the models, optimizers, and loss functions.
+
+        Parameters
+        ----------
+        model: model file
+            The network
+
+        optimiser: optimizer file
+            The optimizer
+
+        loss_function: loss file
+            The loss function
+
+        weight: 1D tensor of float
+            class weights
+        """
+
+        # prints the network's total number of trainable parameters and
+        # stores it to the experiment config
+        total_param_num = sum(p.numel() for p in model.parameters() if p.requires_grad)
+        print(f'\nTotal # of trainable parameters: {total_param_num:,}')
+        print('----------------------------------------------------\n')
+
+        self.model = model.to(self.device)
+        if not weight==None:
+            self.loss_weight = weight.to(self.device)
+            self.loss_function = loss_function(weight=self.loss_weight)
+        else:
+            self.loss_function = loss_function()
+        self.optimiser = optimiser
+
+        # Saves the model, optimiser,loss function name for writing to config file
+        # self.model_info['model'] = model.__name__
+        # self.model_info['optimiser'] = optimiser.__name__
+        self.model_info['total_param_num'] = total_param_num
+        self.model_info['loss_function'] = loss_function.__name__
+        self.model_info['num_iterations'] = self.num_iterations
+        self.params['Network'] = self.model_info
+        write_config(self.params, self.cfg_path, sort_keys=True)
+
+
+
+    def train(self, data: Shareable, fl_ctx: FLContext, abort_signal: Signal) -> Shareable:
+        """Executes training by running training and validation at each epoch.
+        This is the pipeline based on Pytorch's Dataset and Dataloader
+
+        Parameters
+        ----------
+        train_loader: Pytorch dataloader object
+            training data loader
+
+        valid_loader: Pytorch dataloader object
+            validation data loader
+       """
+        # Get model weights
+        try:
+            dxo = from_shareable(data)
+        except:
+            self.log_error(fl_ctx, "Unable to extract dxo from shareable.")
+            return make_reply(ReturnCode.BAD_TASK_DATA)
+
+        # Ensure data kind is weights.
+        if not dxo.data_kind == DataKind.WEIGHTS:
+            self.log_error(fl_ctx, f"data_kind expected WEIGHTS but got {dxo.data_kind} instead.")
+            return make_reply(ReturnCode.BAD_TASK_DATA)
+
+        # Convert weights to tensor. Run training
+        torch_weights = {k: torch.as_tensor(v) for k, v in dxo.data.items()}
+        self.train_epoch(fl_ctx, torch_weights, abort_signal)
+
+        # Check the abort_signal after training.
+        # local_train returns early if abort_signal is triggered.
+        if abort_signal.triggered:
+            return make_reply(ReturnCode.TASK_ABORTED)
+
+        # Save the local model after training.
+        self.save_local_model(fl_ctx)
+
+        # Get the new state dict and send as weights
+        new_weights = self.model.state_dict()
+        new_weights = {k: v.cpu().numpy() for k, v in new_weights.items()}
+
+        outgoing_dxo = DXO(data_kind=DataKind.WEIGHTS, data=new_weights,
+                            meta={MetaKey.NUM_STEPS_CURRENT_ROUND: self.n_iterations})
+        return outgoing_dxo.to_shareable()
+
+
+
+    def train_epoch(self, fl_ctx, weights, abort_signal):
+        """Training epoch
+
+        Returns
+        -------
+        epoch_f1_score: float
+        average training F1 score
+
+        epoch_accuracy: float
+            average training accuracy
+
+        epoch_loss: float
+            average training loss
+        """
+        total_start_time = time.time()
+
+        # Set the model weights
+        self.model.load_state_dict(state_dict=weights)
+
+        # Basic training
+        for epoch in range(self.epochs):
+            self.model.train()
+
+            # initializing the loss list
+            batch_loss = 0
+            batch_count = 0
+            previous_idx = 0
+
+            # initializing the metrics lists
+            accuracy_disease = []
+            F1_disease = []
+
+            # initializing the caches
+            logits_with_sigmoid_cache = torch.from_numpy(np.zeros((len(self.train_loader) * self.batch_size, 14)))
+            logits_no_sigmoid_cache = torch.from_numpy(np.zeros_like(logits_with_sigmoid_cache))
+            labels_cache = torch.from_numpy(np.zeros_like(logits_with_sigmoid_cache))
+
+            for idx, (image, label) in enumerate(tqdm(self.train_loader)):
+                if abort_signal.triggered:
+                    return
+
+                image = image.to(self.device)
+                label = label.to(self.device)
+
+                self.optimiser.zero_grad()
+
+                with torch.set_grad_enabled(True):
+
+                    image = image.float()
+                    label = label.float()
+
+                    output = self.model(image)
+
+                    output_sigmoided = F.sigmoid(output)
+                    output_sigmoided = (output_sigmoided > 0.5).float()
+
+                    # saving the logits and labels of this batch
+                    for i, batch in enumerate(output_sigmoided):
+                        logits_with_sigmoid_cache[idx * self.batch_size + i] = batch
+                    for i, batch in enumerate(output):
+                        logits_no_sigmoid_cache[idx * self.batch_size + i] = batch
+                    for i, batch in enumerate(label):
+                        labels_cache[idx * self.batch_size + i] = batch
+
+                    # Loss
+                    loss = self.loss_function(output, label)
+                    batch_loss += loss.item()
+                    batch_count += 1
+
+                    # Backward and optimize
+                    loss.backward()
+                    self.optimiser.step()
+
+                    # Prints loss statistics after number of steps specified.
+                    if (idx + 1) % self.params['display_stats_freq'] == 0:
+                        self.log_info(fl_ctx, 'Epoch {:02} | Batch {:03}-{:03} | Train loss: {:.3f}'.
+                              format(self.iteration, previous_idx, idx, batch_loss / batch_count))
+                        previous_idx = idx + 1
+                        batch_loss = 0
+                        batch_count = 0
+
+            # Metrics calculation (macro) over the whole set
+            confusion = multilabel_confusion_matrix(labels_cache.cpu(), logits_with_sigmoid_cache.cpu())
+
+            for idx, disease in enumerate(confusion):
+                TN = disease[0, 0]
+                FP = disease[0, 1]
+                FN = disease[1, 0]
+                TP = disease[1, 1]
+                accuracy_disease.append((TP + TN) / (TP + TN + FP + FN + epsilon))
+                F1_disease.append(2 * TP / (2 * TP + FN + FP + epsilon))
+
+            # Macro averaging
+            train_acc = np.array(accuracy_disease).mean()
+            train_F1 = np.array(F1_disease).mean()
+
+            loss = self.loss_function(logits_no_sigmoid_cache.to(self.device), labels_cache.to(self.device))
+            train_loss = loss.item()
+
+            # valid loop at the end of each epoch
+            if not self.valid_loader == None:
+                valid_F1, valid_acc, valid_loss = self.valid_epoch(self.valid_loader, abort_signal)
+
+            # Validation iteration & calculate metrics
+            if (self.epochs) % (self.params['network_save_freq']) == 0:
+                end_time = time.time()
+                iteration_hours, iteration_mins, iteration_secs = self.time_duration(start_time, end_time)
+                total_hours, total_mins, total_secs = self.time_duration(total_start_time, end_time)
+
+                # saving the model, checkpoint, TensorBoard, etc.
+                if not self.valid_loader == None:
+                    self.calculate_tb_stats(train_F1=train_F1, train_acc=train_acc, train_loss=train_loss,
+                                            valid_F1=valid_F1, valid_acc=valid_acc, valid_loss=valid_loss)
+                    self.savings_prints(iteration_hours, iteration_mins, iteration_secs, total_hours,
+                                        total_mins, total_secs, train_F1, train_acc, train_loss,
+                                        valid_F1, valid_acc, valid_loss)
+                else:
+                    self.calculate_tb_stats(train_F1=train_F1, train_acc=train_acc, train_loss=train_loss)
+                    self.savings_prints(iteration_hours, iteration_mins, iteration_secs, total_hours,
+                                        total_mins, total_secs, train_F1, train_acc, train_loss)
+
+
+    def valid_epoch(self, weights, abort_signal):
+        """Validation epoch
+
+        Returns
+        -------
+        epoch_f1_score: float
+            average validation F1 score
+
+        epoch_accuracy: float
+            average validation accuracy
+
+        epoch_loss: float
+            average validation loss
+        """
+        self.model.eval()
+
+        previous_idx = 0
+
+        # initializing the metrics lists
+        accuracy_disease = []
+        F1_disease = []
+
+        with torch.no_grad():
+            # initializing the loss list
+            batch_loss = 0
+            batch_count = 0
+
+            # initializing the caches
+            logits_with_sigmoid_cache = torch.from_numpy(np.zeros((len(self.valid_loader) * self.batch_size, 14)))
+            logits_no_sigmoid_cache = torch.from_numpy(np.zeros_like(logits_with_sigmoid_cache))
+            labels_cache = torch.from_numpy(np.zeros_like(logits_with_sigmoid_cache))
+
+            for idx, (image, label) in enumerate(self.valid_loader):
+                if abort_signal.triggered:
+                    return 0
+
+                image = image.to(self.device)
+                label = label.to(self.device)
+                image = image.float()
+                label = label.float()
+
+                output = self.model(image)
+                output_sigmoided = F.sigmoid(output)
+                output_sigmoided = (output_sigmoided > 0.5).float()
+
+                # saving the logits and labels of this batch
+                for i, batch in enumerate(output_sigmoided):
+                    logits_with_sigmoid_cache[idx * self.batch_size + i] = batch
+                for i, batch in enumerate(output):
+                    logits_no_sigmoid_cache[idx * self.batch_size + i] = batch
+                for i, batch in enumerate(label):
+                    labels_cache[idx * self.batch_size + i] = batch
+
+                # Loss
+                loss = self.loss_function(output, label)
+                batch_loss += loss.item()
+                batch_count += 1
+
+                # Prints loss statistics after number of steps specified.
+                if (idx + 1) % self.params['display_stats_freq'] == 0:
+                    print('Epoch {:02} | Batch {:03}-{:03} | Val. loss: {:.3f}'.
+                          format(self.iteration, previous_idx, idx, batch_loss / batch_count))
+                    previous_idx = idx + 1
+                    batch_loss = 0
+                    batch_count = 0
+
+        # Metrics calculation (macro) over the whole set
+        confusion = multilabel_confusion_matrix(labels_cache.cpu(), logits_with_sigmoid_cache.cpu())
+
+        for idx, disease in enumerate(confusion):
+            TN = disease[0, 0]
+            FP = disease[0, 1]
+            FN = disease[1, 0]
+            TP = disease[1, 1]
+            accuracy_disease.append((TP + TN) / (TP + TN + FP + FN + epsilon))
+            F1_disease.append(2 * TP / (2 * TP + FN + FP + epsilon))
+
+        # Macro averaging
+        epoch_accuracy = np.array(accuracy_disease).mean()
+        epoch_f1_score = np.array(F1_disease).mean()
+
+        loss = self.loss_function(logits_no_sigmoid_cache.to(self.device), labels_cache.to(self.device))
+        epoch_loss = loss.item()
+
+        return epoch_f1_score, epoch_accuracy, epoch_loss
+
+
+
+    def savings_prints(self, iteration_hours, iteration_mins, iteration_secs,
+                       total_hours, total_mins, total_secs, train_F1, train_acc,
+                       train_loss, valid_F1=None, valid_acc=None, valid_loss=None):
+        """Saving the model weights, checkpoint, information,
+        and training and validation loss and evaluation statistics.
+
+        Parameters
+        ----------
+        iteration_hours: int
+            hours part of the elapsed time of each iteration
+
+        iteration_mins: int
+            minutes part of the elapsed time of each iteration
+
+        iteration_secs: int
+            seconds part of the elapsed time of each iteration
+
+        total_hours: int
+            hours part of the total elapsed time
+
+        total_mins: int
+            minutes part of the total elapsed time
+
+        total_secs: int
+            seconds part of the total elapsed time
+
+        train_loss: float
+            training loss of the model
+
+        valid_loss: float
+            validation loss of the model
+
+        train_acc: float
+            training accuracy of the model
+
+        valid_acc: float
+            validation accuracy of the model
+
+        train_F1: float
+            training F1 score of the model
+
+        valid_F1: float
+            validation F1 score of the model
+        """
+
+        # Saves information about training to config file
+        self.params['Network']['num_steps'] = self.iteration
+        write_config(self.params, self.cfg_path, sort_keys=True)
+
+        # Saving the model based on the best F1
+        if valid_F1:
+            if valid_F1 < self.best_F1:
+                self.best_F1 = valid_F1
+                torch.save(self.model.state_dict(), os.path.join(self.params['target_dir'], self.params['network_output_path']) + '/' +
+                           self.params['trained_model_name'])
+        else:
+            if train_F1 < self.best_F1:
+                self.best_F1 = train_F1
+                torch.save(self.model.state_dict(), os.path.join(self.params['target_dir'], self.params['network_output_path']) + '/' +
+                           self.params['trained_model_name'])
+
+        # Saving every couple of iterations
+        if (self.iteration) % self.params['network_save_freq'] == 0:
+            torch.save(self.model.state_dict(), os.path.join(self.params['target_dir'], self.params['network_output_path']) + '/' +
+                       'iteration{}_'.format(self.iteration) + self.params['trained_model_name'])
+
+        # Save a checkpoint every 2 iterations
+        if (self.iteration) % self.params['network_checkpoint_freq'] == 0:
+            torch.save({'iteration': self.iteration,
+                        'model_state_dict': self.model.state_dict(),
+                        'optimizer_state_dict': self.optimiser.state_dict(),
+                        'loss_state_dict': self.loss_function.state_dict(), 'num_iterations': self.num_iterations,
+                        'model_info': self.model_info, 'best_F1': self.best_F1},
+                       os.path.join(self.params['target_dir'], self.params['network_output_path']) + '/' + self.params['checkpoint_name'])
+
+        print('------------------------------------------------------'
+              '----------------------------------')
+        print(f'Iteration: {self.iteration}/{self.num_iterations} | '
+              f'Iteration Time: {iteration_hours}h {iteration_mins}m {iteration_secs}s | '
+              f'Total Time: {total_hours}h {total_mins}m {total_secs}s')
+        print(f'\n\tTrain Loss: {train_loss:.4f} | Acc: {train_acc * 100:.2f}% | F1: {train_F1 * 100:.2f}%')
+
+        if valid_loss:
+            print(f'\t Val. Loss: {valid_loss:.4f} | Acc: {valid_acc * 100:.2f}% | F1: {valid_F1 * 100:.2f}%')
+
+            # saving the training and validation stats
+            msg = f'----------------------------------------------------------------------------------------\n' \
+                   f'Iteration: {self.iteration}/{self.num_iterations} | Iteration Time: {iteration_hours}h {iteration_mins}m {iteration_secs}s' \
+                   f' | Total Time: {total_hours}h {total_mins}m {total_secs}s\n\n\tTrain Loss: {train_loss:.4f} | ' \
+                   f'Acc: {train_acc * 100:.2f}% | ' \
+                   f'F1: {train_F1 * 100:.2f}%\n\t Val. Loss: {valid_loss:.4f} | Acc: {valid_acc*100:.2f}% | F1: {valid_F1 * 100:.2f}%\n\n'
+        else:
+            msg = f'----------------------------------------------------------------------------------------\n' \
+                   f'Iteration: {self.iteration}/{self.num_iterations} | Iteration Time: {iteration_hours}h {iteration_mins}m {iteration_secs}s' \
+                   f' | Total Time: {total_hours}h {total_mins}m {total_secs}s\n\n\tTrain Loss: {train_loss:.4f} | ' \
+                   f'Acc: {train_acc * 100:.2f}% | F1: {train_F1 * 100:.2f}%\n\n'
+        with open(os.path.join(self.params['target_dir'], self.params['stat_log_path']) + '/Stats', 'a') as f:
+            f.write(msg)
+
+
+
+    def calculate_tb_stats(self, train_F1, train_acc, train_loss, valid_F1=None, valid_acc=None, valid_loss=None):
+        """Adds the evaluation metrics and loss values to the tensorboard.
+
+        Parameters
+        ----------
+        train_loss: float
+            training loss of the model
+
+        valid_loss: float
+            validation loss of the model
+
+        train_acc: float
+            training accuracy of the model
+
+        valid_acc: float
+            validation accuracy of the model
+
+        train_F1: float
+            training F1 score of the model
+
+        valid_F1: float
+            validation F1 score of the model
+        """
+
+        self.writer.add_scalar('Train_F1', train_F1, self.iteration)
+        self.writer.add_scalar('Train_Accuracy', train_acc, self.iteration)
+        self.writer.add_scalar('Train_Loss', train_loss, self.iteration)
+        if valid_F1 is not None:
+            self.writer.add_scalar('Valid_F1', valid_F1, self.iteration)
+            self.writer.add_scalar('Valid_Accuracy', valid_acc, self.iteration)
+            self.writer.add_scalar('Valid_Loss', valid_loss, self.iteration)
+
+
+
+    def save_local_model(self, fl_ctx: FLContext):
+        run_dir = fl_ctx.get_engine().get_workspace().get_run_dir(fl_ctx.get_prop(ReservedKey.RUN_NUM))
+        models_dir = os.path.join(run_dir, PTConstants.PTModelsDir)
+        if not os.path.exists(models_dir):
+            os.makedirs(models_dir)
+        model_path = os.path.join(models_dir, PTConstants.PTLocalModelName)
+
+        ml = make_model_learnable(self.model.state_dict(), {})
+        self.persistence_manager.update(ml)
+        torch.save(self.persistence_manager.to_persistence_dict(), model_path)
+
+
+    def get_model_for_validation(self, model_name: str, fl_ctx: FLContext) -> Shareable:
+        run_dir = fl_ctx.get_engine().get_workspace().get_run_dir(fl_ctx.get_prop(ReservedKey.RUN_NUM))
+        models_dir = os.path.join(run_dir, PTConstants.PTModelsDir)
+        if not os.path.exists(models_dir):
+            return None
+        model_path = os.path.join(models_dir, PTConstants.PTLocalModelName)
+
+        self.persistence_manager = PTModelPersistenceFormatManager(data=torch.load(model_path),
+                                                                   default_train_conf=self.default_train_conf)
+        ml = self.persistence_manager.to_model_learnable(exclude_vars=self.exclude_vars)
+
+        # Get the model parameters and create dxo from it
+        dxo = model_learnable_to_dxo(ml)
+        return dxo.to_shareable()
+
+
+
+
+class Mode(Enum):
+    """
+    Class Enumerating the 3 modes of operation of the network.
+    This is used while loading datasets
+    """
+    TRAIN = 0
+    TEST = 1
+    VALIDATION = 2
