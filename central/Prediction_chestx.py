@@ -8,10 +8,10 @@ https://github.com/tayebiarasteh/
 
 import pdb
 import torch
-from sklearn.metrics import multilabel_confusion_matrix
 import os.path
 import torch.nn.functional as F
 import numpy as np
+import torchmetrics
 
 from config.serde import read_config
 
@@ -50,7 +50,7 @@ class Prediction:
         self.model = model.to(self.device)
 
         self.model.load_state_dict(torch.load(os.path.join(self.params['target_dir'], self.params['network_output_path']) + "/" + model_file_name))
-        # self.model_p.load_state_dict(torch.load(os.path.join(self.params['target_dir'], self.params['network_output_path']) + "iteration300_" + model_file_name))
+        # self.model_p.load_state_dict(torch.load(os.path.join(self.params['target_dir'], self.params['network_output_path']) + "step300_" + model_file_name))
 
 
 
@@ -100,7 +100,8 @@ class Prediction:
                     labels_cache[idx * batch_size + i] = batch
 
         # Metrics calculation (macro) over the whole set
-        confusion = multilabel_confusion_matrix(labels_cache.cpu(), logits_with_sigmoid_cache.cpu())
+        confusioner = torchmetrics.ConfusionMatrix(num_classes=14, multilabel=True).to(self.device)
+        confusion = confusioner(logits_with_sigmoid_cache.to(self.device), labels_cache.int().to(self.device))
 
         for idx, disease in enumerate(confusion):
             TN = disease[0, 0]
@@ -110,4 +111,4 @@ class Prediction:
             accuracy_disease.append((TP + TN) / (TP + TN + FP + FN + epsilon))
             F1_disease.append(2 * TP / (2 * TP + FN + FP + epsilon))
 
-        return np.array(accuracy_disease), np.array(F1_disease)
+        return torch.stack(accuracy_disease).cpu().numpy(), torch.stack(F1_disease).cpu().numpy()

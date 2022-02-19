@@ -1,6 +1,6 @@
 Network:
   seed: 1
-  batch_size: 15
+  batch_size: 5
   lr: 1e-4
   weight_decay: 0
   amsgrad: False
@@ -14,7 +14,8 @@ trained_model_name: trained_model.pth
 # changeable items:
 file_path: /home/soroosh/Documents/datasets/MIMIC/
 target_dir: /home/soroosh/Documents/Repositories_target_files/chestx/central/
-network_save_freq: 1
-display_stats_freq: 10
+network_save_freq: 100 # based on the batch size, shows the number of batches done
+display_stats_freq: 50 # valid freq is also the same as this
+display_train_loss_freq: 10
 network_checkpoint_freq: 1
-num_iterations: 1000
+num_epochs: 1000
