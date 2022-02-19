@@ -1,9 +1,9 @@
 Network:
   seed: 1
-  batch_size: 10
-  lr: 3e-4
+  batch_size: 15
+  lr: 1e-4
   weight_decay: 0
-  amsgrad: True
+  amsgrad: False
 network_output_path: network_data/
 output_data_path: output_data/
 tb_logs_path: tensor_board_logs/
