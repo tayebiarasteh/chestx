@@ -154,7 +154,7 @@ def main_test_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx
 
 
 if __name__ == '__main__':
-    # delete_experiment(experiment_name='first_try', global_config_path="/home/soroosh/Documents/Repositories/chestx/central/config/config.yaml")
+    delete_experiment(experiment_name='first_try', global_config_path="/home/soroosh/Documents/Repositories/chestx/central/config/config.yaml")
     main_train_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/central/config/config.yaml",
                   valid=True, resume=False, augment=False, experiment_name='first_try')
     # main_test_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/central/config/config.yaml", experiment_name='first_try')

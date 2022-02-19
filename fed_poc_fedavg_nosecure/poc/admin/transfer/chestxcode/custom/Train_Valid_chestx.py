@@ -17,7 +17,6 @@ import torch.nn.functional as F
 from tqdm import tqdm
 import torchmetrics
 import torchio as tio
-from sklearn.metrics import multilabel_confusion_matrix
 from torch.utils.data import Dataset
 from torch.nn import BCEWithLogitsLoss
 
@@ -44,7 +43,8 @@ epsilon = 1e-15
 
 
 class Training(Learner):
-    def __init__(self, cfg_path, epochs=5, exclude_vars=None, analytic_sender_id="analytic_sender"):
+    def __init__(self, cfg_path, n_local_iterations=5, exclude_vars=None, analytic_sender_id="analytic_sender",
+                 valid=False, experiment_name='name'):
         """This class represents training and validation processes.
 
         Parameters
@@ -52,48 +52,34 @@ class Training(Learner):
         cfg_path: str
             Config file path of the experiment
 
-        num_iterations: int
+        n_local_iterations: int
             Total number of iterations for training
 
-        resume: bool
-            if we are resuming training from a checkpoint
+        experiment_name: str
+            name of the experiment, in case of resuming training.
+            name of new experiment, in case of new training.
 
-        torch_seed: int
-            Seed used for random generators in PyTorch functions
+        valid: bool
+            if we want to do validation
         """
         super().__init__()
         self.params = read_config(cfg_path)
         self.cfg_path = cfg_path
         self.exclude_vars = exclude_vars
         self.batch_size = self.params['Network']['batch_size']
+        self.valid = valid
+        self.experiment_name = experiment_name
 
         self.model_info = self.params['Network']
-        self.epochs = epochs
-        self.best_F1 = float('inf')
+        # self.n_local_iterations = n_local_iterations
+        self.step = 0
+        self.best_loss = float('inf')
         self.analytic_sender_id = analytic_sender_id
 
 
-    def initialize(self, parts: dict, fl_ctx: FLContext,
-                   global_config_path="/home/soroosh/Documents/Repositories/chestx/fed_poc_fedavg_nosecure/poc/admin/transfer/chestxcode/custom/configs/config.yaml",
-                      valid=False, experiment_name='name'):
-        """Main function for training + validation for directly 2d-wise
+    def initialize(self, parts: dict, fl_ctx: FLContext):
 
-            Parameters
-            ----------
-            global_config_path: str
-                always global_config_path="/home/soroosh/Documents/Repositories/chestx/central/config/config.yaml"
-
-            valid: bool
-                if we want to do validation
-
-            resume: bool
-                if we are resuming training on a model
-
-            experiment_name: str
-                name of the experiment, in case of resuming training.
-                name of new experiment, in case of new training.
-        """
-        params = create_experiment(experiment_name, global_config_path)
+        params = create_experiment(self.experiment_name, self.cfg_path)
         cfg_path = params["cfg_path"]
 
         # Changeable network parameters
@@ -111,18 +97,26 @@ class Training(Learner):
         WEIGHT = None
 
         train_dataset = data_loader(cfg_path=cfg_path, mode=Mode.TRAIN)
+
+        # we need a small subset in federated learning
+        train_size = int(0.05 * len(train_dataset))
+        test_size = len(train_dataset) - train_size
+        train_dataset, test_dataset = torch.utils.data.random_split(train_dataset, [train_size, test_size])
+
         self.train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=self.batch_size,
                                                    pin_memory=False, drop_last=True, shuffle=True, num_workers=4)
-        self.n_iterations = len(self.train_loader)
+        self.n_local_iterations = len(self.train_loader)
 
-        if valid:
+        if self.valid:
             valid_dataset = data_loader(cfg_path=cfg_path, mode=Mode.VALIDATION)
-            self.valid_loader = torch.utils.data.DataLoader(dataset=valid_dataset,
-                                                       batch_size=self.batch_size, pin_memory=False,
-                                                            drop_last=True, shuffle=False, num_workers=1)
-        else:
-            self.valid_loader = None
 
+            # we need a small subset in federated learning
+            valid_size = int(0.5 * len(valid_dataset))
+            test_size = len(valid_dataset) - valid_size
+            valid_dataset, _ = torch.utils.data.random_split(train_dataset, [valid_size, test_size])
+
+            self.valid_loader = torch.utils.data.DataLoader(dataset=valid_dataset, batch_size=self.batch_size, pin_memory=False,
+                                                            drop_last=True, shuffle=False, num_workers=1)
         self.setup_cuda()
 
         # Setup the persistence manager to save PT model.
@@ -229,7 +223,7 @@ class Training(Learner):
         # self.model_info['optimiser'] = optimiser.__name__
         self.model_info['total_param_num'] = total_param_num
         self.model_info['loss_function'] = loss_function.__name__
-        self.model_info['num_iterations'] = self.num_iterations
+        self.model_info['num_local_iterations'] = self.n_local_iterations
         self.params['Network'] = self.model_info
         write_config(self.params, self.cfg_path, sort_keys=True)
 
@@ -276,131 +270,86 @@ class Training(Learner):
         new_weights = {k: v.cpu().numpy() for k, v in new_weights.items()}
 
         outgoing_dxo = DXO(data_kind=DataKind.WEIGHTS, data=new_weights,
-                            meta={MetaKey.NUM_STEPS_CURRENT_ROUND: self.n_iterations})
+                            meta={MetaKey.NUM_STEPS_CURRENT_ROUND: self.n_local_iterations})
         return outgoing_dxo.to_shareable()
 
 
 
     def train_epoch(self, fl_ctx, weights, abort_signal):
         """Training epoch
-
-        Returns
-        -------
-        epoch_f1_score: float
-        average training F1 score
-
-        epoch_accuracy: float
-            average training accuracy
-
-        epoch_loss: float
-            average training loss
         """
-        total_start_time = time.time()
 
         # Set the model weights
         self.model.load_state_dict(state_dict=weights)
 
-        # Basic training
-        for epoch in range(self.epochs):
+        # initializing the loss list
+        batch_loss = 0
+        batch_count = 0
+
+        total_start_time = time.time()
+        start_time = time.time()
+
+        for idx, (image, label) in enumerate(self.train_loader):
+
             self.model.train()
+            if abort_signal.triggered:
+                return
 
-            # initializing the loss list
-            batch_loss = 0
-            batch_count = 0
-            previous_idx = 0
+            image = image.to(self.device)
+            label = label.to(self.device)
 
-            # initializing the metrics lists
-            accuracy_disease = []
-            F1_disease = []
+            self.optimiser.zero_grad()
 
-            # initializing the caches
-            logits_with_sigmoid_cache = torch.from_numpy(np.zeros((len(self.train_loader) * self.batch_size, 14)))
-            logits_no_sigmoid_cache = torch.from_numpy(np.zeros_like(logits_with_sigmoid_cache))
-            labels_cache = torch.from_numpy(np.zeros_like(logits_with_sigmoid_cache))
+            with torch.set_grad_enabled(True):
 
-            for idx, (image, label) in enumerate(tqdm(self.train_loader)):
-                if abort_signal.triggered:
-                    return
+                image = image.float()
+                label = label.float()
 
-                image = image.to(self.device)
-                label = label.to(self.device)
+                output = self.model(image)
 
-                self.optimiser.zero_grad()
+                # Loss
+                loss = self.loss_function(output, label)
+                batch_loss += loss.item()
+                batch_count += 1
 
-                with torch.set_grad_enabled(True):
+                # Backward and optimize
+                loss.backward()
+                self.optimiser.step()
+                self.step += 1
 
-                    image = image.float()
-                    label = label.float()
+                # Prints train loss after number of steps specified.
+                if (self.step) % self.params['display_train_loss_freq'] == 0:
+                    end_time = time.time()
+                    iteration_hours, iteration_mins, iteration_secs = self.time_duration(start_time, end_time)
+                    total_hours, total_mins, total_secs = self.time_duration(total_start_time, end_time)
+                    train_loss = batch_loss / batch_count
+                    batch_loss = 0
+                    batch_count = 0
+                    start_time = time.time()
 
-                    output = self.model(image)
-
-                    output_sigmoided = F.sigmoid(output)
-                    output_sigmoided = (output_sigmoided > 0.5).float()
-
-                    # saving the logits and labels of this batch
-                    for i, batch in enumerate(output_sigmoided):
-                        logits_with_sigmoid_cache[idx * self.batch_size + i] = batch
-                    for i, batch in enumerate(output):
-                        logits_no_sigmoid_cache[idx * self.batch_size + i] = batch
-                    for i, batch in enumerate(label):
-                        labels_cache[idx * self.batch_size + i] = batch
-
-                    # Loss
-                    loss = self.loss_function(output, label)
-                    batch_loss += loss.item()
-                    batch_count += 1
-
-                    # Backward and optimize
-                    loss.backward()
-                    self.optimiser.step()
-
-                    # Prints loss statistics after number of steps specified.
-                    if (idx + 1) % self.params['display_stats_freq'] == 0:
-                        self.log_info(fl_ctx, 'Epoch {:02} | Batch {:03}-{:03} | Train loss: {:.3f}'.
-                              format(self.iteration, previous_idx, idx, batch_loss / batch_count))
-                        previous_idx = idx + 1
-                        batch_loss = 0
-                        batch_count = 0
-
-            # Metrics calculation (macro) over the whole set
-            confusion = multilabel_confusion_matrix(labels_cache.cpu(), logits_with_sigmoid_cache.cpu())
-
-            for idx, disease in enumerate(confusion):
-                TN = disease[0, 0]
-                FP = disease[0, 1]
-                FN = disease[1, 0]
-                TP = disease[1, 1]
-                accuracy_disease.append((TP + TN) / (TP + TN + FP + FN + epsilon))
-                F1_disease.append(2 * TP / (2 * TP + FN + FP + epsilon))
-
-            # Macro averaging
-            train_acc = np.array(accuracy_disease).mean()
-            train_F1 = np.array(F1_disease).mean()
-
-            loss = self.loss_function(logits_no_sigmoid_cache.to(self.device), labels_cache.to(self.device))
-            train_loss = loss.item()
-
-            # valid loop at the end of each epoch
-            if not self.valid_loader == None:
-                valid_F1, valid_acc, valid_loss = self.valid_epoch(self.valid_loader, abort_signal)
+                    self.log_info(fl_ctx, 'Step {} | batch {} / {} | loss: {:.3f}'.
+                          format(self.step, idx + 1, len(self.train_loader), train_loss))
+                    self.log_info(fl_ctx, f'\ntime: {iteration_hours}h {iteration_mins}m {iteration_secs}s'
+                                          f'| total: {total_hours}h {total_mins}m {total_secs}s\n')
+                    self.writer.add_scalar('Train_Loss', train_loss, self.step)
 
             # Validation iteration & calculate metrics
-            if (self.epochs) % (self.params['network_save_freq']) == 0:
-                end_time = time.time()
-                iteration_hours, iteration_mins, iteration_secs = self.time_duration(start_time, end_time)
-                total_hours, total_mins, total_secs = self.time_duration(total_start_time, end_time)
+            if (self.step) % (self.params['display_stats_freq']) == 0:
 
                 # saving the model, checkpoint, TensorBoard, etc.
-                if not self.valid_loader == None:
-                    self.calculate_tb_stats(train_F1=train_F1, train_acc=train_acc, train_loss=train_loss,
-                                            valid_F1=valid_F1, valid_acc=valid_acc, valid_loss=valid_loss)
+                if self.valid:
+                    valid_F1, valid_acc, valid_loss = self.valid_epoch(self.valid_loader, abort_signal)
+                    end_time = time.time()
+                    total_hours, total_mins, total_secs = self.time_duration(total_start_time, end_time)
+
+                    self.calculate_tb_stats(valid_F1=valid_F1, valid_acc=valid_acc, valid_loss=valid_loss)
                     self.savings_prints(iteration_hours, iteration_mins, iteration_secs, total_hours,
-                                        total_mins, total_secs, train_F1, train_acc, train_loss,
+                                        total_mins, total_secs, train_loss,
                                         valid_F1, valid_acc, valid_loss)
                 else:
-                    self.calculate_tb_stats(train_F1=train_F1, train_acc=train_acc, train_loss=train_loss)
                     self.savings_prints(iteration_hours, iteration_mins, iteration_secs, total_hours,
-                                        total_mins, total_secs, train_F1, train_acc, train_loss)
+                                        total_mins, total_secs, train_loss)
+
 
 
     def valid_epoch(self, weights, abort_signal):
@@ -417,18 +366,12 @@ class Training(Learner):
         epoch_loss: float
             average validation loss
         """
-        self.model.eval()
-
-        previous_idx = 0
 
         # initializing the metrics lists
         accuracy_disease = []
         F1_disease = []
 
         with torch.no_grad():
-            # initializing the loss list
-            batch_loss = 0
-            batch_count = 0
 
             # initializing the caches
             logits_with_sigmoid_cache = torch.from_numpy(np.zeros((len(self.valid_loader) * self.batch_size, 14)))
@@ -436,6 +379,7 @@ class Training(Learner):
             labels_cache = torch.from_numpy(np.zeros_like(logits_with_sigmoid_cache))
 
             for idx, (image, label) in enumerate(self.valid_loader):
+                self.model.eval()
                 if abort_signal.triggered:
                     return 0
 
@@ -456,21 +400,9 @@ class Training(Learner):
                 for i, batch in enumerate(label):
                     labels_cache[idx * self.batch_size + i] = batch
 
-                # Loss
-                loss = self.loss_function(output, label)
-                batch_loss += loss.item()
-                batch_count += 1
-
-                # Prints loss statistics after number of steps specified.
-                if (idx + 1) % self.params['display_stats_freq'] == 0:
-                    print('Epoch {:02} | Batch {:03}-{:03} | Val. loss: {:.3f}'.
-                          format(self.iteration, previous_idx, idx, batch_loss / batch_count))
-                    previous_idx = idx + 1
-                    batch_loss = 0
-                    batch_count = 0
-
         # Metrics calculation (macro) over the whole set
-        confusion = multilabel_confusion_matrix(labels_cache.cpu(), logits_with_sigmoid_cache.cpu())
+        confusioner = torchmetrics.ConfusionMatrix(num_classes=14, multilabel=True).to(self.device)
+        confusion = confusioner(logits_with_sigmoid_cache.to(self.device), labels_cache.int().to(self.device))
 
         for idx, disease in enumerate(confusion):
             TN = disease[0, 0]
@@ -481,8 +413,8 @@ class Training(Learner):
             F1_disease.append(2 * TP / (2 * TP + FN + FP + epsilon))
 
         # Macro averaging
-        epoch_accuracy = np.array(accuracy_disease).mean()
-        epoch_f1_score = np.array(F1_disease).mean()
+        epoch_accuracy = torch.stack(accuracy_disease).mean().item()
+        epoch_f1_score = torch.stack(F1_disease).mean().item()
 
         loss = self.loss_function(logits_no_sigmoid_cache.to(self.device), labels_cache.to(self.device))
         epoch_loss = loss.item()
@@ -492,7 +424,7 @@ class Training(Learner):
 
 
     def savings_prints(self, iteration_hours, iteration_mins, iteration_secs,
-                       total_hours, total_mins, total_secs, train_F1, train_acc,
+                       total_hours, total_mins, total_secs,
                        train_loss, valid_F1=None, valid_acc=None, valid_loss=None):
         """Saving the model weights, checkpoint, information,
         and training and validation loss and evaluation statistics.
@@ -537,62 +469,60 @@ class Training(Learner):
         """
 
         # Saves information about training to config file
-        self.params['Network']['num_steps'] = self.iteration
+        self.params['Network']['step'] = self.step
         write_config(self.params, self.cfg_path, sort_keys=True)
 
-        # Saving the model based on the best F1
-        if valid_F1:
-            if valid_F1 < self.best_F1:
-                self.best_F1 = valid_F1
+        # Saving the model based on the best loss
+        if valid_loss:
+            if valid_loss < self.best_loss:
+                self.best_loss = valid_loss
                 torch.save(self.model.state_dict(), os.path.join(self.params['target_dir'], self.params['network_output_path']) + '/' +
                            self.params['trained_model_name'])
         else:
-            if train_F1 < self.best_F1:
-                self.best_F1 = train_F1
+            if train_loss < self.best_loss:
+                self.best_loss = train_loss
                 torch.save(self.model.state_dict(), os.path.join(self.params['target_dir'], self.params['network_output_path']) + '/' +
                            self.params['trained_model_name'])
 
-        # Saving every couple of iterations
-        if (self.iteration) % self.params['network_save_freq'] == 0:
+        # Saving every couple of steps
+        if (self.step) % self.params['network_save_freq'] == 0:
             torch.save(self.model.state_dict(), os.path.join(self.params['target_dir'], self.params['network_output_path']) + '/' +
-                       'iteration{}_'.format(self.iteration) + self.params['trained_model_name'])
+                       'step{}_'.format(self.step) + self.params['trained_model_name'])
 
-        # Save a checkpoint every 2 iterations
-        if (self.iteration) % self.params['network_checkpoint_freq'] == 0:
-            torch.save({'iteration': self.iteration,
+        # Save a checkpoint every step
+        if (self.step) % self.params['network_checkpoint_freq'] == 0:
+            torch.save({'step': self.step,
                         'model_state_dict': self.model.state_dict(),
                         'optimizer_state_dict': self.optimiser.state_dict(),
-                        'loss_state_dict': self.loss_function.state_dict(), 'num_iterations': self.num_iterations,
-                        'model_info': self.model_info, 'best_F1': self.best_F1},
+                        'loss_state_dict': self.loss_function.state_dict(), 'num_local_iterations': self.n_local_iterations,
+                        'model_info': self.model_info, 'best_loss': self.best_loss},
                        os.path.join(self.params['target_dir'], self.params['network_output_path']) + '/' + self.params['checkpoint_name'])
 
         print('------------------------------------------------------'
               '----------------------------------')
-        print(f'Iteration: {self.iteration}/{self.num_iterations} | '
-              f'Iteration Time: {iteration_hours}h {iteration_mins}m {iteration_secs}s | '
-              f'Total Time: {total_hours}h {total_mins}m {total_secs}s')
-        print(f'\n\tTrain Loss: {train_loss:.4f} | Acc: {train_acc * 100:.2f}% | F1: {train_F1 * 100:.2f}%')
+        print(f'Step: {self.step} | '
+              f'Step time: {iteration_hours}h {iteration_mins}m {iteration_secs}s | '
+              f'Total time: {total_hours}h {total_mins}m {total_secs}s')
+        print(f'\n\tTrain loss: {train_loss:.4f}')
 
         if valid_loss:
-            print(f'\t Val. Loss: {valid_loss:.4f} | Acc: {valid_acc * 100:.2f}% | F1: {valid_F1 * 100:.2f}%')
+            print(f'\t Val. loss: {valid_loss:.4f} | Acc: {valid_acc * 100:.2f}% | F1: {valid_F1 * 100:.2f}%')
 
             # saving the training and validation stats
             msg = f'----------------------------------------------------------------------------------------\n' \
-                   f'Iteration: {self.iteration}/{self.num_iterations} | Iteration Time: {iteration_hours}h {iteration_mins}m {iteration_secs}s' \
-                   f' | Total Time: {total_hours}h {total_mins}m {total_secs}s\n\n\tTrain Loss: {train_loss:.4f} | ' \
-                   f'Acc: {train_acc * 100:.2f}% | ' \
-                   f'F1: {train_F1 * 100:.2f}%\n\t Val. Loss: {valid_loss:.4f} | Acc: {valid_acc*100:.2f}% | F1: {valid_F1 * 100:.2f}%\n\n'
+                   f'Step: {self.step} | Step time: {iteration_hours}h {iteration_mins}m {iteration_secs}s' \
+                   f' | Total time: {total_hours}h {total_mins}m {total_secs}s\n\n\tTrain loss: {train_loss:.4f} | ' \
+                   f'Val. loss: {valid_loss:.4f} | Acc: {valid_acc*100:.2f}% | F1: {valid_F1 * 100:.2f}%\n\n'
         else:
             msg = f'----------------------------------------------------------------------------------------\n' \
-                   f'Iteration: {self.iteration}/{self.num_iterations} | Iteration Time: {iteration_hours}h {iteration_mins}m {iteration_secs}s' \
-                   f' | Total Time: {total_hours}h {total_mins}m {total_secs}s\n\n\tTrain Loss: {train_loss:.4f} | ' \
-                   f'Acc: {train_acc * 100:.2f}% | F1: {train_F1 * 100:.2f}%\n\n'
+                   f'Step: {self.step} | Step time: {iteration_hours}h {iteration_mins}m {iteration_secs}s' \
+                   f' | Total time: {total_hours}h {total_mins}m {total_secs}s\n\n\tTrain loss: {train_loss:.4f}\n\n'
         with open(os.path.join(self.params['target_dir'], self.params['stat_log_path']) + '/Stats', 'a') as f:
             f.write(msg)
 
 
 
-    def calculate_tb_stats(self, train_F1, train_acc, train_loss, valid_F1=None, valid_acc=None, valid_loss=None):
+    def calculate_tb_stats(self, valid_F1=None, valid_acc=None, valid_loss=None):
         """Adds the evaluation metrics and loss values to the tensorboard.
 
         Parameters
@@ -615,14 +545,10 @@ class Training(Learner):
         valid_F1: float
             validation F1 score of the model
         """
-
-        self.writer.add_scalar('Train_F1', train_F1, self.iteration)
-        self.writer.add_scalar('Train_Accuracy', train_acc, self.iteration)
-        self.writer.add_scalar('Train_Loss', train_loss, self.iteration)
         if valid_F1 is not None:
-            self.writer.add_scalar('Valid_F1', valid_F1, self.iteration)
-            self.writer.add_scalar('Valid_Accuracy', valid_acc, self.iteration)
-            self.writer.add_scalar('Valid_Loss', valid_loss, self.iteration)
+            self.writer.add_scalar('Valid_F1', valid_F1, self.step)
+            self.writer.add_scalar('Valid_Accuracy', valid_acc, self.step)
+            self.writer.add_scalar('Valid_Loss', valid_loss, self.step)
 
 
 

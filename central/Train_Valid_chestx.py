@@ -245,12 +245,12 @@ class Training:
 
                 # Validation iteration & calculate metrics
                 if (self.step) % (self.params['display_stats_freq']) == 0:
-                    end_time = time.time()
-                    total_hours, total_mins, total_secs = self.time_duration(total_start_time, end_time)
 
                     # saving the model, checkpoint, TensorBoard, etc.
                     if not valid_loader == None:
                         valid_F1, valid_acc, valid_loss = self.valid_epoch(valid_loader, batch_size)
+                        end_time = time.time()
+                        total_hours, total_mins, total_secs = self.time_duration(total_start_time, end_time)
 
                         self.calculate_tb_stats(valid_F1=valid_F1, valid_acc=valid_acc, valid_loss=valid_loss)
                         self.savings_prints(iteration_hours, iteration_mins, iteration_secs, total_hours,
@@ -283,9 +283,6 @@ class Training:
         F1_disease = []
 
         with torch.no_grad():
-            # initializing the loss list
-            batch_loss = 0
-            batch_count = 0
 
             # initializing the caches
             logits_with_sigmoid_cache = torch.from_numpy(np.zeros((len(valid_loader) * batch_size, 14)))
@@ -311,11 +308,6 @@ class Training:
                     logits_no_sigmoid_cache[idx * batch_size + i] = batch
                 for i, batch in enumerate(label):
                     labels_cache[idx * batch_size + i] = batch
-
-                # Loss
-                loss = self.loss_function(output, label)
-                batch_loss += loss.item()
-                batch_count += 1
 
         # Metrics calculation (macro) over the whole set
         confusioner = torchmetrics.ConfusionMatrix(num_classes=14, multilabel=True).to(self.device)

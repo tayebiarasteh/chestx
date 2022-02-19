@@ -67,7 +67,6 @@ class data_loader(Dataset):
 
         # choosing a subset due to having large data
         self.chosen_df = self.subset_df[self.subset_df['subset'] == 'p10']
-
         # self.chosen_df = self.chosen_df[self.chosen_df['subject_id'] == 10000032]
         self.file_path_list = list(self.chosen_df['jpg_rel_path'])
 
