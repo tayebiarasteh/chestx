@@ -59,14 +59,16 @@ class data_loader(Dataset):
         org_df = pd.read_csv(os.path.join(self.file_base_dir, "mimic_master_list.csv"), sep=',')
 
         if mode==Mode.TRAIN:
-            self.chosen_df = org_df[org_df['split'] == 'train']
+            self.subset_df = org_df[org_df['split'] == 'train']
         elif mode == Mode.VALIDATION:
-            self.chosen_df = org_df[org_df['split'] == 'validate']
+            self.subset_df = org_df[org_df['split'] == 'validate']
         elif mode == Mode.TEST:
-            self.chosen_df = org_df[org_df['split'] == 'test']
+            self.subset_df = org_df[org_df['split'] == 'test']
 
         # choosing a subset due to having large data
-        self.chosen_df = self.chosen_df[self.chosen_df['study_id'] == 55388853]
+        self.chosen_df = self.subset_df[self.subset_df['subset'] == 'p10']
+
+        # self.chosen_df = self.chosen_df[self.chosen_df['subject_id'] == 10000032]
         self.file_path_list = list(self.chosen_df['jpg_rel_path'])
 
 

@@ -75,9 +75,8 @@ def main_train_2D(global_config_path="/home/soroosh/Documents/Repositories/chest
     if resume == True:
         trainer.load_checkpoint(model=model, optimiser=optimizer, loss_function=loss_function)
     else:
-        trainer.setup_model(model=model, optimiser=optimizer,
-                        loss_function=loss_function, weight=WEIGHT)
-    trainer.execute_training(train_loader=train_loader, valid_loader=valid_loader, batch_size=params['Network']['batch_size'])
+        trainer.setup_model(model=model, optimiser=optimizer, loss_function=loss_function, weight=WEIGHT)
+    trainer.train_epoch(train_loader=train_loader, batch_size=params['Network']['batch_size'], valid_loader=valid_loader)
 
 
 
@@ -155,7 +154,7 @@ def main_test_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx
 
 
 if __name__ == '__main__':
-    delete_experiment(experiment_name='first_try', global_config_path="/home/soroosh/Documents/Repositories/chestx/central/config/config.yaml")
+    # delete_experiment(experiment_name='first_try', global_config_path="/home/soroosh/Documents/Repositories/chestx/central/config/config.yaml")
     main_train_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/central/config/config.yaml",
                   valid=True, resume=False, augment=False, experiment_name='first_try')
     # main_test_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/central/config/config.yaml", experiment_name='first_try')
