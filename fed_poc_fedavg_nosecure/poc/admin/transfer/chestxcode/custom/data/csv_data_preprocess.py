@@ -13,7 +13,7 @@ import pdb
 import pandas as pd
 from tqdm import tqdm
 
-from config.serde import read_config
+from configs.serde import read_config
 
 import warnings
 warnings.filterwarnings('ignore')

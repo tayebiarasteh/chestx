@@ -31,7 +31,7 @@ from nvflare.app_common.app_constant import AppConstants
 from nvflare.app_common.pt.pt_fed_utils import PTModelPersistenceFormatManager
 from pt_constants import PTConstants
 
-from configs.serde import open_experiment, create_experiment, delete_experiment, write_config, read_config
+from configs.serde import open_experiment, read_config
 from models.Xception_model import Xception
 from Prediction_chestx import Prediction
 from data.data_provider import data_loader, Mode
@@ -70,7 +70,7 @@ class Training(Learner):
         self.valid = valid
         self.experiment_name = experiment_name
 
-        self.model_info = self.params['Network']
+        # self.model_info = self.params['Network']
         # self.n_local_iterations = n_local_iterations
         self.step = 0
         self.best_loss = float('inf')
@@ -78,16 +78,17 @@ class Training(Learner):
 
 
     def initialize(self, parts: dict, fl_ctx: FLContext):
+        print('\n\n\n\n\nhey soroosh initialize\n\n\n\n\n\n')
 
-        params = create_experiment(self.experiment_name, self.cfg_path)
-        cfg_path = params["cfg_path"]
+        # params = create_experiment(self.experiment_name, self.cfg_path)
+        # cfg_path = params["cfg_path"]
 
         # Changeable network parameters
-        model = Xception()
+        self.model = Xception()
         loss_function = BCEWithLogitsLoss
-        optimizer = torch.optim.Adam(model.parameters(), lr=float(params['Network']['lr']),
-                                     weight_decay=float(params['Network']['weight_decay']),
-                                     amsgrad=params['Network']['amsgrad'])
+        optimizer = torch.optim.Adam(self.model.parameters(), lr=float(self.params['Network']['lr']),
+                                     weight_decay=float(self.params['Network']['weight_decay']),
+                                     amsgrad=self.params['Network']['amsgrad'])
 
         # class weights corresponding to the dataset
         # weight_path = params['file_path']
@@ -96,7 +97,7 @@ class Training(Learner):
         # WEIGHT = torch.Tensor(weight_creator(path=weight_path))
         WEIGHT = None
 
-        train_dataset = data_loader(cfg_path=cfg_path, mode=Mode.TRAIN)
+        train_dataset = data_loader(cfg_path=self.cfg_path, mode=Mode.TRAIN)
 
         # we need a small subset in federated learning
         train_size = int(0.05 * len(train_dataset))
@@ -105,10 +106,12 @@ class Training(Learner):
 
         self.train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=self.batch_size,
                                                    pin_memory=False, drop_last=True, shuffle=True, num_workers=4)
+        print('train loader peyda shodd ddddddddddddd', self.train_loader)
+
         self.n_local_iterations = len(self.train_loader)
 
         if self.valid:
-            valid_dataset = data_loader(cfg_path=cfg_path, mode=Mode.VALIDATION)
+            valid_dataset = data_loader(cfg_path=self.cfg_path, mode=Mode.VALIDATION)
 
             # we need a small subset in federated learning
             valid_size = int(0.5 * len(valid_dataset))
@@ -118,6 +121,7 @@ class Training(Learner):
             self.valid_loader = torch.utils.data.DataLoader(dataset=valid_dataset, batch_size=self.batch_size, pin_memory=False,
                                                             drop_last=True, shuffle=False, num_workers=1)
         self.setup_cuda()
+        self.setup_model(optimiser=optimizer, loss_function=loss_function, weight=WEIGHT)
 
         # Setup the persistence manager to save PT model.
         # The default training configuration is used by persistence manager in case no initial model is found.
@@ -130,8 +134,6 @@ class Training(Learner):
         if not self.writer:  # else use local TensorBoard writer only
             self.writer = SummaryWriter(fl_ctx.get_prop(FLContextKey.APP_ROOT))
 
-        self.setup_model(model=model, optimiser=optimizer,
-                            loss_function=loss_function, weight=WEIGHT)
 
 
 
@@ -186,14 +188,11 @@ class Training(Learner):
         return elapsed_hours, elapsed_mins, elapsed_secs
 
 
-    def setup_model(self, model, optimiser, loss_function, weight=None):
+    def setup_model(self, optimiser, loss_function, weight=None):
         """Setting up all the models, optimizers, and loss functions.
 
         Parameters
         ----------
-        model: model file
-            The network
-
         optimiser: optimizer file
             The optimizer
 
@@ -206,11 +205,10 @@ class Training(Learner):
 
         # prints the network's total number of trainable parameters and
         # stores it to the experiment config
-        total_param_num = sum(p.numel() for p in model.parameters() if p.requires_grad)
+        total_param_num = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
         print(f'\nTotal # of trainable parameters: {total_param_num:,}')
         print('----------------------------------------------------\n')
 
-        self.model = model.to(self.device)
         if not weight==None:
             self.loss_weight = weight.to(self.device)
             self.loss_function = loss_function(weight=self.loss_weight)
@@ -221,11 +219,11 @@ class Training(Learner):
         # Saves the model, optimiser,loss function name for writing to config file
         # self.model_info['model'] = model.__name__
         # self.model_info['optimiser'] = optimiser.__name__
-        self.model_info['total_param_num'] = total_param_num
-        self.model_info['loss_function'] = loss_function.__name__
-        self.model_info['num_local_iterations'] = self.n_local_iterations
-        self.params['Network'] = self.model_info
-        write_config(self.params, self.cfg_path, sort_keys=True)
+        # self.model_info['total_param_num'] = total_param_num
+        # self.model_info['loss_function'] = loss_function.__name__
+        # self.model_info['num_local_iterations'] = self.n_local_iterations
+        # self.params['Network'] = self.model_info
+        # write_config(self.params, self.cfg_path, sort_keys=True)
 
 
 
@@ -255,6 +253,7 @@ class Training(Learner):
 
         # Convert weights to tensor. Run training
         torch_weights = {k: torch.as_tensor(v) for k, v in dxo.data.items()}
+        print('hey soroosh train*************************************************************************************************')
         self.train_epoch(fl_ctx, torch_weights, abort_signal)
 
         # Check the abort_signal after training.
@@ -343,12 +342,12 @@ class Training(Learner):
                     total_hours, total_mins, total_secs = self.time_duration(total_start_time, end_time)
 
                     self.calculate_tb_stats(valid_F1=valid_F1, valid_acc=valid_acc, valid_loss=valid_loss)
-                    self.savings_prints(iteration_hours, iteration_mins, iteration_secs, total_hours,
-                                        total_mins, total_secs, train_loss,
-                                        valid_F1, valid_acc, valid_loss)
-                else:
-                    self.savings_prints(iteration_hours, iteration_mins, iteration_secs, total_hours,
-                                        total_mins, total_secs, train_loss)
+                #     self.savings_prints(iteration_hours, iteration_mins, iteration_secs, total_hours,
+                #                         total_mins, total_secs, train_loss,
+                #                         valid_F1, valid_acc, valid_loss)
+                # else:
+                #     self.savings_prints(iteration_hours, iteration_mins, iteration_secs, total_hours,
+                #                         total_mins, total_secs, train_loss)
 
 
 
@@ -469,8 +468,8 @@ class Training(Learner):
         """
 
         # Saves information about training to config file
-        self.params['Network']['step'] = self.step
-        write_config(self.params, self.cfg_path, sort_keys=True)
+        # self.params['Network']['step'] = self.step
+        # write_config(self.params, self.cfg_path, sort_keys=True)
 
         # Saving the model based on the best loss
         if valid_loss:

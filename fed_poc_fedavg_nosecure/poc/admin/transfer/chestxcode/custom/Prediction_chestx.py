@@ -13,7 +13,7 @@ import os.path
 import torch.nn.functional as F
 import numpy as np
 
-from config.serde import read_config
+from configs.serde import read_config
 
 epsilon = 1e-15
 

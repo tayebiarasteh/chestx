@@ -11,7 +11,6 @@ import warnings
 import shutil
 from skimage import io
 import pdb
-import SimpleITK as sitk
 
 
 
