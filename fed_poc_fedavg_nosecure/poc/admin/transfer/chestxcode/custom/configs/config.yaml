@@ -1,9 +1,9 @@
 Network:
   seed: 1
-  batch_size: 10
-  lr: 3e-4
+  batch_size: 1
+  lr: 1e-4
   weight_decay: 0
-  amsgrad: True
+  amsgrad: False
 network_output_path: network_data/
 output_data_path: output_data/
 tb_logs_path: tensor_board_logs/
@@ -13,8 +13,9 @@ trained_model_name: trained_model.pth
 
 # changeable items:
 file_path: /home/soroosh/Documents/datasets/MIMIC/
-target_dir: /home/soroosh/Documents/Repositories_target_files/chestx/central/
-network_save_freq: 1
-display_stats_freq: 10
+target_dir: /home/soroosh/Documents/Repositories_target_files/chestx/fed_poc_fedavg_nosecure/
+network_save_freq: 1 # based on the batch size, shows the number of batches done
+display_stats_freq: 1 # valid freq is also the same as this
+display_train_loss_freq: 1
 network_checkpoint_freq: 1
-num_iterations: 1000
+num_epochs: 1000

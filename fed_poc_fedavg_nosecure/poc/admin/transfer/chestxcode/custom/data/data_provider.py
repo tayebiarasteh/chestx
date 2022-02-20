@@ -9,7 +9,6 @@ https://github.com/tayebiarasteh/
 import os
 import torch
 import pdb
-from enum import Enum
 import pandas as pd
 import numpy as np
 from skimage.io import imread, imsave
@@ -24,23 +23,13 @@ from configs.serde import read_config
 
 HEIGHT, WIDTH = 299, 299
 
-class Mode(Enum):
-    """
-    Class Enumerating the 3 modes of operation of the network.
-    This is used while loading datasets
-    """
-    TRAIN = 0
-    TEST = 1
-    VALIDATION = 2
-
-
 
 
 class data_loader(Dataset):
     """
     This is the pipeline based on Pytorch's Dataset and Dataloader
     """
-    def __init__(self, cfg_path, mode=Mode.TRAIN):
+    def __init__(self, cfg_path, mode='train'):
         """
         Parameters
         ----------
@@ -58,11 +47,11 @@ class data_loader(Dataset):
         self.file_base_dir = self.params['file_path']
         org_df = pd.read_csv(os.path.join(self.file_base_dir, "mimic_master_list.csv"), sep=',')
 
-        if mode==Mode.TRAIN:
+        if mode=='train':
             self.subset_df = org_df[org_df['split'] == 'train']
-        elif mode == Mode.VALIDATION:
+        elif mode == 'valid':
             self.subset_df = org_df[org_df['split'] == 'validate']
-        elif mode == Mode.TEST:
+        elif mode == 'test':
             self.subset_df = org_df[org_df['split'] == 'test']
 
         # choosing a subset due to having large data

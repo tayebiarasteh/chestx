@@ -10,7 +10,6 @@ import os.path
 import time
 import pdb
 import numpy as np
-from enum import Enum
 from tensorboardX import SummaryWriter
 import torch
 import torch.nn.functional as F
@@ -34,7 +33,7 @@ from pt_constants import PTConstants
 from configs.serde import open_experiment, read_config
 from models.Xception_model import Xception
 from Prediction_chestx import Prediction
-from data.data_provider import data_loader, Mode
+from data.data_provider import data_loader
 
 import warnings
 warnings.filterwarnings('ignore')
@@ -78,13 +77,10 @@ class Training(Learner):
 
 
     def initialize(self, parts: dict, fl_ctx: FLContext):
-        print('\n\n\n\n\nhey soroosh initialize\n\n\n\n\n\n')
-
-        # params = create_experiment(self.experiment_name, self.cfg_path)
-        # cfg_path = params["cfg_path"]
 
         # Changeable network parameters
         self.model = Xception()
+
         loss_function = BCEWithLogitsLoss
         optimizer = torch.optim.Adam(self.model.parameters(), lr=float(self.params['Network']['lr']),
                                      weight_decay=float(self.params['Network']['weight_decay']),
@@ -96,22 +92,22 @@ class Training(Learner):
         # weight_path = os.path.join(weight_path, "train")
         # WEIGHT = torch.Tensor(weight_creator(path=weight_path))
         WEIGHT = None
-
-        train_dataset = data_loader(cfg_path=self.cfg_path, mode=Mode.TRAIN)
+        self.train_dataset = data_loader(cfg_path=self.cfg_path, mode='train')
+        print('\n\n\n\n\nhey soroosh initialize 44444\n\n\n\n\n\n')
 
         # we need a small subset in federated learning
-        train_size = int(0.05 * len(train_dataset))
-        test_size = len(train_dataset) - train_size
-        train_dataset, test_dataset = torch.utils.data.random_split(train_dataset, [train_size, test_size])
+        train_size = int(0.05 * len(self.train_dataset))
+        test_size = len(self.train_dataset) - train_size
+        train_dataset, test_dataset = torch.utils.data.random_split(self.train_dataset, [train_size, test_size])
 
         self.train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=self.batch_size,
                                                    pin_memory=False, drop_last=True, shuffle=True, num_workers=4)
-        print('train loader peyda shodd ddddddddddddd', self.train_loader)
+        print('\n\n\n\n\n\ntrain loader peyda shodd ddddddddddddd\n\n\n\n\n\n', self.train_loader)
 
         self.n_local_iterations = len(self.train_loader)
 
         if self.valid:
-            valid_dataset = data_loader(cfg_path=self.cfg_path, mode=Mode.VALIDATION)
+            valid_dataset = data_loader(cfg_path=self.cfg_path, mode='valid')
 
             # we need a small subset in federated learning
             valid_size = int(0.5 * len(valid_dataset))
@@ -121,6 +117,8 @@ class Training(Learner):
             self.valid_loader = torch.utils.data.DataLoader(dataset=valid_dataset, batch_size=self.batch_size, pin_memory=False,
                                                             drop_last=True, shuffle=False, num_workers=1)
         self.setup_cuda()
+        self.model = self.model.to(self.device)
+
         self.setup_model(optimiser=optimizer, loss_function=loss_function, weight=WEIGHT)
 
         # Setup the persistence manager to save PT model.
@@ -149,8 +147,8 @@ class Training(Learner):
             torch.backends.cudnn.fastest = True
             torch.cuda.set_device(cuda_device_id)
             self.device = torch.device('cuda')
-            torch.cuda.manual_seed_all(self.model_info['seed'])
-            torch.manual_seed(self.model_info['seed'])
+            # torch.cuda.manual_seed_all(self.model_info['seed'])
+            # torch.manual_seed(self.model_info['seed'])
         else:
             self.device = torch.device('cpu')
 
@@ -494,7 +492,7 @@ class Training(Learner):
                         'model_state_dict': self.model.state_dict(),
                         'optimizer_state_dict': self.optimiser.state_dict(),
                         'loss_state_dict': self.loss_function.state_dict(), 'num_local_iterations': self.n_local_iterations,
-                        'model_info': self.model_info, 'best_loss': self.best_loss},
+                        'best_loss': self.best_loss},
                        os.path.join(self.params['target_dir'], self.params['network_output_path']) + '/' + self.params['checkpoint_name'])
 
         print('------------------------------------------------------'
@@ -579,13 +577,3 @@ class Training(Learner):
         return dxo.to_shareable()
 
 
-
-
-class Mode(Enum):
-    """
-    Class Enumerating the 3 modes of operation of the network.
-    This is used while loading datasets
-    """
-    TRAIN = 0
-    TEST = 1
-    VALIDATION = 2

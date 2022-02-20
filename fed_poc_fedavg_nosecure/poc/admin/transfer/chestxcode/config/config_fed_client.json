@@ -5,7 +5,8 @@
     {
       "tasks": [
         "train",
-        "submit_model"
+        "submit_model",
+         "validate"
       ],
       "executor": {
         "id": "Executor",
