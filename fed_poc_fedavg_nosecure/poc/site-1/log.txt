@@ -1,3 +1,0 @@
-2022-02-20 18:52:47,160 - numexpr.utils - INFO - Note: NumExpr detected 12 cores but "NUMEXPR_MAX_THREADS" not set, so enforcing safe limit of 8.
-2022-02-20 18:52:47,160 - numexpr.utils - INFO - NumExpr defaulting to 8 threads.
-2022-02-20 18:52:47,366 - FederatedClient - INFO - Successfully registered client:site-1 for example_project. Got token:d79a8afb-bff4-4cf1-a53c-c56816802f8f
