@@ -11,7 +11,7 @@ import torch
 import pdb
 import pandas as pd
 import numpy as np
-from skimage.io import imread, imsave
+from skimage.io import imread
 from skimage.transform import resize
 from skimage.util import img_as_ubyte
 from torch.utils.data import Dataset
@@ -36,10 +36,10 @@ class data_loader(Dataset):
         cfg_path: str
             Config file path of the experiment
 
-        mode: enumeration Mode
+        mode: str
             Nature of operation to be done with the data.
-                Possible inputs are Mode.TRAIN, Mode.VALIDATION, Mode.TEST
-                Default value: Mode.TRAIN
+                Possible inputs are 'train', 'valid', 'test'
+                Default value: 'train'
         """
 
         self.cfg_path = cfg_path

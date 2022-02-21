@@ -27,7 +27,8 @@
       "path": "Train_Valid_chestx.Training",
       "args": {
         "cfg_path": "/home/soroosh/Documents/Repositories/chestx/fed_poc_fedavg_nosecure/poc/admin/transfer/chestxcode/custom/configs/config.yaml",
-        "analytic_sender_id": "analytic_sender"
+        "analytic_sender_id": "analytic_sender",
+        "n_local_iterations": 1
       }
     },
     {

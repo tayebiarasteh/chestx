@@ -30,7 +30,7 @@ from nvflare.app_common.app_constant import AppConstants
 from nvflare.app_common.pt.pt_fed_utils import PTModelPersistenceFormatManager
 from pt_constants import PTConstants
 
-from configs.serde import open_experiment, read_config
+from configs.serde import read_config, write_config
 from models.Xception_model import Xception
 from Prediction_chestx import Prediction
 from data.data_provider import data_loader
@@ -43,7 +43,7 @@ epsilon = 1e-15
 
 class Training(Learner):
     def __init__(self, cfg_path, n_local_iterations=5, exclude_vars=None, analytic_sender_id="analytic_sender",
-                 valid=False, experiment_name='name'):
+                 valid=False):
         """This class represents training and validation processes.
 
         Parameters
@@ -54,10 +54,6 @@ class Training(Learner):
         n_local_iterations: int
             Total number of iterations for training
 
-        experiment_name: str
-            name of the experiment, in case of resuming training.
-            name of new experiment, in case of new training.
-
         valid: bool
             if we want to do validation
         """
@@ -67,16 +63,17 @@ class Training(Learner):
         self.exclude_vars = exclude_vars
         self.batch_size = self.params['Network']['batch_size']
         self.valid = valid
-        self.experiment_name = experiment_name
 
-        # self.model_info = self.params['Network']
-        # self.n_local_iterations = n_local_iterations
+        self.model_info = self.params['Network']
+        self.n_local_iterations = n_local_iterations
         self.step = 0
         self.best_loss = float('inf')
         self.analytic_sender_id = analytic_sender_id
 
 
     def initialize(self, parts: dict, fl_ctx: FLContext):
+        self.params = self.create_run_experiment(fl_ctx, self.cfg_path)
+        self.cfg_path = self.params["cfg_path"]
 
         # Changeable network parameters
         self.model = Xception()
@@ -92,25 +89,23 @@ class Training(Learner):
         # weight_path = os.path.join(weight_path, "train")
         # WEIGHT = torch.Tensor(weight_creator(path=weight_path))
         WEIGHT = None
-        self.train_dataset = data_loader(cfg_path=self.cfg_path, mode='train')
-        print('\n\n\n\n\nhey soroosh initialize 44444\n\n\n\n\n\n')
+        self.train_dataset = data_loader(cfg_path=self.params["cfg_path"], mode='train')
 
         # we need a small subset in federated learning
-        train_size = int(0.05 * len(self.train_dataset))
+        train_size = int(0.0005 * len(self.train_dataset))
         test_size = len(self.train_dataset) - train_size
         train_dataset, test_dataset = torch.utils.data.random_split(self.train_dataset, [train_size, test_size])
 
         self.train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=self.batch_size,
                                                    pin_memory=False, drop_last=True, shuffle=True, num_workers=4)
-        print('\n\n\n\n\n\ntrain loader peyda shodd ddddddddddddd\n\n\n\n\n\n', self.train_loader)
 
         self.n_local_iterations = len(self.train_loader)
 
         if self.valid:
-            valid_dataset = data_loader(cfg_path=self.cfg_path, mode='valid')
+            valid_dataset = data_loader(cfg_path=self.params["cfg_path"], mode='valid')
 
             # we need a small subset in federated learning
-            valid_size = int(0.5 * len(valid_dataset))
+            valid_size = int(0.005 * len(valid_dataset))
             test_size = len(valid_dataset) - valid_size
             valid_dataset, _ = torch.utils.data.random_split(train_dataset, [valid_size, test_size])
 
@@ -118,7 +113,6 @@ class Training(Learner):
                                                             drop_last=True, shuffle=False, num_workers=1)
         self.setup_cuda()
         self.model = self.model.to(self.device)
-
         self.setup_model(optimiser=optimizer, loss_function=loss_function, weight=WEIGHT)
 
         # Setup the persistence manager to save PT model.
@@ -147,8 +141,6 @@ class Training(Learner):
             torch.backends.cudnn.fastest = True
             torch.cuda.set_device(cuda_device_id)
             self.device = torch.device('cuda')
-            # torch.cuda.manual_seed_all(self.model_info['seed'])
-            # torch.manual_seed(self.model_info['seed'])
         else:
             self.device = torch.device('cpu')
 
@@ -217,11 +209,11 @@ class Training(Learner):
         # Saves the model, optimiser,loss function name for writing to config file
         # self.model_info['model'] = model.__name__
         # self.model_info['optimiser'] = optimiser.__name__
-        # self.model_info['total_param_num'] = total_param_num
-        # self.model_info['loss_function'] = loss_function.__name__
-        # self.model_info['num_local_iterations'] = self.n_local_iterations
-        # self.params['Network'] = self.model_info
-        # write_config(self.params, self.cfg_path, sort_keys=True)
+        self.model_info['total_param_num'] = total_param_num
+        self.model_info['loss_function'] = loss_function.__name__
+        self.model_info['num_local_iterations'] = self.n_local_iterations
+        self.params['Network'] = self.model_info
+        write_config(self.params, self.params["cfg_path"], sort_keys=True)
 
 
 
@@ -251,7 +243,7 @@ class Training(Learner):
 
         # Convert weights to tensor. Run training
         torch_weights = {k: torch.as_tensor(v) for k, v in dxo.data.items()}
-        print('hey soroosh train*************************************************************************************************')
+
         self.train_epoch(fl_ctx, torch_weights, abort_signal)
 
         # Check the abort_signal after training.
@@ -340,12 +332,12 @@ class Training(Learner):
                     total_hours, total_mins, total_secs = self.time_duration(total_start_time, end_time)
 
                     self.calculate_tb_stats(valid_F1=valid_F1, valid_acc=valid_acc, valid_loss=valid_loss)
-                #     self.savings_prints(iteration_hours, iteration_mins, iteration_secs, total_hours,
-                #                         total_mins, total_secs, train_loss,
-                #                         valid_F1, valid_acc, valid_loss)
-                # else:
-                #     self.savings_prints(iteration_hours, iteration_mins, iteration_secs, total_hours,
-                #                         total_mins, total_secs, train_loss)
+                    self.savings_prints(iteration_hours, iteration_mins, iteration_secs, total_hours,
+                                        total_mins, total_secs, train_loss,
+                                        valid_F1, valid_acc, valid_loss)
+                else:
+                    self.savings_prints(iteration_hours, iteration_mins, iteration_secs, total_hours,
+                                        total_mins, total_secs, train_loss)
 
 
 
@@ -466,25 +458,25 @@ class Training(Learner):
         """
 
         # Saves information about training to config file
-        # self.params['Network']['step'] = self.step
-        # write_config(self.params, self.cfg_path, sort_keys=True)
+        self.params['Network']['step'] = self.step
+        write_config(self.params, self.params["cfg_path"], sort_keys=True)
 
         # Saving the model based on the best loss
         if valid_loss:
             if valid_loss < self.best_loss:
                 self.best_loss = valid_loss
-                torch.save(self.model.state_dict(), os.path.join(self.params['target_dir'], self.params['network_output_path']) + '/' +
-                           self.params['trained_model_name'])
+                torch.save(self.model.state_dict(), os.path.join(self.params['target_dir'], self.params['network_output_path'],
+                           self.params['trained_model_name']))
         else:
             if train_loss < self.best_loss:
                 self.best_loss = train_loss
-                torch.save(self.model.state_dict(), os.path.join(self.params['target_dir'], self.params['network_output_path']) + '/' +
-                           self.params['trained_model_name'])
+                torch.save(self.model.state_dict(), os.path.join(self.params['target_dir'], self.params['network_output_path'],
+                           self.params['trained_model_name']))
 
         # Saving every couple of steps
         if (self.step) % self.params['network_save_freq'] == 0:
-            torch.save(self.model.state_dict(), os.path.join(self.params['target_dir'], self.params['network_output_path']) + '/' +
-                       'step{}_'.format(self.step) + self.params['trained_model_name'])
+            torch.save(self.model.state_dict(), os.path.join(self.params['target_dir'], self.params['network_output_path'],
+                       'step{}_'.format(self.step) + self.params['trained_model_name']))
 
         # Save a checkpoint every step
         if (self.step) % self.params['network_checkpoint_freq'] == 0:
@@ -549,6 +541,32 @@ class Training(Learner):
 
 
 
+    def create_run_experiment(self, fl_ctx: FLContext, global_config_path):
+        params = read_config(global_config_path)
+
+        run_dir = fl_ctx.get_engine().get_workspace().get_run_dir(fl_ctx.get_prop(ReservedKey.RUN_NUM))
+        run_number = os.path.basename(run_dir)
+
+        network_output_path_dir = os.path.join(run_dir, params['network_output_path'])
+        if not os.path.exists(network_output_path_dir):
+            os.makedirs(network_output_path_dir)
+
+        stat_log_path_dir = os.path.join(run_dir, params['stat_log_path'])
+        if not os.path.exists(stat_log_path_dir):
+            os.makedirs(stat_log_path_dir)
+
+        output_data_path_dir = os.path.join(run_dir, params['output_data_path'])
+        if not os.path.exists(output_data_path_dir):
+            os.makedirs(output_data_path_dir)
+
+        cfg_file_name = run_number + '_config.yaml'
+        cfg_path = os.path.join(os.path.join(run_dir, params['network_output_path']), cfg_file_name)
+        params['cfg_path'] = cfg_path
+        params['target_dir'] = run_dir
+        write_config(params, cfg_path)
+        return params
+
+
     def save_local_model(self, fl_ctx: FLContext):
         run_dir = fl_ctx.get_engine().get_workspace().get_run_dir(fl_ctx.get_prop(ReservedKey.RUN_NUM))
         models_dir = os.path.join(run_dir, PTConstants.PTModelsDir)
@@ -575,5 +593,3 @@ class Training(Learner):
         # Get the model parameters and create dxo from it
         dxo = model_learnable_to_dxo(ml)
         return dxo.to_shareable()
-
-
