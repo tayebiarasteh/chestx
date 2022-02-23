@@ -322,14 +322,14 @@ class Training(Learner):
 
                 # saving the model, checkpoint, TensorBoard, etc.
                 if self.valid:
-                    valid_F1, valid_acc, valid_loss = self.valid_epoch(self.valid_loader, abort_signal)
+                    valid_acc, valid_sensitivity, valid_specifity, valid_loss = self.valid_epoch(self.valid_loader, abort_signal)
                     end_time = time.time()
                     total_hours, total_mins, total_secs = self.time_duration(total_start_time, end_time)
 
-                    self.calculate_tb_stats(valid_F1=valid_F1, valid_acc=valid_acc, valid_loss=valid_loss)
+                    self.calculate_tb_stats(valid_acc, valid_sensitivity, valid_specifity, valid_loss)
                     self.savings_prints(iteration_hours, iteration_mins, iteration_secs, total_hours,
                                         total_mins, total_secs, train_loss,
-                                        valid_F1, valid_acc, valid_loss)
+                                        valid_acc, valid_sensitivity, valid_specifity, valid_loss)
                 else:
                     self.savings_prints(iteration_hours, iteration_mins, iteration_secs, total_hours,
                                         total_mins, total_secs, train_loss)
@@ -353,7 +353,8 @@ class Training(Learner):
 
         # initializing the metrics lists
         accuracy_disease = []
-        F1_disease = []
+        sensitivity_disease = []
+        specifity_disease = []
 
         with torch.no_grad():
 
@@ -394,22 +395,24 @@ class Training(Learner):
             FN = disease[1, 0]
             TP = disease[1, 1]
             accuracy_disease.append((TP + TN) / (TP + TN + FP + FN + epsilon))
-            F1_disease.append(2 * TP / (2 * TP + FN + FP + epsilon))
+            sensitivity_disease.append(TP / (TP + FN + epsilon))
+            specifity_disease.append(TN / (TN + FP + epsilon))
 
         # Macro averaging
         epoch_accuracy = torch.stack(accuracy_disease).mean().item()
-        epoch_f1_score = torch.stack(F1_disease).mean().item()
+        epoch_sensitivity = torch.stack(sensitivity_disease).mean().item()
+        epoch_specifity = torch.stack(specifity_disease).mean().item()
 
         loss = self.loss_function(logits_no_sigmoid_cache.to(self.device), labels_cache.to(self.device))
         epoch_loss = loss.item()
 
-        return epoch_f1_score, epoch_accuracy, epoch_loss
+        return epoch_accuracy, epoch_sensitivity, epoch_specifity, epoch_loss
 
 
 
     def savings_prints(self, iteration_hours, iteration_mins, iteration_secs,
-                       total_hours, total_mins, total_secs,
-                       train_loss, valid_F1=None, valid_acc=None, valid_loss=None):
+                       total_hours, total_mins, total_secs, train_loss,
+                       valid_acc=None, valid_sensitivity=None, valid_specifity=None, valid_loss=None):
         """Saving the model weights, checkpoint, information,
         and training and validation loss and evaluation statistics.
 
@@ -436,20 +439,17 @@ class Training(Learner):
         train_loss: float
             training loss of the model
 
-        valid_loss: float
-            validation loss of the model
-
-        train_acc: float
-            training accuracy of the model
-
         valid_acc: float
             validation accuracy of the model
 
-        train_F1: float
-            training F1 score of the model
+        valid_sensitivity: float
+            validation sensitivity of the model
 
-        valid_F1: float
-            validation F1 score of the model
+        valid_specifity: float
+            validation specifity of the model
+
+        valid_loss: float
+            validation loss of the model
         """
 
         # Saves information about training to config file
@@ -480,7 +480,7 @@ class Training(Learner):
                         'optimizer_state_dict': self.optimiser.state_dict(),
                         'loss_state_dict': self.loss_function.state_dict(), 'num_local_iterations': self.n_local_iterations,
                         'best_loss': self.best_loss},
-                       os.path.join(self.params['target_dir'], self.params['network_output_path']) + '/' + self.params['checkpoint_name'])
+                       os.path.join(self.params['target_dir'], self.params['network_output_path'], self.params['checkpoint_name']))
 
         print('------------------------------------------------------'
               '----------------------------------')
@@ -490,13 +490,15 @@ class Training(Learner):
         print(f'\n\tTrain loss: {train_loss:.4f}')
 
         if valid_loss:
-            print(f'\t Val. loss: {valid_loss:.4f} | Acc: {valid_acc * 100:.2f}% | F1: {valid_F1 * 100:.2f}%')
+            print(f'\t Val. loss: {valid_loss:.4f} | Acc: {valid_acc * 100:.2f}%'
+                  f' | Sensitivity: {valid_sensitivity * 100:.2f}% | Specifity: {valid_specifity * 100:.2f}%')
 
             # saving the training and validation stats
             msg = f'----------------------------------------------------------------------------------------\n' \
                    f'Step: {self.step} | Step time: {iteration_hours}h {iteration_mins}m {iteration_secs}s' \
                    f' | Total time: {total_hours}h {total_mins}m {total_secs}s\n\n\tTrain loss: {train_loss:.4f} | ' \
-                   f'Val. loss: {valid_loss:.4f} | Acc: {valid_acc*100:.2f}% | F1: {valid_F1 * 100:.2f}%\n\n'
+                   f'Val. loss: {valid_loss:.4f} | Acc: {valid_acc*100:.2f}% ' \
+                  f'| Sensitivity: {valid_sensitivity * 100:.2f}% | Specifity: {valid_specifity * 100:.2f}%\n\n'
         else:
             msg = f'----------------------------------------------------------------------------------------\n' \
                    f'Step: {self.step} | Step time: {iteration_hours}h {iteration_mins}m {iteration_secs}s' \
@@ -506,33 +508,28 @@ class Training(Learner):
 
 
 
-    def calculate_tb_stats(self, valid_F1=None, valid_acc=None, valid_loss=None):
+    def calculate_tb_stats(self, valid_acc=None, valid_sensitivity=None, valid_specifity=None, valid_loss=None):
         """Adds the evaluation metrics and loss values to the tensorboard.
 
         Parameters
         ----------
-        train_loss: float
-            training loss of the model
-
-        valid_loss: float
-            validation loss of the model
-
-        train_acc: float
-            training accuracy of the model
-
         valid_acc: float
             validation accuracy of the model
 
-        train_F1: float
-            training F1 score of the model
+        valid_sensitivity: float
+            validation sensitivity of the model
 
-        valid_F1: float
-            validation F1 score of the model
+        valid_specifity: float
+            validation specifity of the model
+
+        valid_loss: float
+            validation loss of the model
         """
-        if valid_F1 is not None:
-            self.writer.add_scalar('Valid_F1', valid_F1, self.step)
+        if valid_acc is not None:
             self.writer.add_scalar('Valid_Accuracy', valid_acc, self.step)
             self.writer.add_scalar('Valid_Loss', valid_loss, self.step)
+            self.writer.add_scalar('Valid_sensitivity', valid_sensitivity, self.step)
+            self.writer.add_scalar('Valid_specifity', valid_specifity, self.step)
 
 
 

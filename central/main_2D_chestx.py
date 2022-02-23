@@ -14,6 +14,7 @@ from torch.nn import BCEWithLogitsLoss
 
 from config.serde import open_experiment, create_experiment, delete_experiment
 from models.Xception_model import Xception
+from models.resnet18 import ResNet18
 from Train_Valid_chestx import Training
 from Prediction_chestx import Prediction
 from data.data_provider import data_loader
@@ -49,7 +50,8 @@ def main_train_2D(global_config_path="/home/soroosh/Documents/Repositories/chest
     cfg_path = params["cfg_path"]
 
     # Changeable network parameters
-    model = Xception()
+    # model = Xception(num_classes=14)
+    model = ResNet18(n_out_classes=14)
     loss_function = BCEWithLogitsLoss
     optimizer = torch.optim.Adam(model.parameters(), lr=float(params['Network']['lr']),
                                  weight_decay=float(params['Network']['weight_decay']), amsgrad=params['Network']['amsgrad'])
@@ -93,7 +95,8 @@ def main_test_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx
     cfg_path = params['cfg_path']
 
     # Changeable network parameters
-    model = Xception()
+    # model = Xception(num_classes=14)
+    model = ResNet18(n_out_classes=14)
 
     test_dataset = data_loader(cfg_path=cfg_path, mode='test')
     test_loader = torch.utils.data.DataLoader(dataset=test_dataset, batch_size=params['Network']['batch_size'],
@@ -106,7 +109,8 @@ def main_test_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx
 
     print('------------------------------------------------------'
           '----------------------------------')
-    print(f'\tTotal Accuracy: {accuracy_disease.mean() * 100:.2f}% | Total sensitivity: {sensitivity_disease.mean() * 100:.2f}% | Total specifity: {specifity_disease.mean() * 100:.2f}%')
+    print(f'\tTotal Accuracy: {accuracy_disease.mean() * 100:.2f}% | Total sensitivity: {sensitivity_disease.mean() * 100:.2f}%'
+          f' | Total specifity: {specifity_disease.mean() * 100:.2f}%')
     print('\nIndividual Accuracy scores:')
     print(f'\tAtelectasis: {accuracy_disease[0] * 100:.2f}% | Cardiomegaly: {accuracy_disease[1] * 100:.2f}% '
           f'| Consolidation: {accuracy_disease[2] * 100:.2f}% | Edema: {accuracy_disease[3] * 100:.2f}%')
@@ -136,7 +140,8 @@ def main_test_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx
 
     # saving the stats
     mesg = f'\n\n----------------------------------------------------------------------------------------\n' \
-           f'\tTotal Accuracy: {accuracy_disease.mean() * 100:.2f}% | Total sensitivity: {sensitivity_disease.mean() * 100:.2f}% | Total specifity: {specifity_disease.mean() * 100:.2f}%' \
+           f'\tTotal Accuracy: {accuracy_disease.mean() * 100:.2f}% | Total sensitivity: {sensitivity_disease.mean() * 100:.2f}%' \
+           f' | Total specifity: {specifity_disease.mean() * 100:.2f}%' \
            f'\n\nIndividual Accuracy scores:' \
            f'\tAtelectasis: {accuracy_disease[0] * 100:.2f}% | Cardiomegaly: {accuracy_disease[1] * 100:.2f}% ' \
           f'| Consolidation: {accuracy_disease[2] * 100:.2f}% | Edema: {accuracy_disease[3] * 100:.2f}%' \

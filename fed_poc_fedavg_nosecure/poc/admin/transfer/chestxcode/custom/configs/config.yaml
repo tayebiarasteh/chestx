@@ -1,6 +1,6 @@
 Network:
   batch_size: 5
-  lr: 1e-4
+  lr: 5e-4
   weight_decay: 0
   amsgrad: False
 network_output_path: network_data/
@@ -11,7 +11,7 @@ trained_model_name: trained_model.pth
 
 # changeable items:
 file_path: /home/soroosh/Documents/datasets/MIMIC/
-network_save_freq: 100 # based on the batch size, shows the number of batches done
+network_save_freq: 500 # based on the batch size, shows the number of batches done
 display_stats_freq: 50 # valid freq is also the same as this
 display_train_loss_freq: 10
 network_checkpoint_freq: 1

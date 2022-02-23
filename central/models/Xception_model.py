@@ -9,7 +9,6 @@ Xception model.
 import math
 import torch.nn as nn
 import torch.nn.functional as F
-import torch.utils.model_zoo as model_zoo
 from torch.nn import init
 import torch
 
