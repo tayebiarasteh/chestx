@@ -62,8 +62,11 @@ class Prediction:
 
         Returns
         -------
-        F1_disease: float array
-            average validation F1 score
+        sensitivity_disease: float array
+            average sensitivity score
+
+        specifity_disease: float array
+            average specifity score
 
         accuracy_disease: float array
             average validation accuracy
@@ -72,7 +75,8 @@ class Prediction:
 
         # initializing the metrics lists
         accuracy_disease = []
-        F1_disease = []
+        sensitivity_disease = []
+        specifity_disease = []
 
         with torch.no_grad():
 
@@ -109,6 +113,7 @@ class Prediction:
             FN = disease[1, 0]
             TP = disease[1, 1]
             accuracy_disease.append((TP + TN) / (TP + TN + FP + FN + epsilon))
-            F1_disease.append(2 * TP / (2 * TP + FN + FP + epsilon))
+            sensitivity_disease.append(TP / (TP + FN + epsilon))
+            specifity_disease.append(TN / (TN + FP + epsilon))
 
-        return torch.stack(accuracy_disease).cpu().numpy(), torch.stack(F1_disease).cpu().numpy()
+        return torch.stack(accuracy_disease).cpu().numpy(), torch.stack(sensitivity_disease).cpu().numpy(), torch.stack(specifity_disease).cpu().numpy()

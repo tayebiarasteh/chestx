@@ -9,9 +9,7 @@ import numpy as np
 import os
 import warnings
 import shutil
-from skimage import io
 import pdb
-import SimpleITK as sitk
 
 
 
@@ -77,19 +75,3 @@ def delete_experiment(experiment_name, global_config_path):
     cfg_path = os.path.join(os.path.join(default_params['target_dir'], experiment_name, default_params['network_output_path']), cfg_file_name)
     params = read_config(cfg_path)
     shutil.rmtree(os.path.join(params['target_dir'], experiment_name))
-
-
-# def save_image(experiment_name, image_name, image_array, seg_result_8, seg_result_16):
-#     params = read_config(CONFIG_PATH)
-#     io.imsave(os.path.join(params['output_data_path'], experiment_name,
-#                            image_name + '/output_' + image_name + '.tif'), image_array)
-#     io.imsave(os.path.join(params['output_data_path'], experiment_name,
-#                            image_name + '/segmentation_' + image_name + '.tif'), seg_result_16)
-#     seg_result_8 = sitk.GetImageFromArray(seg_result_8)  # mha segmentation
-#     sitk.WriteImage(seg_result_8, os.path.join(params['output_data_path'], experiment_name,
-#                            image_name + '/segmentation_' + image_name + '.mhd'))
-#
-# def save_valid_image(experiment_name, image_name, image_array):
-#     params = read_config(CONFIG_PATH)
-#     io.imsave(os.path.join(params['output_data_path'], experiment_name,
-#                            'resulting_validation_' + image_name + '.tif'), image_array)

@@ -16,7 +16,7 @@ from config.serde import open_experiment, create_experiment, delete_experiment
 from models.Xception_model import Xception
 from Train_Valid_chestx import Training
 from Prediction_chestx import Prediction
-from data.data_provider import data_loader, Mode
+from data.data_provider import data_loader
 
 import warnings
 warnings.filterwarnings('ignore')
@@ -61,11 +61,11 @@ def main_train_2D(global_config_path="/home/soroosh/Documents/Repositories/chest
     # WEIGHT = torch.Tensor(weight_creator(path=weight_path))
     WEIGHT = None
 
-    train_dataset = data_loader(cfg_path=cfg_path, mode=Mode.TRAIN)
+    train_dataset = data_loader(cfg_path=cfg_path, mode='train')
     train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=params['Network']['batch_size'],
                                                pin_memory=False, drop_last=True, shuffle=True, num_workers=4)
     if valid:
-        valid_dataset = data_loader(cfg_path=cfg_path, mode=Mode.VALIDATION)
+        valid_dataset = data_loader(cfg_path=cfg_path, mode='valid')
         valid_loader = torch.utils.data.DataLoader(dataset=valid_dataset, batch_size=params['Network']['batch_size'],
                                                    pin_memory=False, drop_last=True, shuffle=False, num_workers=1)
     else:
@@ -95,18 +95,18 @@ def main_test_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx
     # Changeable network parameters
     model = Xception()
 
-    test_dataset = data_loader(cfg_path=cfg_path, mode=Mode.TEST)
+    test_dataset = data_loader(cfg_path=cfg_path, mode='test')
     test_loader = torch.utils.data.DataLoader(dataset=test_dataset, batch_size=params['Network']['batch_size'],
                                                pin_memory=False, drop_last=True, shuffle=False, num_workers=4)
 
     # Initialize prediction
     predictor = Prediction(cfg_path)
     predictor.setup_model(model=model)
-    accuracy_disease, F1_disease = predictor.evaluate_2D(test_loader, params['Network']['batch_size'])
+    accuracy_disease, sensitivity_disease, specifity_disease = predictor.evaluate_2D(test_loader, params['Network']['batch_size'])
 
     print('------------------------------------------------------'
           '----------------------------------')
-    print(f'\tTotal Accuracy: {accuracy_disease.mean() * 100:.2f}% | Total F1 (dice score): {F1_disease.mean() * 100:.2f}%')
+    print(f'\tTotal Accuracy: {accuracy_disease.mean() * 100:.2f}% | Total sensitivity: {sensitivity_disease.mean() * 100:.2f}% | Total specifity: {specifity_disease.mean() * 100:.2f}%')
     print('\nIndividual Accuracy scores:')
     print(f'\tAtelectasis: {accuracy_disease[0] * 100:.2f}% | Cardiomegaly: {accuracy_disease[1] * 100:.2f}% '
           f'| Consolidation: {accuracy_disease[2] * 100:.2f}% | Edema: {accuracy_disease[3] * 100:.2f}%')
@@ -115,20 +115,28 @@ def main_test_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx
     print(f'\tNo Finding: {accuracy_disease[8] * 100:.2f}% | Pleural Effusion: {accuracy_disease[9] * 100:.2f}% '
           f'| Pleural Other: {accuracy_disease[10] * 100:.2f}% | Pneumonia: {accuracy_disease[11] * 100:.2f}%')
     print(f'\tPneumothorax: {accuracy_disease[12] * 100:.2f}% | Support Devices: {accuracy_disease[13] * 100:.2f}%')
-    print('\nIndividual F1 scores (dice scores):')
-    print(f'\tAtelectasis: {F1_disease[0] * 100:.2f}% | Cardiomegaly: {F1_disease[1] * 100:.2f}% '
-          f'| Consolidation: {F1_disease[2] * 100:.2f}% | Edema: {F1_disease[3] * 100:.2f}%')
-    print(f'\tEnlarged Cardiomediastinum: {F1_disease[4] * 100:.2f}% | Fracture: {F1_disease[5] * 100:.2f}% '
-          f'| Lung Lesion: {F1_disease[6] * 100:.2f}% | Lung Opacity: {F1_disease[7] * 100:.2f}%')
-    print(f'\tNo Finding: {F1_disease[8] * 100:.2f}% | Pleural Effusion: {F1_disease[9] * 100:.2f}% '
-          f'| Pleural Other: {F1_disease[10] * 100:.2f}% | Pneumonia: {F1_disease[11] * 100:.2f}%')
-    print(f'\tPneumothorax: {F1_disease[12] * 100:.2f}% | Support Devices: {F1_disease[13] * 100:.2f}%')
+    print('\nIndividual sensitivity scores:')
+    print(f'\tAtelectasis: {sensitivity_disease[0] * 100:.2f}% | Cardiomegaly: {sensitivity_disease[1] * 100:.2f}% '
+          f'| Consolidation: {sensitivity_disease[2] * 100:.2f}% | Edema: {sensitivity_disease[3] * 100:.2f}%')
+    print(f'\tEnlarged Cardiomediastinum: {sensitivity_disease[4] * 100:.2f}% | Fracture: {sensitivity_disease[5] * 100:.2f}% '
+          f'| Lung Lesion: {sensitivity_disease[6] * 100:.2f}% | Lung Opacity: {sensitivity_disease[7] * 100:.2f}%')
+    print(f'\tNo Finding: {sensitivity_disease[8] * 100:.2f}% | Pleural Effusion: {sensitivity_disease[9] * 100:.2f}% '
+          f'| Pleural Other: {sensitivity_disease[10] * 100:.2f}% | Pneumonia: {sensitivity_disease[11] * 100:.2f}%')
+    print(f'\tPneumothorax: {sensitivity_disease[12] * 100:.2f}% | Support Devices: {sensitivity_disease[13] * 100:.2f}%')
+    print('\nIndividual specifity scores:')
+    print(f'\tAtelectasis: {specifity_disease[0] * 100:.2f}% | Cardiomegaly: {specifity_disease[1] * 100:.2f}% '
+          f'| Consolidation: {specifity_disease[2] * 100:.2f}% | Edema: {specifity_disease[3] * 100:.2f}%')
+    print(f'\tEnlarged Cardiomediastinum: {specifity_disease[4] * 100:.2f}% | Fracture: {specifity_disease[5] * 100:.2f}% '
+          f'| Lung Lesion: {specifity_disease[6] * 100:.2f}% | Lung Opacity: {specifity_disease[7] * 100:.2f}%')
+    print(f'\tNo Finding: {specifity_disease[8] * 100:.2f}% | Pleural Effusion: {specifity_disease[9] * 100:.2f}% '
+          f'| Pleural Other: {specifity_disease[10] * 100:.2f}% | Pneumonia: {specifity_disease[11] * 100:.2f}%')
+    print(f'\tPneumothorax: {specifity_disease[12] * 100:.2f}% | Support Devices: {specifity_disease[13] * 100:.2f}%')
     print('------------------------------------------------------'
           '----------------------------------')
 
     # saving the stats
     mesg = f'\n\n----------------------------------------------------------------------------------------\n' \
-           f'\tTotal Accuracy: {accuracy_disease.mean() * 100:.2f}% | Total F1 (dice score): {F1_disease.mean() * 100:.2f}%' \
+           f'\tTotal Accuracy: {accuracy_disease.mean() * 100:.2f}% | Total sensitivity: {sensitivity_disease.mean() * 100:.2f}% | Total specifity: {specifity_disease.mean() * 100:.2f}%' \
            f'\n\nIndividual Accuracy scores:' \
            f'\tAtelectasis: {accuracy_disease[0] * 100:.2f}% | Cardiomegaly: {accuracy_disease[1] * 100:.2f}% ' \
           f'| Consolidation: {accuracy_disease[2] * 100:.2f}% | Edema: {accuracy_disease[3] * 100:.2f}%' \
@@ -137,15 +145,23 @@ def main_test_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx
         f'\tNo Finding: {accuracy_disease[8] * 100:.2f}% | Pleural Effusion: {accuracy_disease[9] * 100:.2f}% ' \
            f'| Pleural Other: {accuracy_disease[10] * 100:.2f}% | Pneumonia: {accuracy_disease[11] * 100:.2f}%' \
            f'\tPneumothorax: {accuracy_disease[12] * 100:.2f}% | Support Devices: {accuracy_disease[13] * 100:.2f}%' \
-           f'\n\nIndividual F1 scores (dice scores):' \
-           f'\tAtelectasis: {F1_disease[0] * 100:.2f}% | Cardiomegaly: {F1_disease[1] * 100:.2f}% ' \
-          f'| Consolidation: {F1_disease[2] * 100:.2f}% | Edema: {F1_disease[3] * 100:.2f}%' \
-           f'\tEnlarged Cardiomediastinum: {F1_disease[4] * 100:.2f}% | Fracture: {F1_disease[5] * 100:.2f}% ' \
-           f'| Lung Lesion: {F1_disease[6] * 100:.2f}% | Lung Opacity: {F1_disease[7] * 100:.2f}%' \
-        f'\tNo Finding: {F1_disease[8] * 100:.2f}% | Pleural Effusion: {F1_disease[9] * 100:.2f}% ' \
-           f'| Pleural Other: {F1_disease[10] * 100:.2f}% | Pneumonia: {F1_disease[11] * 100:.2f}%' \
-           f'\tPneumothorax: {F1_disease[12] * 100:.2f}% | Support Devices: {F1_disease[13] * 100:.2f}%'
-    with open(os.path.join(params['target_dir'], params['stat_log_path']) + '/test_results', 'a') as f:
+           f'\n\nIndividual sensitivity scores:' \
+           f'\tAtelectasis: {sensitivity_disease[0] * 100:.2f}% | Cardiomegaly: {sensitivity_disease[1] * 100:.2f}% ' \
+          f'| Consolidation: {sensitivity_disease[2] * 100:.2f}% | Edema: {sensitivity_disease[3] * 100:.2f}%' \
+           f'\tEnlarged Cardiomediastinum: {sensitivity_disease[4] * 100:.2f}% | Fracture: {sensitivity_disease[5] * 100:.2f}% ' \
+           f'| Lung Lesion: {sensitivity_disease[6] * 100:.2f}% | Lung Opacity: {sensitivity_disease[7] * 100:.2f}%' \
+        f'\tNo Finding: {sensitivity_disease[8] * 100:.2f}% | Pleural Effusion: {sensitivity_disease[9] * 100:.2f}% ' \
+           f'| Pleural Other: {sensitivity_disease[10] * 100:.2f}% | Pneumonia: {sensitivity_disease[11] * 100:.2f}%' \
+           f'\tPneumothorax: {sensitivity_disease[12] * 100:.2f}% | Support Devices: {sensitivity_disease[13] * 100:.2f}%' \
+           f'\n\nIndividual specifity scores:' \
+           f'\tAtelectasis: {specifity_disease[0] * 100:.2f}% | Cardiomegaly: {specifity_disease[1] * 100:.2f}% ' \
+          f'| Consolidation: {specifity_disease[2] * 100:.2f}% | Edema: {specifity_disease[3] * 100:.2f}%' \
+           f'\tEnlarged Cardiomediastinum: {specifity_disease[4] * 100:.2f}% | Fracture: {specifity_disease[5] * 100:.2f}% ' \
+           f'| Lung Lesion: {specifity_disease[6] * 100:.2f}% | Lung Opacity: {specifity_disease[7] * 100:.2f}%' \
+        f'\tNo Finding: {specifity_disease[8] * 100:.2f}% | Pleural Effusion: {specifity_disease[9] * 100:.2f}% ' \
+           f'| Pleural Other: {specifity_disease[10] * 100:.2f}% | Pneumonia: {specifity_disease[11] * 100:.2f}%' \
+           f'\tPneumothorax: {specifity_disease[12] * 100:.2f}% | Support Devices: {specifity_disease[13] * 100:.2f}%'
+    with open(os.path.join(params['target_dir'], params['stat_log_path'], '/test_results'), 'a') as f:
         f.write(mesg)
 
 

@@ -223,11 +223,6 @@ class Training(Learner):
 
         Parameters
         ----------
-        train_loader: Pytorch dataloader object
-            training data loader
-
-        valid_loader: Pytorch dataloader object
-            validation data loader
        """
         # Get model weights
         try:
