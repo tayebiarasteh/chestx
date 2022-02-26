@@ -50,20 +50,17 @@ def main_train_2D(global_config_path="/home/soroosh/Documents/Repositories/chest
     cfg_path = params["cfg_path"]
 
     # Changeable network parameters
-    # model = Xception(num_classes=14)
-    model = ResNet18(n_out_classes=14)
+    model = Xception(num_classes=14)
+    # model = ResNet18(n_out_classes=14)
     loss_function = BCEWithLogitsLoss
     optimizer = torch.optim.Adam(model.parameters(), lr=float(params['Network']['lr']),
                                  weight_decay=float(params['Network']['weight_decay']), amsgrad=params['Network']['amsgrad'])
 
-    # class weights corresponding to the dataset
-    # weight_path = params['file_path']
-    # weight_path = weight_path.replace('images', 'labels')
-    # weight_path = os.path.join(weight_path, "train")
-    # WEIGHT = torch.Tensor(weight_creator(path=weight_path))
-    WEIGHT = None
-
     train_dataset = data_loader(cfg_path=cfg_path, mode='train')
+
+    # class weights corresponding to the dataset
+    pos_weight = train_dataset.pos_weight()
+
     train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=params['Network']['batch_size'],
                                                pin_memory=False, drop_last=True, shuffle=True, num_workers=4)
     if valid:
@@ -77,7 +74,7 @@ def main_train_2D(global_config_path="/home/soroosh/Documents/Repositories/chest
     if resume == True:
         trainer.load_checkpoint(model=model, optimiser=optimizer, loss_function=loss_function)
     else:
-        trainer.setup_model(model=model, optimiser=optimizer, loss_function=loss_function, weight=WEIGHT)
+        trainer.setup_model(model=model, optimiser=optimizer, loss_function=loss_function, weight=pos_weight)
     trainer.train_epoch(train_loader=train_loader, batch_size=params['Network']['batch_size'], valid_loader=valid_loader)
 
 
@@ -95,8 +92,8 @@ def main_test_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx
     cfg_path = params['cfg_path']
 
     # Changeable network parameters
-    # model = Xception(num_classes=14)
-    model = ResNet18(n_out_classes=14)
+    model = Xception(num_classes=14)
+    # model = ResNet18(n_out_classes=14)
 
     test_dataset = data_loader(cfg_path=cfg_path, mode='test')
     test_loader = torch.utils.data.DataLoader(dataset=test_dataset, batch_size=params['Network']['batch_size'],
@@ -175,7 +172,7 @@ def main_test_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx
 
 
 if __name__ == '__main__':
-    delete_experiment(experiment_name='first_try', global_config_path="/home/soroosh/Documents/Repositories/chestx/central/config/config.yaml")
+    # delete_experiment(experiment_name='first_try', global_config_path="/home/soroosh/Documents/Repositories/chestx/central/config/config.yaml")
     main_train_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/central/config/config.yaml",
-                  valid=True, resume=False, augment=False, experiment_name='first_try')
+                  valid=True, resume=False, augment=False, experiment_name='xception_p10-11_weight_14_labels_2e5')
     # main_test_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/central/config/config.yaml", experiment_name='first_try')

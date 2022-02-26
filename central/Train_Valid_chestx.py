@@ -128,7 +128,7 @@ class Training:
         self.model = model.to(self.device)
         if not weight==None:
             self.loss_weight = weight.to(self.device)
-            self.loss_function = loss_function(weight=self.loss_weight)
+            self.loss_function = loss_function(pos_weight=self.loss_weight)
         else:
             self.loss_function = loss_function()
         self.optimiser = optimiser
