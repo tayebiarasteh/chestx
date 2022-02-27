@@ -1,5 +1,5 @@
 """
-Created on Feb 1, 2022.
+Created on Feb 15, 2022.
 Training_Valid_chestx.py
 
 @author: Soroosh Tayebi Arasteh <sarasteh@ukaachen.de>
@@ -18,6 +18,7 @@ import torchmetrics
 import torchio as tio
 from torch.utils.data import Dataset
 from torch.nn import BCEWithLogitsLoss
+from torchvision import transforms
 
 from nvflare.apis.dxo import from_shareable, DXO, DataKind, MetaKey
 from nvflare.apis.fl_constant import FLContextKey, ReturnCode, ReservedKey
@@ -34,10 +35,13 @@ from configs.serde import read_config, write_config
 from models.Xception_model import Xception
 from Prediction_chestx import Prediction
 from data.data_provider import data_loader
+from data.data_handler_pv_defect import ChallengeDataset
 
 import warnings
 warnings.filterwarnings('ignore')
 epsilon = 1e-15
+train_mean = [0.59685254, 0.59685254, 0.59685254]
+train_std = [0.16043035, 0.16043035, 0.16043035]
 
 
 
@@ -91,33 +95,54 @@ class Training(Learner):
                                      weight_decay=float(self.params['Network']['weight_decay']),
                                      amsgrad=self.params['Network']['amsgrad'])
 
-        train_dataset = data_loader(cfg_path=self.params["cfg_path"], mode='train',
-                                    chosen_labels=self.chosen_labels, subsets=self.subsets)
-
-        # we need a small subset in federated learning
-        train_size = int(0.0005 * len(train_dataset))
-        test_size = len(train_dataset) - train_size
-        train_dataset, test_dataset = torch.utils.data.random_split(train_dataset, [train_size, test_size])
-
+        #####################################################################################################################
+        trans = transforms.Compose([transforms.ToPILImage(), transforms.ToTensor(),
+                                    transforms.Normalize(train_mean, train_std)])
+        train_dataset = ChallengeDataset(cfg_path=self.cfg_path, transform=trans, chosen_labels=self.chosen_labels, training=True)
         # class weights corresponding to the dataset
         pos_weight = train_dataset.pos_weight(chosen_labels=self.chosen_labels)
 
-        self.train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=self.batch_size,
-                                                   pin_memory=True, drop_last=True, shuffle=True, num_workers=10)
-
-        self.n_local_iterations = len(self.train_loader)
+        self.train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=self.params['Network']['batch_size'],
+                                                   pin_memory=True, drop_last=True, shuffle=True, num_workers=40)
 
         if self.valid:
-            valid_dataset = data_loader(cfg_path=self.params["cfg_path"], mode='valid',
-                                        chosen_labels=self.chosen_labels, subsets=self.subsets)
+            trans = transforms.Compose([transforms.ToPILImage(), transforms.ToTensor(),
+                                        transforms.Normalize(train_mean, train_std)])
+            valid_dataset = ChallengeDataset(cfg_path=self.cfg_path, transform=trans,
+                                             chosen_labels=self.chosen_labels, training=False)
+            self.valid_loader = torch.utils.data.DataLoader(dataset=valid_dataset,
+                                                       batch_size=self.params['Network']['batch_size'],
+                                                       pin_memory=True, drop_last=True, shuffle=False, num_workers=5)
+        else:
+            self.valid_loader = None
+        ##########################################################################################
+        # train_dataset = data_loader(cfg_path=self.params["cfg_path"], mode='train',
+        #                             chosen_labels=self.chosen_labels, subsets=self.subsets)
+        #
+        # # we need a small subset in federated learning
+        # train_size = int(0.0005 * len(train_dataset))
+        # test_size = len(train_dataset) - train_size
+        # train_dataset, test_dataset = torch.utils.data.random_split(train_dataset, [train_size, test_size])
+        #
+        # # class weights corresponding to the dataset
+        # pos_weight = train_dataset.pos_weight(chosen_labels=self.chosen_labels)
+        #
+        # self.train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=self.batch_size,
+        #                                            pin_memory=True, drop_last=True, shuffle=True, num_workers=10)
+        #
+        # if self.valid:
+        #     valid_dataset = data_loader(cfg_path=self.params["cfg_path"], mode='valid',
+        #                                 chosen_labels=self.chosen_labels, subsets=self.subsets)
+        #
+        #     # we need a small subset in federated learning
+        #     valid_size = int(0.005 * len(valid_dataset))
+        #     test_size = len(valid_dataset) - valid_size
+        #     valid_dataset, _ = torch.utils.data.random_split(train_dataset, [valid_size, test_size])
+        #
+        #     self.valid_loader = torch.utils.data.DataLoader(dataset=valid_dataset, batch_size=self.batch_size, pin_memory=True,
+        #                                                     drop_last=True, shuffle=False, num_workers=2)
+        ##################################################################################
 
-            # we need a small subset in federated learning
-            valid_size = int(0.005 * len(valid_dataset))
-            test_size = len(valid_dataset) - valid_size
-            valid_dataset, _ = torch.utils.data.random_split(train_dataset, [valid_size, test_size])
-
-            self.valid_loader = torch.utils.data.DataLoader(dataset=valid_dataset, batch_size=self.batch_size, pin_memory=True,
-                                                            drop_last=True, shuffle=False, num_workers=2)
         self.setup_cuda()
         self.model = self.model.to(self.device)
         self.setup_model(optimiser=optimizer, loss_function=loss_function, weight=pos_weight)
@@ -486,21 +511,12 @@ class Training(Learner):
 
         # Save a checkpoint every step
         if (self.step) % self.params['network_checkpoint_freq'] == 0:
-            if self.loss_weight:
-                torch.save({'step': self.step, 'weight': self.loss_weight,
-                            'model_state_dict': self.model.state_dict(),
-                            'optimizer_state_dict': self.optimiser.state_dict(),
-                            'loss_state_dict': self.loss_function.state_dict(), 'num_local_iterations': self.n_local_iterations,
-                            'model_info': self.model_info, 'best_loss': self.best_loss},
-                           os.path.join(self.params['target_dir'], self.params['network_output_path'], self.params['checkpoint_name']))
-
-            else:
-                torch.save({'step': self.step,
-                            'model_state_dict': self.model.state_dict(),
-                            'optimizer_state_dict': self.optimiser.state_dict(),
-                            'loss_state_dict': self.loss_function.state_dict(), 'num_local_iterations': self.n_local_iterations,
-                            'model_info': self.model_info, 'best_loss': self.best_loss},
-                           os.path.join(self.params['target_dir'], self.params['network_output_path'], self.params['checkpoint_name']))
+            torch.save({'step': self.step,
+                        'model_state_dict': self.model.state_dict(),
+                        'optimizer_state_dict': self.optimiser.state_dict(),
+                        'loss_state_dict': self.loss_function.state_dict(), 'num_local_iterations': self.n_local_iterations,
+                        'model_info': self.model_info, 'best_loss': self.best_loss},
+                       os.path.join(self.params['target_dir'], self.params['network_output_path'], self.params['checkpoint_name']))
 
         print('------------------------------------------------------'
               '----------------------------------')

@@ -1,6 +1,6 @@
 Network:
   batch_size: 15
-  lr: 5e-5
+  lr: 2e-5
   weight_decay: 0
   amsgrad: False
 network_output_path: network_data/
