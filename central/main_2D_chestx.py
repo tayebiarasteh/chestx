@@ -30,7 +30,7 @@ train_std = [0.16043035, 0.16043035, 0.16043035]
 
 def main_train_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/central/config/config.yaml", valid=False,
                   resume=False, augment=False, experiment_name='name', chosen_labels=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13],
-                  subsets=['p10', 'p11', 'p12', 'p13', 'p14', 'p15', 'p16', 'p17', 'p18', 'p19']):
+                  subsets=["p10", "p11", "p12", "p13", ",p14", "p15", "p16", "p17", "p18", "p19"]):
     """Main function for multi label training + validation for directly 2d-wise
 
         Parameters
@@ -256,5 +256,5 @@ if __name__ == '__main__':
                   chosen_labels=[1, 2])
     # main_train_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/central/config/config.yaml",
     #               valid=True, resume=False, augment=False, experiment_name='xception_p10-11_weight_3_labels_2e5',
-    #               chosen_labels=[0, 1, 7], subsets=['p10', 'p11'])
+    #               chosen_labels=[0, 1, 7], subsets=["p10", "p11"])
     # main_test_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/central/config/config.yaml", experiment_name='first_try')

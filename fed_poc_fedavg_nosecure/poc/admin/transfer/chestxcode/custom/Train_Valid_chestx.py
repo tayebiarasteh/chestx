@@ -43,7 +43,8 @@ epsilon = 1e-15
 
 class Training(Learner):
     def __init__(self, cfg_path, n_local_iterations=5, exclude_vars=None, analytic_sender_id="analytic_sender",
-                 valid=False):
+                 valid=False, chosen_labels=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13],
+                 subsets=["p10", "p11", "p12", "p13", ",p14", "p15", "p16", "p17", "p18", "p19"]):
         """This class represents training and validation processes.
 
         Parameters
@@ -63,6 +64,9 @@ class Training(Learner):
         self.exclude_vars = exclude_vars
         self.batch_size = self.params['Network']['batch_size']
         self.valid = valid
+        self.chosen_labels = chosen_labels
+        self.label_names = self.params['label_names']
+        self.subsets = subsets
 
         self.model_info = self.params['Network']
         self.n_local_iterations = n_local_iterations
@@ -74,24 +78,29 @@ class Training(Learner):
     def initialize(self, parts: dict, fl_ctx: FLContext):
         self.params = self.create_run_experiment(fl_ctx, self.cfg_path)
         self.cfg_path = self.params["cfg_path"]
+        model_info = self.params['Network']
+        model_info['subsets'] = self.subsets
+        self.params['Network'] = model_info
+        write_config(self.params, self.cfg_path, sort_keys=True)
 
         # Changeable network parameters
-        self.model = Xception()
+        self.model = Xception(num_classes=len(self.chosen_labels))
 
         loss_function = BCEWithLogitsLoss
         optimizer = torch.optim.Adam(self.model.parameters(), lr=float(self.params['Network']['lr']),
                                      weight_decay=float(self.params['Network']['weight_decay']),
                                      amsgrad=self.params['Network']['amsgrad'])
 
-        self.train_dataset = data_loader(cfg_path=self.params["cfg_path"], mode='train')
+        train_dataset = data_loader(cfg_path=self.params["cfg_path"], mode='train',
+                                    chosen_labels=self.chosen_labels, subsets=self.subsets)
 
         # we need a small subset in federated learning
-        train_size = int(0.0005 * len(self.train_dataset))
-        test_size = len(self.train_dataset) - train_size
-        train_dataset, test_dataset = torch.utils.data.random_split(self.train_dataset, [train_size, test_size])
+        train_size = int(0.0005 * len(train_dataset))
+        test_size = len(train_dataset) - train_size
+        train_dataset, test_dataset = torch.utils.data.random_split(train_dataset, [train_size, test_size])
 
         # class weights corresponding to the dataset
-        pos_weight = self.train_dataset.pos_weight()
+        pos_weight = train_dataset.pos_weight(chosen_labels=self.chosen_labels)
 
         self.train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=self.batch_size,
                                                    pin_memory=True, drop_last=True, shuffle=True, num_workers=10)
@@ -99,7 +108,8 @@ class Training(Learner):
         self.n_local_iterations = len(self.train_loader)
 
         if self.valid:
-            valid_dataset = data_loader(cfg_path=self.params["cfg_path"], mode='valid')
+            valid_dataset = data_loader(cfg_path=self.params["cfg_path"], mode='valid',
+                                        chosen_labels=self.chosen_labels, subsets=self.subsets)
 
             # we need a small subset in federated learning
             valid_size = int(0.005 * len(valid_dataset))
@@ -209,6 +219,7 @@ class Training(Learner):
         self.model_info['total_param_num'] = total_param_num
         self.model_info['loss_function'] = loss_function.__name__
         self.model_info['num_local_iterations'] = self.n_local_iterations
+        self.model_info['chosen_labels'] = self.chosen_labels
         self.params['Network'] = self.model_info
         write_config(self.params, self.params["cfg_path"], sort_keys=True)
 
@@ -319,14 +330,14 @@ class Training(Learner):
 
                 # saving the model, checkpoint, TensorBoard, etc.
                 if self.valid:
-                    valid_acc, valid_sensitivity, valid_specifity, valid_loss, valid_F1 = self.valid_epoch(self.valid_loader, abort_signal)
+                    valid_acc, valid_sensitivity, valid_specifity, valid_loss, valid_F1, valid_F1_list = self.valid_epoch(self.valid_loader, abort_signal)
                     end_time = time.time()
                     total_hours, total_mins, total_secs = self.time_duration(total_start_time, end_time)
 
                     self.calculate_tb_stats(valid_acc, valid_sensitivity, valid_specifity, valid_loss, valid_F1)
                     self.savings_prints(iteration_hours, iteration_mins, iteration_secs, total_hours,
                                         total_mins, total_secs, train_loss,
-                                        valid_acc, valid_sensitivity, valid_specifity, valid_loss, valid_F1)
+                                        valid_acc, valid_sensitivity, valid_specifity, valid_loss, valid_F1, valid_F1_list)
                 else:
                     self.savings_prints(iteration_hours, iteration_mins, iteration_secs, total_hours,
                                         total_mins, total_secs, train_loss)
@@ -406,13 +417,13 @@ class Training(Learner):
         loss = self.loss_function(logits_no_sigmoid_cache.to(self.device), labels_cache.to(self.device))
         epoch_loss = loss.item()
 
-        return epoch_accuracy, epoch_sensitivity, epoch_specifity, epoch_loss, epoch_f1_score
+        return epoch_accuracy, epoch_sensitivity, epoch_specifity, epoch_loss, epoch_f1_score, torch.stack(F1_disease)
 
 
 
     def savings_prints(self, iteration_hours, iteration_mins, iteration_secs,
                        total_hours, total_mins, total_secs, train_loss,
-                       valid_acc=None, valid_sensitivity=None, valid_specifity=None, valid_loss=None, valid_F1=None):
+                       valid_acc=None, valid_sensitivity=None, valid_specifity=None, valid_loss=None, valid_F1=None, valid_F1_list=None):
         """Saving the model weights, checkpoint, information,
         and training and validation loss and evaluation statistics.
 
@@ -501,6 +512,10 @@ class Training(Learner):
         if valid_loss:
             print(f'\t Val. loss: {valid_loss:.4f} | Acc: {valid_acc * 100:.2f}% | F1: {valid_F1 * 100:.2f}%'
                   f' | Sensitivity: {valid_sensitivity * 100:.2f}% | Specifity: {valid_specifity * 100:.2f}%')
+
+            print('\nIndividual F1 scores:')
+            for idx, pathology in enumerate(self.chosen_labels):
+                print(f'\t{self.label_names[pathology]}: {valid_F1_list[idx].item() * 100:.2f}%')
 
             # saving the training and validation stats
             msg = f'----------------------------------------------------------------------------------------\n' \

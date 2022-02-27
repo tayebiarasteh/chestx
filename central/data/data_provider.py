@@ -32,7 +32,7 @@ class data_loader(Dataset):
     This is the pipeline based on Pytorch's Dataset and Dataloader
     """
     def __init__(self, cfg_path, mode='train', chosen_labels=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13],
-                 subsets=['p10', 'p11', 'p12', 'p13', 'p14', 'p15', 'p16', 'p17', 'p18', 'p19']):
+                 subsets=["p10", "p11", "p12", "p13", ",p14", "p15", "p16", "p17", "p18", "p19"]):
         """
         Parameters
         ----------
