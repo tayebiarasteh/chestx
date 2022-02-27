@@ -15,6 +15,7 @@ import torch
 import torch.nn.functional as F
 from tqdm import tqdm
 import torchmetrics
+from torchvision import models
 
 from config.serde import read_config, write_config
 
@@ -312,6 +313,7 @@ class Training:
         # Metrics calculation (macro) over the whole set
         confusioner = torchmetrics.ConfusionMatrix(num_classes=len(self.chosen_labels), multilabel=True).to(self.device)
         confusion = confusioner(logits_with_sigmoid_cache.to(self.device), labels_cache.int().to(self.device))
+
         for idx, disease in enumerate(confusion):
             TN = disease[0, 0]
             FP = disease[0, 1]
@@ -331,7 +333,7 @@ class Training:
         loss = self.loss_function(logits_no_sigmoid_cache.to(self.device), labels_cache.to(self.device))
         epoch_loss = loss.item()
 
-        return epoch_accuracy, epoch_sensitivity, epoch_specifity, epoch_loss, epoch_f1_score, F1_disease
+        return epoch_accuracy, epoch_sensitivity, epoch_specifity, epoch_loss, epoch_f1_score, torch.stack(F1_disease)
 
 
 
@@ -421,7 +423,7 @@ class Training:
 
             print('\nIndividual F1 scores:')
             for idx, pathology in enumerate(self.chosen_labels):
-                print(f'\t{self.label_names[pathology]}: {valid_F1_list[idx] * 100:.2f}%')
+                print(f'\t{self.label_names[pathology]}: {valid_F1_list[idx].item() * 100:.2f}%')
 
             # saving the training and validation stats
             msg = f'----------------------------------------------------------------------------------------\n' \
@@ -461,3 +463,20 @@ class Training:
             self.writer.add_scalar('Valid_sensitivity', valid_sensitivity, self.step)
             self.writer.add_scalar('Valid_specifity', valid_specifity, self.step)
             self.writer.add_scalar('Valid_F1 score', valid_F1, self.step)
+
+
+
+def load_pretrained_model():
+    # Load a pre-trained model from config file
+    # self.model.load_state_dict(torch.load(self.model_info['pretrain_model_path']))
+
+    # Load a pre-trained model from Torchvision
+    model = models.resnet34(pretrained=True)
+    # for param in MODEL.parameters():
+    #     param.requires_grad = False
+    model.fc = torch.nn.Sequential(
+        torch.nn.Linear(512, 2))
+    for param in model.fc.parameters():
+        param.requires_grad = True
+
+    return model
