@@ -160,8 +160,8 @@ class Training:
         loss_function: loss file
             The loss function
         """
-        checkpoint = torch.load(os.path.join(self.params['target_dir'], self.params['network_output_path']),
-                                self.params['checkpoint_name'])
+        checkpoint = torch.load(os.path.join(self.params['target_dir'], self.params['network_output_path'],
+                                self.params['checkpoint_name']))
         self.device = None
         self.model_info = checkpoint['model_info']
         self.setup_cuda()
@@ -397,12 +397,21 @@ class Training:
 
         # Save a checkpoint every step
         if (self.step) % self.params['network_checkpoint_freq'] == 0:
-            torch.save({'epoch': self.epoch, 'step': self.step,
-                        'model_state_dict': self.model.state_dict(),
-                        'optimizer_state_dict': self.optimiser.state_dict(),
-                        'loss_state_dict': self.loss_function.state_dict(), 'num_epochs': self.num_epochs,
-                        'model_info': self.model_info, 'best_loss': self.best_loss},
-                       os.path.join(self.params['target_dir'], self.params['network_output_path'], self.params['checkpoint_name']))
+            if self.loss_weight:
+                torch.save({'epoch': self.epoch, 'step': self.step, 'weight': self.loss_weight,
+                            'model_state_dict': self.model.state_dict(),
+                            'optimizer_state_dict': self.optimiser.state_dict(),
+                            'loss_state_dict': self.loss_function.state_dict(), 'num_epochs': self.num_epochs,
+                            'model_info': self.model_info, 'best_loss': self.best_loss},
+                           os.path.join(self.params['target_dir'], self.params['network_output_path'], self.params['checkpoint_name']))
+
+            else:
+                torch.save({'epoch': self.epoch, 'step': self.step,
+                            'model_state_dict': self.model.state_dict(),
+                            'optimizer_state_dict': self.optimiser.state_dict(),
+                            'loss_state_dict': self.loss_function.state_dict(), 'num_epochs': self.num_epochs,
+                            'model_info': self.model_info, 'best_loss': self.best_loss},
+                           os.path.join(self.params['target_dir'], self.params['network_output_path'], self.params['checkpoint_name']))
 
         print('------------------------------------------------------'
               '----------------------------------')

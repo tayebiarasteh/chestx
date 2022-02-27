@@ -62,11 +62,11 @@ def main_train_2D(global_config_path="/home/soroosh/Documents/Repositories/chest
     pos_weight = train_dataset.pos_weight()
 
     train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=params['Network']['batch_size'],
-                                               pin_memory=False, drop_last=True, shuffle=True, num_workers=4)
+                                               pin_memory=True, drop_last=True, shuffle=True, num_workers=4)
     if valid:
         valid_dataset = data_loader(cfg_path=cfg_path, mode='valid')
         valid_loader = torch.utils.data.DataLoader(dataset=valid_dataset, batch_size=params['Network']['batch_size'],
-                                                   pin_memory=False, drop_last=True, shuffle=False, num_workers=1)
+                                                   pin_memory=True, drop_last=True, shuffle=False, num_workers=1)
     else:
         valid_loader = None
 

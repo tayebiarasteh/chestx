@@ -83,12 +83,6 @@ class Training(Learner):
                                      weight_decay=float(self.params['Network']['weight_decay']),
                                      amsgrad=self.params['Network']['amsgrad'])
 
-        # class weights corresponding to the dataset
-        # weight_path = params['file_path']
-        # weight_path = weight_path.replace('images', 'labels')
-        # weight_path = os.path.join(weight_path, "train")
-        # WEIGHT = torch.Tensor(weight_creator(path=weight_path))
-        WEIGHT = None
         self.train_dataset = data_loader(cfg_path=self.params["cfg_path"], mode='train')
 
         # we need a small subset in federated learning
@@ -96,8 +90,11 @@ class Training(Learner):
         test_size = len(self.train_dataset) - train_size
         train_dataset, test_dataset = torch.utils.data.random_split(self.train_dataset, [train_size, test_size])
 
+        # class weights corresponding to the dataset
+        pos_weight = self.train_dataset.pos_weight()
+
         self.train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=self.batch_size,
-                                                   pin_memory=False, drop_last=True, shuffle=True, num_workers=4)
+                                                   pin_memory=True, drop_last=True, shuffle=True, num_workers=10)
 
         self.n_local_iterations = len(self.train_loader)
 
@@ -109,11 +106,11 @@ class Training(Learner):
             test_size = len(valid_dataset) - valid_size
             valid_dataset, _ = torch.utils.data.random_split(train_dataset, [valid_size, test_size])
 
-            self.valid_loader = torch.utils.data.DataLoader(dataset=valid_dataset, batch_size=self.batch_size, pin_memory=False,
-                                                            drop_last=True, shuffle=False, num_workers=1)
+            self.valid_loader = torch.utils.data.DataLoader(dataset=valid_dataset, batch_size=self.batch_size, pin_memory=True,
+                                                            drop_last=True, shuffle=False, num_workers=2)
         self.setup_cuda()
         self.model = self.model.to(self.device)
-        self.setup_model(optimiser=optimizer, loss_function=loss_function, weight=WEIGHT)
+        self.setup_model(optimiser=optimizer, loss_function=loss_function, weight=pos_weight)
 
         # Setup the persistence manager to save PT model.
         # The default training configuration is used by persistence manager in case no initial model is found.
@@ -201,7 +198,7 @@ class Training(Learner):
 
         if not weight==None:
             self.loss_weight = weight.to(self.device)
-            self.loss_function = loss_function(weight=self.loss_weight)
+            self.loss_function = loss_function(pos_weight=self.loss_weight)
         else:
             self.loss_function = loss_function()
         self.optimiser = optimiser
@@ -478,12 +475,21 @@ class Training(Learner):
 
         # Save a checkpoint every step
         if (self.step) % self.params['network_checkpoint_freq'] == 0:
-            torch.save({'step': self.step,
-                        'model_state_dict': self.model.state_dict(),
-                        'optimizer_state_dict': self.optimiser.state_dict(),
-                        'loss_state_dict': self.loss_function.state_dict(), 'num_local_iterations': self.n_local_iterations,
-                        'best_loss': self.best_loss},
-                       os.path.join(self.params['target_dir'], self.params['network_output_path'], self.params['checkpoint_name']))
+            if self.loss_weight:
+                torch.save({'step': self.step, 'weight': self.loss_weight,
+                            'model_state_dict': self.model.state_dict(),
+                            'optimizer_state_dict': self.optimiser.state_dict(),
+                            'loss_state_dict': self.loss_function.state_dict(), 'num_local_iterations': self.n_local_iterations,
+                            'model_info': self.model_info, 'best_loss': self.best_loss},
+                           os.path.join(self.params['target_dir'], self.params['network_output_path'], self.params['checkpoint_name']))
+
+            else:
+                torch.save({'step': self.step,
+                            'model_state_dict': self.model.state_dict(),
+                            'optimizer_state_dict': self.optimiser.state_dict(),
+                            'loss_state_dict': self.loss_function.state_dict(), 'num_local_iterations': self.n_local_iterations,
+                            'model_info': self.model_info, 'best_loss': self.best_loss},
+                           os.path.join(self.params['target_dir'], self.params['network_output_path'], self.params['checkpoint_name']))
 
         print('------------------------------------------------------'
               '----------------------------------')

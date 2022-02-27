@@ -113,10 +113,10 @@ class data_loader(Dataset):
 
 
     def pos_weight(self):
-        '''
+        """
         Calculates a weight for positive examples for each class and returns it as a tensor
         Only using the training set.
-        '''
+        """
         full_length = len(self.chosen_df)
 
         atelectasis_length = sum(self.chosen_df['atelectasis'].values == 1)
