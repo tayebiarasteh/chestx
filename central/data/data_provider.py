@@ -31,7 +31,8 @@ class data_loader(Dataset):
     """
     This is the pipeline based on Pytorch's Dataset and Dataloader
     """
-    def __init__(self, cfg_path, mode='train'):
+    def __init__(self, cfg_path, mode='train', chosen_labels=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13],
+                 subsets=['p10', 'p11', 'p12', 'p13', 'p14', 'p15', 'p16', 'p17', 'p18', 'p19']):
         """
         Parameters
         ----------
@@ -47,6 +48,7 @@ class data_loader(Dataset):
         self.cfg_path = cfg_path
         self.params = read_config(cfg_path)
         self.file_base_dir = self.params['file_path']
+        self.chosen_labels = chosen_labels
         org_df = pd.read_csv(os.path.join(self.file_base_dir, "mimic_master_list.csv"), sep=',')
 
         if mode=='train':
@@ -57,10 +59,9 @@ class data_loader(Dataset):
             self.subset_df = org_df[org_df['split'] == 'test']
 
         # choosing a subset due to having large data
-        self.chosen_df1 = self.subset_df[self.subset_df['subset'] == 'p10']
-        self.chosen_df2 = self.subset_df[self.subset_df['subset'] == 'p11']
-
-        self.chosen_df = self.chosen_df1.append(self.chosen_df2)
+        self.chosen_df = pd.DataFrame(columns=self.subset_df.columns)
+        for subset in subsets:
+            self.chosen_df = self.chosen_df.append(self.subset_df[self.subset_df['subset'] == subset])
 
         # self.chosen_df = self.chosen_df[self.chosen_df['subject_id'] == 10000032]
         self.file_path_list = list(self.chosen_df['jpg_rel_path'])
@@ -105,6 +106,9 @@ class data_loader(Dataset):
         # converting the problem to binary multi-label class, by setting everything else than positive, to negative (0)
         label[label != 1] = 0 # (h,)
 
+        # choosing the required labels to train with for multi label
+        label = np.take(label, self.chosen_labels)
+
         img = img.transpose(2, 0, 1)  # (c=3, h, w)
         img = torch.from_numpy(img)  # (c=3, h, w))
         label = torch.from_numpy(label)  # (h,)
@@ -112,7 +116,7 @@ class data_loader(Dataset):
         return img, label
 
 
-    def pos_weight(self):
+    def pos_weight(self, chosen_labels=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]):
         """
         Calculates a weight for positive examples for each class and returns it as a tensor
         Only using the training set.
@@ -176,5 +180,7 @@ class data_loader(Dataset):
         output_tensor[11] = w_pneumonia
         output_tensor[12] = w_pneumothorax
         output_tensor[13] = w_support_devices
+
+        output_tensor = np.take(output_tensor, chosen_labels)
 
         return output_tensor

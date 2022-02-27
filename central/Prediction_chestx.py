@@ -20,12 +20,13 @@ epsilon = 1e-15
 
 
 class Prediction:
-    def __init__(self, cfg_path):
+    def __init__(self, cfg_path, chosen_labels):
         """
         This class represents prediction (testing) process similar to the Training class.
         """
         self.params = read_config(cfg_path)
         self.cfg_path = cfg_path
+        self.chosen_labels = chosen_labels
         self.setup_cuda()
 
 
@@ -77,11 +78,12 @@ class Prediction:
         accuracy_disease = []
         sensitivity_disease = []
         specifity_disease = []
+        F1_disease = []
 
         with torch.no_grad():
 
             # initializing the caches
-            logits_with_sigmoid_cache = torch.from_numpy(np.zeros((len(test_loader) * batch_size, 14)))
+            logits_with_sigmoid_cache = torch.from_numpy(np.zeros((len(test_loader) * batch_size, len(self.chosen_labels))))
             logits_no_sigmoid_cache = torch.from_numpy(np.zeros_like(logits_with_sigmoid_cache))
             labels_cache = torch.from_numpy(np.zeros_like(logits_with_sigmoid_cache))
 
@@ -104,7 +106,7 @@ class Prediction:
                     labels_cache[idx * batch_size + i] = batch
 
         # Metrics calculation (macro) over the whole set
-        confusioner = torchmetrics.ConfusionMatrix(num_classes=14, multilabel=True).to(self.device)
+        confusioner = torchmetrics.ConfusionMatrix(num_classes=len(self.chosen_labels), multilabel=True).to(self.device)
         confusion = confusioner(logits_with_sigmoid_cache.to(self.device), labels_cache.int().to(self.device))
 
         for idx, disease in enumerate(confusion):
@@ -115,5 +117,7 @@ class Prediction:
             accuracy_disease.append((TP + TN) / (TP + TN + FP + FN + epsilon))
             sensitivity_disease.append(TP / (TP + FN + epsilon))
             specifity_disease.append(TN / (TN + FP + epsilon))
+            F1_disease.append(2 * TP / (2 * TP + FN + FP + epsilon))
 
-        return torch.stack(accuracy_disease).cpu().numpy(), torch.stack(sensitivity_disease).cpu().numpy(), torch.stack(specifity_disease).cpu().numpy()
+        return torch.stack(accuracy_disease).cpu().numpy(), torch.stack(sensitivity_disease).cpu().numpy(), \
+               torch.stack(specifity_disease).cpu().numpy(), torch.stack(F1_disease).cpu().numpy()

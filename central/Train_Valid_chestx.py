@@ -25,7 +25,7 @@ epsilon = 1e-15
 
 
 class Training:
-    def __init__(self, cfg_path, num_epochs=10, resume=False):
+    def __init__(self, cfg_path, num_epochs=10, resume=False, chosen_labels=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]):
         """This class represents training and validation processes.
 
         Parameters
@@ -42,6 +42,8 @@ class Training:
         self.params = read_config(cfg_path)
         self.cfg_path = cfg_path
         self.num_epochs = num_epochs
+        self.chosen_labels = chosen_labels
+        self.label_names = self.params['label_names']
 
         if resume == False:
             self.model_info = self.params['Network']
@@ -139,6 +141,7 @@ class Training:
         self.model_info['total_param_num'] = total_param_num
         self.model_info['loss_function'] = loss_function.__name__
         self.model_info['num_epochs'] = self.num_epochs
+        self.model_info['chosen_labels'] = self.chosen_labels
         self.params['Network'] = self.model_info
         write_config(self.params, self.cfg_path, sort_keys=True)
 
@@ -166,10 +169,11 @@ class Training:
         self.model_info = checkpoint['model_info']
         self.setup_cuda()
         self.model = model.to(self.device)
-        self.loss_weight = checkpoint['loss_state_dict']['weight']
+        self.loss_weight = checkpoint['loss_state_dict']['pos_weight']
         self.loss_weight = self.loss_weight.to(self.device)
         self.loss_function = loss_function(weight=self.loss_weight)
         self.optimiser = optimiser
+        self.chosen_labels = checkpoint['chosen_labels']
 
         self.model.load_state_dict(checkpoint['model_state_dict'])
         self.optimiser.load_state_dict(checkpoint['optimizer_state_dict'])
@@ -242,14 +246,14 @@ class Training:
 
                     # saving the model, checkpoint, TensorBoard, etc.
                     if not valid_loader == None:
-                        valid_acc, valid_sensitivity, valid_specifity, valid_loss, valid_F1 = self.valid_epoch(valid_loader, batch_size)
+                        valid_acc, valid_sensitivity, valid_specifity, valid_loss, valid_F1, valid_F1_list = self.valid_epoch(valid_loader, batch_size)
                         end_time = time.time()
                         total_hours, total_mins, total_secs = self.time_duration(total_start_time, end_time)
 
                         self.calculate_tb_stats(valid_acc, valid_sensitivity, valid_specifity, valid_loss, valid_F1)
                         self.savings_prints(iteration_hours, iteration_mins, iteration_secs, total_hours,
                                             total_mins, total_secs, train_loss,
-                                            valid_acc, valid_sensitivity, valid_specifity, valid_loss, valid_F1)
+                                            valid_acc, valid_sensitivity, valid_specifity, valid_loss, valid_F1, valid_F1_list)
                     else:
                         self.savings_prints(iteration_hours, iteration_mins, iteration_secs, total_hours,
                                             total_mins, total_secs, train_loss)
@@ -281,7 +285,7 @@ class Training:
         with torch.no_grad():
 
             # initializing the caches
-            logits_with_sigmoid_cache = torch.from_numpy(np.zeros((len(valid_loader) * batch_size, 14)))
+            logits_with_sigmoid_cache = torch.from_numpy(np.zeros((len(valid_loader) * batch_size, len(self.chosen_labels))))
             logits_no_sigmoid_cache = torch.from_numpy(np.zeros_like(logits_with_sigmoid_cache))
             labels_cache = torch.from_numpy(np.zeros_like(logits_with_sigmoid_cache))
 
@@ -306,7 +310,7 @@ class Training:
                     labels_cache[idx * batch_size + i] = batch
 
         # Metrics calculation (macro) over the whole set
-        confusioner = torchmetrics.ConfusionMatrix(num_classes=14, multilabel=True).to(self.device)
+        confusioner = torchmetrics.ConfusionMatrix(num_classes=len(self.chosen_labels), multilabel=True).to(self.device)
         confusion = confusioner(logits_with_sigmoid_cache.to(self.device), labels_cache.int().to(self.device))
         for idx, disease in enumerate(confusion):
             TN = disease[0, 0]
@@ -327,13 +331,13 @@ class Training:
         loss = self.loss_function(logits_no_sigmoid_cache.to(self.device), labels_cache.to(self.device))
         epoch_loss = loss.item()
 
-        return epoch_accuracy, epoch_sensitivity, epoch_specifity, epoch_loss, epoch_f1_score
+        return epoch_accuracy, epoch_sensitivity, epoch_specifity, epoch_loss, epoch_f1_score, F1_disease
 
 
 
-    def savings_prints(self, iteration_hours, iteration_mins, iteration_secs,
-                       total_hours, total_mins, total_secs, train_loss,
-                       valid_acc=None, valid_sensitivity=None, valid_specifity=None, valid_loss=None, valid_F1=None):
+    def savings_prints(self, iteration_hours, iteration_mins, iteration_secs, total_hours,
+                       total_mins, total_secs, train_loss, valid_acc=None, valid_sensitivity=None,
+                       valid_specifity=None, valid_loss=None, valid_F1=None, valid_F1_list=None):
         """Saving the model weights, checkpoint, information,
         and training and validation loss and evaluation statistics.
 
@@ -397,21 +401,12 @@ class Training:
 
         # Save a checkpoint every step
         if (self.step) % self.params['network_checkpoint_freq'] == 0:
-            if self.loss_weight:
-                torch.save({'epoch': self.epoch, 'step': self.step, 'weight': self.loss_weight,
-                            'model_state_dict': self.model.state_dict(),
-                            'optimizer_state_dict': self.optimiser.state_dict(),
-                            'loss_state_dict': self.loss_function.state_dict(), 'num_epochs': self.num_epochs,
-                            'model_info': self.model_info, 'best_loss': self.best_loss},
-                           os.path.join(self.params['target_dir'], self.params['network_output_path'], self.params['checkpoint_name']))
-
-            else:
-                torch.save({'epoch': self.epoch, 'step': self.step,
-                            'model_state_dict': self.model.state_dict(),
-                            'optimizer_state_dict': self.optimiser.state_dict(),
-                            'loss_state_dict': self.loss_function.state_dict(), 'num_epochs': self.num_epochs,
-                            'model_info': self.model_info, 'best_loss': self.best_loss},
-                           os.path.join(self.params['target_dir'], self.params['network_output_path'], self.params['checkpoint_name']))
+            torch.save({'epoch': self.epoch, 'step': self.step,
+                        'model_state_dict': self.model.state_dict(), 'chosen_labels': self.chosen_labels,
+                        'optimizer_state_dict': self.optimiser.state_dict(),
+                        'loss_state_dict': self.loss_function.state_dict(), 'num_epochs': self.num_epochs,
+                        'model_info': self.model_info, 'best_loss': self.best_loss},
+                       os.path.join(self.params['target_dir'], self.params['network_output_path'], self.params['checkpoint_name']))
 
         print('------------------------------------------------------'
               '----------------------------------')
@@ -423,6 +418,10 @@ class Training:
         if valid_loss:
             print(f'\t Val. loss: {valid_loss:.4f} | Acc: {valid_acc * 100:.2f}% | F1: {valid_F1 * 100:.2f}%'
                   f' | Sensitivity: {valid_sensitivity * 100:.2f}% | Specifity: {valid_specifity * 100:.2f}%')
+
+            print('\nIndividual F1 scores:')
+            for idx, pathology in enumerate(self.chosen_labels):
+                print(f'\t{self.label_names[pathology]}: {valid_F1_list[idx] * 100:.2f}%')
 
             # saving the training and validation stats
             msg = f'----------------------------------------------------------------------------------------\n' \
