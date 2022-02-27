@@ -82,10 +82,10 @@ class Training(Learner):
     def initialize(self, parts: dict, fl_ctx: FLContext):
         self.params = self.create_run_experiment(fl_ctx, self.cfg_path)
         self.cfg_path = self.params["cfg_path"]
-        model_info = self.params['Network']
-        model_info['subsets'] = self.subsets
-        self.params['Network'] = model_info
-        write_config(self.params, self.cfg_path, sort_keys=True)
+        # model_info = self.params['Network']
+        # model_info['subsets'] = self.subsets
+        # self.params['Network'] = model_info
+        # write_config(self.params, self.cfg_path, sort_keys=True)
 
         # Changeable network parameters
         self.model = Xception(num_classes=len(self.chosen_labels))
@@ -103,7 +103,7 @@ class Training(Learner):
         pos_weight = train_dataset.pos_weight(chosen_labels=self.chosen_labels)
 
         self.train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=self.params['Network']['batch_size'],
-                                                   pin_memory=True, drop_last=True, shuffle=True, num_workers=40)
+                                                   pin_memory=True, drop_last=True, shuffle=True, num_workers=10)
 
         if self.valid:
             trans = transforms.Compose([transforms.ToPILImage(), transforms.ToTensor(),
@@ -112,7 +112,7 @@ class Training(Learner):
                                              chosen_labels=self.chosen_labels, training=False)
             self.valid_loader = torch.utils.data.DataLoader(dataset=valid_dataset,
                                                        batch_size=self.params['Network']['batch_size'],
-                                                       pin_memory=True, drop_last=True, shuffle=False, num_workers=5)
+                                                       pin_memory=True, drop_last=True, shuffle=False, num_workers=2)
         else:
             self.valid_loader = None
         ##########################################################################################
@@ -295,6 +295,7 @@ class Training(Learner):
     def train_epoch(self, fl_ctx, weights, abort_signal):
         """Training epoch
         """
+        print("\n\n\n\nheyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy\n\n\n\n", self.model)
 
         # Set the model weights
         self.model.load_state_dict(state_dict=weights)
@@ -393,7 +394,7 @@ class Training(Learner):
         with torch.no_grad():
 
             # initializing the caches
-            logits_with_sigmoid_cache = torch.from_numpy(np.zeros((len(self.valid_loader) * self.batch_size, 14)))
+            logits_with_sigmoid_cache = torch.from_numpy(np.zeros((len(self.valid_loader) * self.batch_size, len(self.chosen_labels))))
             logits_no_sigmoid_cache = torch.from_numpy(np.zeros_like(logits_with_sigmoid_cache))
             labels_cache = torch.from_numpy(np.zeros_like(logits_with_sigmoid_cache))
 
@@ -420,7 +421,7 @@ class Training(Learner):
                     labels_cache[idx * self.batch_size + i] = batch
 
         # Metrics calculation (macro) over the whole set
-        confusioner = torchmetrics.ConfusionMatrix(num_classes=14, multilabel=True).to(self.device)
+        confusioner = torchmetrics.ConfusionMatrix(num_classes=len(self.chosen_labels), multilabel=True).to(self.device)
         confusion = confusioner(logits_with_sigmoid_cache.to(self.device), labels_cache.int().to(self.device))
 
         for idx, disease in enumerate(confusion):

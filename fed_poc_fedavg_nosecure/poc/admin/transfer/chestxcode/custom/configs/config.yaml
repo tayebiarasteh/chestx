@@ -1,5 +1,5 @@
 Network:
-  batch_size: 10
+  batch_size: 5
   lr: 2e-5
   weight_decay: 0
   amsgrad: False
@@ -18,7 +18,7 @@ label_names: ['poly_wafer', 'crack', 'inactive']
 #file_path: /home/soroosh/Documents/datasets/MIMIC/
 file_path: /home/soroosh/Documents/datasets/solar_cells/
 network_save_freq: 500 # based on the batch size, shows the number of batches done
-display_stats_freq: 50 # valid freq is also the same as this
-display_train_loss_freq: 50
+display_stats_freq: 100 # valid freq is also the same as this
+display_train_loss_freq: 100
 network_checkpoint_freq: 1
 num_epochs: 1000
