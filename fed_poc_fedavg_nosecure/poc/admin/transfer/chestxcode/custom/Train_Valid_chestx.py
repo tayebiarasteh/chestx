@@ -18,7 +18,7 @@ import torchmetrics
 import torchio as tio
 from torch.utils.data import Dataset
 from torch.nn import BCEWithLogitsLoss
-from torchvision import transforms
+from torchvision import transforms, models
 
 from nvflare.apis.dxo import from_shareable, DXO, DataKind, MetaKey
 from nvflare.apis.fl_constant import FLContextKey, ReturnCode, ReservedKey
@@ -40,8 +40,6 @@ from data.data_handler_pv_defect import ChallengeDataset
 import warnings
 warnings.filterwarnings('ignore')
 epsilon = 1e-15
-train_mean = [0.59685254, 0.59685254, 0.59685254]
-train_std = [0.16043035, 0.16043035, 0.16043035]
 
 
 
@@ -82,13 +80,16 @@ class Training(Learner):
     def initialize(self, parts: dict, fl_ctx: FLContext):
         self.params = self.create_run_experiment(fl_ctx, self.cfg_path)
         self.cfg_path = self.params["cfg_path"]
-        # model_info = self.params['Network']
-        # model_info['subsets'] = self.subsets
-        # self.params['Network'] = model_info
-        # write_config(self.params, self.cfg_path, sort_keys=True)
+        model_info = self.params['Network']
+        model_info['subsets'] = self.subsets
+        self.params['Network'] = model_info
+        write_config(self.params, self.params["cfg_path"], sort_keys=True)
 
         # Changeable network parameters
         self.model = Xception(num_classes=len(self.chosen_labels))
+        # self.model = self.load_pretrained_model(num_classes=len(self.chosen_labels))
+
+
 
         loss_function = BCEWithLogitsLoss
         optimizer = torch.optim.Adam(self.model.parameters(), lr=float(self.params['Network']['lr']),
@@ -96,51 +97,46 @@ class Training(Learner):
                                      amsgrad=self.params['Network']['amsgrad'])
 
         #####################################################################################################################
-        trans = transforms.Compose([transforms.ToPILImage(), transforms.ToTensor(),
-                                    transforms.Normalize(train_mean, train_std)])
-        train_dataset = ChallengeDataset(cfg_path=self.cfg_path, transform=trans, chosen_labels=self.chosen_labels, training=True)
-        # class weights corresponding to the dataset
-        pos_weight = train_dataset.pos_weight(chosen_labels=self.chosen_labels)
+        # train_mean = params['train_mean_p10']
+        # train_std = params['train_std_p10']
 
-        self.train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=self.params['Network']['batch_size'],
-                                                   pin_memory=True, drop_last=True, shuffle=True, num_workers=10)
-
-        if self.valid:
-            trans = transforms.Compose([transforms.ToPILImage(), transforms.ToTensor(),
-                                        transforms.Normalize(train_mean, train_std)])
-            valid_dataset = ChallengeDataset(cfg_path=self.cfg_path, transform=trans,
-                                             chosen_labels=self.chosen_labels, training=False)
-            self.valid_loader = torch.utils.data.DataLoader(dataset=valid_dataset,
-                                                       batch_size=self.params['Network']['batch_size'],
-                                                       pin_memory=True, drop_last=True, shuffle=False, num_workers=2)
-        else:
-            self.valid_loader = None
-        ##########################################################################################
-        # train_dataset = data_loader(cfg_path=self.params["cfg_path"], mode='train',
-        #                             chosen_labels=self.chosen_labels, subsets=self.subsets)
-        #
-        # # we need a small subset in federated learning
-        # train_size = int(0.0005 * len(train_dataset))
-        # test_size = len(train_dataset) - train_size
-        # train_dataset, test_dataset = torch.utils.data.random_split(train_dataset, [train_size, test_size])
-        #
+        # trans = transforms.Compose([transforms.ToPILImage(), transforms.ToTensor(),
+        #                             transforms.Normalize(train_mean, train_std)])
+        # train_dataset = ChallengeDataset(cfg_path=self.cfg_path, transform=trans, chosen_labels=self.chosen_labels, training=True)
         # # class weights corresponding to the dataset
         # pos_weight = train_dataset.pos_weight(chosen_labels=self.chosen_labels)
         #
-        # self.train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=self.batch_size,
-        #                                            pin_memory=True, drop_last=True, shuffle=True, num_workers=10)
+        # self.train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=self.params['Network']['batch_size'],
+        #                                            pin_memory=True, drop_last=True, shuffle=True, num_workers=1)
         #
         # if self.valid:
-        #     valid_dataset = data_loader(cfg_path=self.params["cfg_path"], mode='valid',
-        #                                 chosen_labels=self.chosen_labels, subsets=self.subsets)
-        #
-        #     # we need a small subset in federated learning
-        #     valid_size = int(0.005 * len(valid_dataset))
-        #     test_size = len(valid_dataset) - valid_size
-        #     valid_dataset, _ = torch.utils.data.random_split(train_dataset, [valid_size, test_size])
-        #
-        #     self.valid_loader = torch.utils.data.DataLoader(dataset=valid_dataset, batch_size=self.batch_size, pin_memory=True,
-        #                                                     drop_last=True, shuffle=False, num_workers=2)
+        #     trans = transforms.Compose([transforms.ToPILImage(), transforms.ToTensor(),
+        #                                 transforms.Normalize(train_mean, train_std)])
+        #     valid_dataset = ChallengeDataset(cfg_path=self.cfg_path, transform=trans,
+        #                                      chosen_labels=self.chosen_labels, training=False)
+        #     self.valid_loader = torch.utils.data.DataLoader(dataset=valid_dataset,
+        #                                                batch_size=self.params['Network']['batch_size'],
+        #                                                pin_memory=True, drop_last=True, shuffle=False, num_workers=1)
+        # else:
+        #     self.valid_loader = None
+        ##########################################################################################
+        trans = transforms.Compose([transforms.ToPILImage(), transforms.ToTensor()])
+        train_dataset = data_loader(cfg_path=self.params["cfg_path"], mode='train', chosen_labels=self.chosen_labels, subsets=self.subsets,
+                                    transform=trans)
+
+        # class weights corresponding to the dataset
+        pos_weight = train_dataset.pos_weight(chosen_labels=self.chosen_labels)
+
+        self.train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=self.batch_size,
+                                                   pin_memory=True, drop_last=True, shuffle=True, num_workers=3)
+
+        if self.valid:
+            trans = transforms.Compose([transforms.ToPILImage(), transforms.ToTensor()])
+            valid_dataset = data_loader(cfg_path=self.params["cfg_path"], mode='valid',
+                                        chosen_labels=self.chosen_labels, subsets=self.subsets, transform=trans)
+
+            self.valid_loader = torch.utils.data.DataLoader(dataset=valid_dataset, batch_size=self.batch_size, pin_memory=True,
+                                                            drop_last=True, shuffle=False, num_workers=1)
         ##################################################################################
 
         self.setup_cuda()
@@ -287,7 +283,9 @@ class Training(Learner):
         new_weights = {k: v.cpu().numpy() for k, v in new_weights.items()}
 
         outgoing_dxo = DXO(data_kind=DataKind.WEIGHTS, data=new_weights,
-                            meta={MetaKey.NUM_STEPS_CURRENT_ROUND: self.n_local_iterations})
+                            meta={MetaKey.NUM_STEPS_CURRENT_ROUND: self.step})
+
+        print('\n\n\n\n\n\n printing dxooooooooooooooooooooooo', outgoing_dxo.meta)
         return outgoing_dxo.to_shareable()
 
 
@@ -295,8 +293,6 @@ class Training(Learner):
     def train_epoch(self, fl_ctx, weights, abort_signal):
         """Training epoch
         """
-        print("\n\n\n\nheyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy\n\n\n\n", self.model)
-
         # Set the model weights
         self.model.load_state_dict(state_dict=weights)
 
@@ -356,14 +352,14 @@ class Training(Learner):
 
                 # saving the model, checkpoint, TensorBoard, etc.
                 if self.valid:
-                    valid_acc, valid_sensitivity, valid_specifity, valid_loss, valid_F1, valid_F1_list = self.valid_epoch(self.valid_loader, abort_signal)
+                    valid_acc, valid_sensitivity, valid_specifity, valid_loss, valid_F1 = self.valid_epoch(self.valid_loader, abort_signal)
                     end_time = time.time()
                     total_hours, total_mins, total_secs = self.time_duration(total_start_time, end_time)
 
                     self.calculate_tb_stats(valid_acc, valid_sensitivity, valid_specifity, valid_loss, valid_F1)
                     self.savings_prints(iteration_hours, iteration_mins, iteration_secs, total_hours,
                                         total_mins, total_secs, train_loss,
-                                        valid_acc, valid_sensitivity, valid_specifity, valid_loss, valid_F1, valid_F1_list)
+                                        valid_acc, valid_sensitivity, valid_specifity, valid_loss, valid_F1)
                 else:
                     self.savings_prints(iteration_hours, iteration_mins, iteration_secs, total_hours,
                                         total_mins, total_secs, train_loss)
@@ -435,21 +431,21 @@ class Training(Learner):
             F1_disease.append(2 * TP / (2 * TP + FN + FP + epsilon))
 
         # Macro averaging
-        epoch_accuracy = torch.stack(accuracy_disease).mean().item()
-        epoch_sensitivity = torch.stack(sensitivity_disease).mean().item()
-        epoch_specifity = torch.stack(specifity_disease).mean().item()
-        epoch_f1_score = torch.stack(F1_disease).mean().item()
+        epoch_accuracy = torch.stack(accuracy_disease)
+        epoch_sensitivity = torch.stack(sensitivity_disease)
+        epoch_specifity = torch.stack(specifity_disease)
+        epoch_f1_score = torch.stack(F1_disease)
 
         loss = self.loss_function(logits_no_sigmoid_cache.to(self.device), labels_cache.to(self.device))
         epoch_loss = loss.item()
 
-        return epoch_accuracy, epoch_sensitivity, epoch_specifity, epoch_loss, epoch_f1_score, torch.stack(F1_disease)
+        return epoch_accuracy, epoch_sensitivity, epoch_specifity, epoch_loss, epoch_f1_score
 
 
 
     def savings_prints(self, iteration_hours, iteration_mins, iteration_secs,
                        total_hours, total_mins, total_secs, train_loss,
-                       valid_acc=None, valid_sensitivity=None, valid_specifity=None, valid_loss=None, valid_F1=None, valid_F1_list=None):
+                       valid_acc=None, valid_sensitivity=None, valid_specifity=None, valid_loss=None, valid_F1=None):
         """Saving the model weights, checkpoint, information,
         and training and validation loss and evaluation statistics.
 
@@ -527,19 +523,31 @@ class Training(Learner):
         print(f'\n\tTrain loss: {train_loss:.4f}')
 
         if valid_loss:
-            print(f'\t Val. loss: {valid_loss:.4f} | Acc: {valid_acc * 100:.2f}% | F1: {valid_F1 * 100:.2f}%'
-                  f' | Sensitivity: {valid_sensitivity * 100:.2f}% | Specifity: {valid_specifity * 100:.2f}%')
+            print(f'\t Val. loss: {valid_loss:.4f} | Acc: {valid_acc.mean().item() * 100:.2f}% | F1: {valid_F1.mean().item() * 100:.2f}%'
+                  f' | Sensitivity: {valid_sensitivity.mean().item() * 100:.2f}% | Specifity: {valid_specifity.mean().item() * 100:.2f}%')
 
             print('\nIndividual F1 scores:')
             for idx, pathology in enumerate(self.chosen_labels):
-                print(f'\t{self.label_names[pathology]}: {valid_F1_list[idx].item() * 100:.2f}%')
+                print(f'\t{self.label_names[pathology]}: {valid_F1[idx].item() * 100:.2f}%')
+
+            print('\nIndividual accuracy scores:')
+            for idx, pathology in enumerate(self.chosen_labels):
+                print(f'\t{self.label_names[pathology]}: {valid_acc[idx].item() * 100:.2f}%')
+
+            print('\nIndividual sensitivity (recall) scores:')
+            for idx, pathology in enumerate(self.chosen_labels):
+                print(f'\t{self.label_names[pathology]}: {valid_sensitivity[idx].item() * 100:.2f}%')
+
+            print('\nIndividual specifity scores:')
+            for idx, pathology in enumerate(self.chosen_labels):
+                print(f'\t{self.label_names[pathology]}: {valid_specifity[idx].item() * 100:.2f}%')
 
             # saving the training and validation stats
             msg = f'----------------------------------------------------------------------------------------\n' \
                    f'Step: {self.step} | Step time: {iteration_hours}h {iteration_mins}m {iteration_secs}s' \
                    f' | Total time: {total_hours}h {total_mins}m {total_secs}s\n\n\tTrain loss: {train_loss:.4f} | ' \
-                   f'Val. loss: {valid_loss:.4f} | Acc: {valid_acc*100:.2f}% | F1: {valid_F1 * 100:.2f}% ' \
-                  f'| Sensitivity: {valid_sensitivity * 100:.2f}% | Specifity: {valid_specifity * 100:.2f}%\n\n'
+                   f'Val. loss: {valid_loss:.4f} | Acc: {valid_acc*100:.2f}% | F1: {valid_F1.mean().item() * 100:.2f}% ' \
+                  f'| Sensitivity: {valid_sensitivity.mean().item() * 100:.2f}% | Specifity: {valid_specifity.mean().item() * 100:.2f}%\n\n'
         else:
             msg = f'----------------------------------------------------------------------------------------\n' \
                    f'Step: {self.step} | Step time: {iteration_hours}h {iteration_mins}m {iteration_secs}s' \
@@ -567,11 +575,13 @@ class Training(Learner):
             validation loss of the model
         """
         if valid_acc is not None:
-            self.writer.add_scalar('Valid_Accuracy', valid_acc, self.step)
+            self.writer.add_scalar('Valid_Accuracy', valid_acc.mean().item(), self.step)
             self.writer.add_scalar('Valid_Loss', valid_loss, self.step)
-            self.writer.add_scalar('Valid_sensitivity', valid_sensitivity, self.step)
-            self.writer.add_scalar('Valid_specifity', valid_specifity, self.step)
-            self.writer.add_scalar('Valid_F1 score', valid_F1, self.step)
+            self.writer.add_scalar('Valid_sensitivity', valid_sensitivity.mean().item(), self.step)
+            self.writer.add_scalar('Valid_specifity', valid_specifity.mean().item(), self.step)
+            self.writer.add_scalar('Valid_F1 score', valid_F1.mean().item(), self.step)
+            self.writer.add_scalar('Valid_Accuracy class 1', valid_acc[0].item(), self.step)
+            self.writer.add_scalar('Valid_Accuracy class 2', valid_acc[1].item(), self.step)
 
 
 
@@ -627,3 +637,19 @@ class Training(Learner):
         # Get the model parameters and create dxo from it
         dxo = model_learnable_to_dxo(ml)
         return dxo.to_shareable()
+
+
+    def load_pretrained_model(self, num_classes=2):
+        # Load a pre-trained model from config file
+        # self.model.load_state_dict(torch.load(self.model_info['pretrain_model_path']))
+
+        # Load a pre-trained model from Torchvision
+        model = models.resnet34(pretrained=False)
+        for param in model.parameters():
+            param.requires_grad = True
+        model.fc = torch.nn.Sequential(
+            torch.nn.Linear(512, num_classes))
+        # for param in model.fc.parameters():
+        #     param.requires_grad = True
+
+        return model

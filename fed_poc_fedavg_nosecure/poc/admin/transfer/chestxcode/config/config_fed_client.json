@@ -5,8 +5,7 @@
     {
       "tasks": [
         "train",
-        "submit_model",
-         "validate"
+        "submit_model"
       ],
       "executor": {
         "id": "Executor",
@@ -28,8 +27,9 @@
       "args": {
         "cfg_path": "/home/soroosh/Documents/Repositories/chestx/fed_poc_fedavg_nosecure/poc/admin/transfer/chestxcode/custom/configs/config.yaml",
         "analytic_sender_id": "analytic_sender",
-        "chosen_labels": [1, 2],
-        "subsets": ["p10", "p11", "p12", "p13", ",p14", "p15", "p16", "p17", "p18", "p19"],
+        "chosen_labels": [0, 1],
+        "subsets": ["p10"],
+        "valid": false,
         "n_local_iterations": 1
       }
     },

@@ -52,7 +52,7 @@
         "name": "ScatterAndGather",
         "args": {
             "min_clients" : 2,
-            "num_rounds" : 1,
+            "num_rounds" : 20,
             "start_round": 0,
             "wait_time_after_min_received": 10,
             "aggregator_id": "aggregator",

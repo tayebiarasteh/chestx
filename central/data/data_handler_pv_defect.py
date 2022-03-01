@@ -19,8 +19,6 @@ from config.serde import read_config
 
 
 
-train_mean = [0.59685254, 0.59685254, 0.59685254]
-train_std = [0.16043035, 0.16043035, 0.16043035]
 epsilon = 1e-15
 
 

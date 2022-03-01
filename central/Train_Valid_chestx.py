@@ -15,7 +15,6 @@ import torch
 import torch.nn.functional as F
 from tqdm import tqdm
 import torchmetrics
-from torchvision import models
 
 from config.serde import read_config, write_config
 
@@ -247,14 +246,14 @@ class Training:
 
                     # saving the model, checkpoint, TensorBoard, etc.
                     if not valid_loader == None:
-                        valid_acc, valid_sensitivity, valid_specifity, valid_loss, valid_F1, valid_F1_list = self.valid_epoch(valid_loader, batch_size)
+                        valid_acc, valid_sensitivity, valid_specifity, valid_loss, valid_F1 = self.valid_epoch(valid_loader, batch_size)
                         end_time = time.time()
                         total_hours, total_mins, total_secs = self.time_duration(total_start_time, end_time)
 
                         self.calculate_tb_stats(valid_acc, valid_sensitivity, valid_specifity, valid_loss, valid_F1)
                         self.savings_prints(iteration_hours, iteration_mins, iteration_secs, total_hours,
                                             total_mins, total_secs, train_loss,
-                                            valid_acc, valid_sensitivity, valid_specifity, valid_loss, valid_F1, valid_F1_list)
+                                            valid_acc, valid_sensitivity, valid_specifity, valid_loss, valid_F1)
                     else:
                         self.savings_prints(iteration_hours, iteration_mins, iteration_secs, total_hours,
                                             total_mins, total_secs, train_loss)
@@ -325,21 +324,21 @@ class Training:
             F1_disease.append(2 * TP / (2 * TP + FN + FP + epsilon))
 
         # Macro averaging
-        epoch_accuracy = torch.stack(accuracy_disease).mean().item()
-        epoch_sensitivity = torch.stack(sensitivity_disease).mean().item()
-        epoch_specifity = torch.stack(specifity_disease).mean().item()
-        epoch_f1_score = torch.stack(F1_disease).mean().item()
+        epoch_accuracy = torch.stack(accuracy_disease)
+        epoch_sensitivity = torch.stack(sensitivity_disease)
+        epoch_specifity = torch.stack(specifity_disease)
+        epoch_f1_score = torch.stack(F1_disease)
 
         loss = self.loss_function(logits_no_sigmoid_cache.to(self.device), labels_cache.to(self.device))
         epoch_loss = loss.item()
 
-        return epoch_accuracy, epoch_sensitivity, epoch_specifity, epoch_loss, epoch_f1_score, torch.stack(F1_disease)
+        return epoch_accuracy, epoch_sensitivity, epoch_specifity, epoch_loss, epoch_f1_score
 
 
 
     def savings_prints(self, iteration_hours, iteration_mins, iteration_secs, total_hours,
                        total_mins, total_secs, train_loss, valid_acc=None, valid_sensitivity=None,
-                       valid_specifity=None, valid_loss=None, valid_F1=None, valid_F1_list=None):
+                       valid_specifity=None, valid_loss=None, valid_F1=None):
         """Saving the model weights, checkpoint, information,
         and training and validation loss and evaluation statistics.
 
@@ -418,19 +417,31 @@ class Training:
         print(f'\n\tTrain loss: {train_loss:.4f}')
 
         if valid_loss:
-            print(f'\t Val. loss: {valid_loss:.4f} | Acc: {valid_acc * 100:.2f}% | F1: {valid_F1 * 100:.2f}%'
-                  f' | Sensitivity: {valid_sensitivity * 100:.2f}% | Specifity: {valid_specifity * 100:.2f}%')
+            print(f'\t Val. loss: {valid_loss:.4f} | Acc: {valid_acc.mean().item() * 100:.2f}% | F1: {valid_F1.mean().item() * 100:.2f}%'
+                  f' | Sensitivity: {valid_sensitivity.mean().item() * 100:.2f}% | Specifity: {valid_specifity.mean().item() * 100:.2f}%')
 
             print('\nIndividual F1 scores:')
             for idx, pathology in enumerate(self.chosen_labels):
-                print(f'\t{self.label_names[pathology]}: {valid_F1_list[idx].item() * 100:.2f}%')
+                print(f'\t{self.label_names[pathology]}: {valid_F1[idx].item() * 100:.2f}%')
+
+            print('\nIndividual accuracy scores:')
+            for idx, pathology in enumerate(self.chosen_labels):
+                print(f'\t{self.label_names[pathology]}: {valid_acc[idx].item() * 100:.2f}%')
+
+            print('\nIndividual sensitivity (recall) scores:')
+            for idx, pathology in enumerate(self.chosen_labels):
+                print(f'\t{self.label_names[pathology]}: {valid_sensitivity[idx].item() * 100:.2f}%')
+
+            print('\nIndividual specifity scores:')
+            for idx, pathology in enumerate(self.chosen_labels):
+                print(f'\t{self.label_names[pathology]}: {valid_specifity[idx].item() * 100:.2f}%')
 
             # saving the training and validation stats
             msg = f'----------------------------------------------------------------------------------------\n' \
                    f'Step: {self.step} (epoch: {self.epoch}) | Step time: {iteration_hours}h {iteration_mins}m {iteration_secs}s' \
                    f' | Total time: {total_hours}h {total_mins}m {total_secs}s\n\n\tTrain loss: {train_loss:.4f} | ' \
-                   f'Val. loss: {valid_loss:.4f} | Acc: {valid_acc*100:.2f}% | F1: {valid_F1 * 100:.2f}% ' \
-                  f'| Sensitivity: {valid_sensitivity * 100:.2f}% | Specifity: {valid_specifity * 100:.2f}%\n\n'
+                   f'Val. loss: {valid_loss:.4f} | Acc: {valid_acc.mean().item() *100:.2f}% | F1: {valid_F1.mean().item() * 100:.2f}% ' \
+                  f'| Sensitivity: {valid_sensitivity.mean().item() * 100:.2f}% | Specifity: {valid_specifity.mean().item() * 100:.2f}%\n\n'
         else:
             msg = f'----------------------------------------------------------------------------------------\n' \
                    f'Step: {self.step} (epoch: {self.epoch}) | Step time: {iteration_hours}h {iteration_mins}m {iteration_secs}s' \
@@ -458,25 +469,10 @@ class Training:
             validation loss of the model
         """
         if valid_acc is not None:
-            self.writer.add_scalar('Valid_Accuracy', valid_acc, self.step)
+            self.writer.add_scalar('Valid_Accuracy', valid_acc.mean().item(), self.step)
             self.writer.add_scalar('Valid_Loss', valid_loss, self.step)
-            self.writer.add_scalar('Valid_sensitivity', valid_sensitivity, self.step)
-            self.writer.add_scalar('Valid_specifity', valid_specifity, self.step)
-            self.writer.add_scalar('Valid_F1 score', valid_F1, self.step)
-
-
-
-def load_pretrained_model():
-    # Load a pre-trained model from config file
-    # self.model.load_state_dict(torch.load(self.model_info['pretrain_model_path']))
-
-    # Load a pre-trained model from Torchvision
-    model = models.resnet34(pretrained=True)
-    # for param in MODEL.parameters():
-    #     param.requires_grad = False
-    model.fc = torch.nn.Sequential(
-        torch.nn.Linear(512, 2))
-    for param in model.fc.parameters():
-        param.requires_grad = True
-
-    return model
+            self.writer.add_scalar('Valid_sensitivity', valid_sensitivity.mean().item(), self.step)
+            self.writer.add_scalar('Valid_specifity', valid_specifity.mean().item(), self.step)
+            self.writer.add_scalar('Valid_F1 score', valid_F1.mean().item(), self.step)
+            self.writer.add_scalar('Valid_Accuracy class 1', valid_acc[0].item(), self.step)
+            self.writer.add_scalar('Valid_Accuracy class 2', valid_acc[1].item(), self.step)

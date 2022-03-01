@@ -11,11 +11,12 @@ import torch
 import pdb
 import pandas as pd
 import numpy as np
-from skimage.io import imread
+from skimage.io import imread, imsave
 from skimage.transform import resize
 from skimage.util import img_as_ubyte
 from torch.utils.data import Dataset
 from skimage.color import gray2rgb
+from torchvision import transforms
 
 from config.serde import read_config
 
@@ -32,7 +33,8 @@ class data_loader(Dataset):
     This is the pipeline based on Pytorch's Dataset and Dataloader
     """
     def __init__(self, cfg_path, mode='train', chosen_labels=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13],
-                 subsets=["p10", "p11", "p12", "p13", ",p14", "p15", "p16", "p17", "p18", "p19"]):
+                 subsets=["p10", "p11", "p12", "p13", ",p14", "p15", "p16", "p17", "p18", "p19"],
+                 transform=transforms.Compose(transforms.ToTensor())):
         """
         Parameters
         ----------
@@ -49,6 +51,7 @@ class data_loader(Dataset):
         self.params = read_config(cfg_path)
         self.file_base_dir = self.params['file_path']
         self.chosen_labels = chosen_labels
+        self.transform = transform
         org_df = pd.read_csv(os.path.join(self.file_base_dir, "mimic_master_list.csv"), sep=',')
 
         if mode=='train':
@@ -65,6 +68,7 @@ class data_loader(Dataset):
 
         # self.chosen_df = self.chosen_df[self.chosen_df['subject_id'] == 10000032]
         self.file_path_list = list(self.chosen_df['jpg_rel_path'])
+
 
 
     def __len__(self):
@@ -87,11 +91,13 @@ class data_loader(Dataset):
 
         # for this specific model, the images need to have 3 channels
         img = gray2rgb(img) # (h, w, c=3)
+
         img = resize(img, (HEIGHT, WIDTH)) # (h, w, c=3)
 
         # Conversion to ubyte value range (0...255) is done here,
         # because network needs to be trained and needs to predict using the same datatype.
         img = img_as_ubyte(img) # (h, w, c=3)
+        img = self.transform(img) # (c=3, h, w)
 
         row = self.chosen_df[self.chosen_df['jpg_rel_path'] == self.file_path_list[idx]]
 
@@ -109,8 +115,6 @@ class data_loader(Dataset):
         # choosing the required labels to train with for multi label
         label = np.take(label, self.chosen_labels)
 
-        img = img.transpose(2, 0, 1)  # (c=3, h, w)
-        img = torch.from_numpy(img)  # (c=3, h, w))
         label = torch.from_numpy(label)  # (h,)
 
         return img, label

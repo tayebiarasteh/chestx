@@ -1,6 +1,6 @@
 Network:
-  batch_size: 5
-  lr: 2e-5
+  batch_size: 1
+  lr: 5e-5
   weight_decay: 0
   amsgrad: False
 network_output_path: network_data/
@@ -9,16 +9,20 @@ tb_logs_path: tensor_board_logs/
 stat_log_path: stat_logs
 checkpoint_name: checkpoint.tar
 trained_model_name: trained_model.pth
-#label_names: ['atelectasis', 'cardiomegaly', 'consolidation', 'edema', 'enlarged_cardiomediastinum', 'fracture',
-#              'lung_lesion', 'lung_opacity', 'no_finding', 'pleural_effusion', 'pleural_other', 'pneumonia',
-#              'pneumothorax', 'support_devices']
-label_names: ['poly_wafer', 'crack', 'inactive']
+label_names: ['atelectasis', 'cardiomegaly', 'consolidation', 'edema', 'enlarged_cardiomediastinum', 'fracture',
+              'lung_lesion', 'lung_opacity', 'no_finding', 'pleural_effusion', 'pleural_other', 'pneumonia',
+              'pneumothorax', 'support_devices']
+#label_names: ['poly_wafer', 'crack', 'inactive']
+#train_mean_p10: []
+#train_std_p10: []
+train_mean_solar: [0.59685254, 0.59685254, 0.59685254]
+train_std_solar: [0.16043035, 0.16043035, 0.16043035]
 
 # changeable items:
-#file_path: /home/soroosh/Documents/datasets/MIMIC/
-file_path: /home/soroosh/Documents/datasets/solar_cells/
+file_path: /home/soroosh/Documents/datasets/MIMIC/
+#file_path: /home/soroosh/Documents/datasets/solar_cells/
 network_save_freq: 500 # based on the batch size, shows the number of batches done
-display_stats_freq: 100 # valid freq is also the same as this
+display_stats_freq: 200 # valid freq is also the same as this
 display_train_loss_freq: 100
 network_checkpoint_freq: 1
 num_epochs: 1000

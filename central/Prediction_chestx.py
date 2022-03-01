@@ -50,8 +50,19 @@ class Prediction:
             model_file_name = self.params['trained_model_name']
         self.model = model.to(self.device)
 
-        self.model.load_state_dict(torch.load(os.path.join(self.params['target_dir'], self.params['network_output_path']) + "/" + model_file_name))
-        # self.model_p.load_state_dict(torch.load(os.path.join(self.params['target_dir'], self.params['network_output_path']) + "step300_" + model_file_name))
+        self.model.load_state_dict(torch.load(os.path.join(self.params['target_dir'], self.params['network_output_path'], model_file_name)))
+        # self.model.load_state_dict(torch.load(os.path.join(self.params['target_dir'], self.params['network_output_path']) + "step300_" + model_file_name))
+
+
+
+    def setup_model_federated(self, model, model_file_name=None):
+        if model_file_name == None:
+            model_file_name = self.params['trained_model_name']
+        self.model = model.to(self.device)
+
+        state_dict = torch.load(os.path.join(self.params['target_dir'], self.params['network_output_path'], model_file_name))
+        # self.model.load_state_dict(state_dict['model'])
+        self.model.load_state_dict(state_dict)
 
 
 

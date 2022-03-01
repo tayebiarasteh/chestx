@@ -11,20 +11,18 @@ import torch
 import os
 from torch.utils.data import Dataset
 from torch.nn import BCEWithLogitsLoss
-from torchvision import transforms
+from torchvision import transforms, models
 
 from config.serde import open_experiment, create_experiment, delete_experiment, write_config
 from models.Xception_model import Xception
 from models.resnet18 import ResNet18
-from Train_Valid_chestx import Training, load_pretrained_model
+from Train_Valid_chestx import Training
 from Prediction_chestx import Prediction
 from data.data_provider import data_loader
 from data.data_handler_pv_defect import ChallengeDataset
 
 import warnings
 warnings.filterwarnings('ignore')
-train_mean = [0.59685254, 0.59685254, 0.59685254]
-train_std = [0.16043035, 0.16043035, 0.16043035]
 
 
 
@@ -64,25 +62,31 @@ def main_train_2D(global_config_path="/home/soroosh/Documents/Repositories/chest
     model_info['subsets'] = subsets
     params['Network'] = model_info
     write_config(params, cfg_path, sort_keys=True)
+    # train_mean = params['train_mean_p10']
+    # train_std = params['train_std_p10']
 
     # Changeable network parameters
-    model = Xception(num_classes=len(chosen_labels))
+    # not pretrained resnet34
+    model = load_pretrained_model(num_classes=len(chosen_labels))
+    # model = Xception(num_classes=len(chosen_labels))
     # model = ResNet18(n_out_classes=len(chosen_labels))
     loss_function = BCEWithLogitsLoss
     optimizer = torch.optim.Adam(model.parameters(), lr=float(params['Network']['lr']),
                                  weight_decay=float(params['Network']['weight_decay']), amsgrad=params['Network']['amsgrad'])
 
-    train_dataset = data_loader(cfg_path=cfg_path, mode='train', chosen_labels=chosen_labels, subsets=subsets)
+    trans = transforms.Compose([transforms.ToPILImage(), transforms.ToTensor()])
+    train_dataset = data_loader(cfg_path=cfg_path, mode='train', chosen_labels=chosen_labels, subsets=subsets, transform=trans)
 
     # class weights corresponding to the dataset
     pos_weight = train_dataset.pos_weight(chosen_labels=chosen_labels)
 
     train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=params['Network']['batch_size'],
-                                               pin_memory=True, drop_last=True, shuffle=True, num_workers=40)
+                                               pin_memory=True, drop_last=True, shuffle=True, num_workers=20)
     if valid:
-        valid_dataset = data_loader(cfg_path=cfg_path, mode='valid', chosen_labels=chosen_labels, subsets=subsets)
+        trans = transforms.Compose([transforms.ToPILImage(), transforms.ToTensor()])
+        valid_dataset = data_loader(cfg_path=cfg_path, mode='valid', chosen_labels=chosen_labels, subsets=subsets, transform=trans)
         valid_loader = torch.utils.data.DataLoader(dataset=valid_dataset, batch_size=params['Network']['batch_size'],
-                                                   pin_memory=True, drop_last=True, shuffle=False, num_workers=5)
+                                                   pin_memory=True, drop_last=True, shuffle=False, num_workers=10)
     else:
         valid_loader = None
 
@@ -104,7 +108,7 @@ def main_test_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx
     experiment_name: str
         name of the experiment to be loaded.
     """
-    params = create_experiment(experiment_name, global_config_path)
+    params = open_experiment(experiment_name, global_config_path)
     cfg_path = params['cfg_path']
     label_names = params['label_names']
     chosen_labels = params['Network']['chosen_labels']
@@ -179,6 +183,61 @@ def main_test_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx
 
 
 
+def main_test_federated_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/central/config/config.yaml", experiment_name='name'):
+    """Main function for multi label prediction
+
+    Parameters
+    ----------
+    experiment_name: str
+        name of the experiment to be loaded.
+    """
+    params = open_experiment(experiment_name, global_config_path)
+    cfg_path = params['cfg_path']
+    label_names = params['label_names']
+    chosen_labels = params['Network']['chosen_labels']
+    # subsets = params['Network']['subsets']
+
+    # Changeable network parameters
+    model = Xception(num_classes=len(chosen_labels))
+    # model = ResNet18(n_out_classes=len(chosen_labels))
+
+    trans = transforms.Compose([transforms.ToPILImage(), transforms.ToTensor(),
+                                transforms.Normalize(train_mean, train_std)])
+    test_dataset = ChallengeDataset(cfg_path=cfg_path, transform=trans,
+                                     chosen_labels=chosen_labels, training=False)
+    test_loader = torch.utils.data.DataLoader(dataset=test_dataset, batch_size=params['Network']['batch_size'],
+                                               pin_memory=True, drop_last=True, shuffle=False, num_workers=5)
+
+    # Initialize prediction
+    predictor = Prediction(cfg_path, chosen_labels)
+    predictor.setup_model_federated(model=model)
+    accuracy_disease, sensitivity_disease, specifity_disease, F1_disease = predictor.evaluate_2D(test_loader, params['Network']['batch_size'])
+
+    print('------------------------------------------------------'
+          '----------------------------------')
+    print(f'\tTotal accuracy: {accuracy_disease.mean() * 100:.2f}% | total sensitivity: {sensitivity_disease.mean() * 100:.2f}%'
+          f' | total specifity: {specifity_disease.mean() * 100:.2f}% | total F1 score: {F1_disease.mean() * 100:.2f}%')
+    print('\nIndividual accuracy scores:')
+    for idx, pathology in enumerate(chosen_labels):
+        print(f'\t{label_names[pathology]}: {accuracy_disease[idx] * 100:.2f}%')
+
+    print('\nIndividual sensitivity scores:')
+    for idx, pathology in enumerate(chosen_labels):
+        print(f'\t{label_names[pathology]}: {sensitivity_disease[idx] * 100:.2f}%')
+
+    print('\nIndividual specifity scores:')
+    for idx, pathology in enumerate(chosen_labels):
+        print(f'\t{label_names[pathology]}: {specifity_disease[idx] * 100:.2f}%')
+
+    print('\nIndividual F1 scores:')
+    for idx, pathology in enumerate(chosen_labels):
+        print(f'\t{label_names[pathology]}: {F1_disease[idx] * 100:.2f}%')
+
+    print('------------------------------------------------------'
+          '----------------------------------')
+
+
+
 
 
 def main_train_solar_cells_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/central/config/config.yaml", valid=False,
@@ -247,14 +306,30 @@ def main_train_solar_cells_2D(global_config_path="/home/soroosh/Documents/Reposi
 
 
 
+def load_pretrained_model(num_classes=2):
+    # Load a pre-trained model from config file
+    # self.model.load_state_dict(torch.load(self.model_info['pretrain_model_path']))
+
+    # Load a pre-trained model from Torchvision
+    model = models.resnet34(pretrained=False)
+    for param in model.parameters():
+        param.requires_grad = True
+    model.fc = torch.nn.Sequential(
+        torch.nn.Linear(512, num_classes))
+    # for param in model.fc.parameters():
+    #     param.requires_grad = True
+
+    return model
+
 
 
 if __name__ == '__main__':
-    # delete_experiment(experiment_name='xception_solar_2e5', global_config_path="/home/soroosh/Documents/Repositories/chestx/central/config/config.yaml")
-    main_train_solar_cells_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/central/config/config.yaml",
-                  valid=True, resume=False, augment=False, experiment_name='xception_solar_2e5',
-                  chosen_labels=[1, 2])
-    # main_train_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/central/config/config.yaml",
-    #               valid=True, resume=False, augment=False, experiment_name='xception_p10-11_weight_3_labels_2e5',
-    #               chosen_labels=[0, 1, 7], subsets=["p10", "p11"])
+    # delete_experiment(experiment_name='newnew', global_config_path="/home/soroosh/Documents/Repositories/chestx/central/config/config.yaml")
+    # main_train_solar_cells_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/central/config/config.yaml",
+    #               valid=True, resume=False, augment=False, experiment_name='xception_solar_2e5',
+    #               chosen_labels=[1, 2])
+    main_train_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/central/config/config.yaml",
+                  valid=True, resume=False, augment=False, experiment_name='central_resnet34_p10_labels_0_1_batch4_5e5',
+                  chosen_labels=[0, 1], subsets=["p10"])
     # main_test_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/central/config/config.yaml", experiment_name='first_try')
+    # main_test_federated_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/central/config/config.yaml", experiment_name='federated_solar_1_2')
