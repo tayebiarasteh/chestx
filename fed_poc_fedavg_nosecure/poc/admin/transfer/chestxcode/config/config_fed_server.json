@@ -12,7 +12,7 @@
       "name": "PTFileModelPersistor",
       "args": {
         "model": {
-          "path": "models.Xception_model.Xception"
+          "path": "models.resnet_18.ResNet18"
         }
       }
     },
@@ -52,7 +52,7 @@
         "name": "ScatterAndGather",
         "args": {
             "min_clients" : 2,
-            "num_rounds" : 20,
+            "num_rounds" : 1,
             "start_round": 0,
             "wait_time_after_min_received": 10,
             "aggregator_id": "aggregator",

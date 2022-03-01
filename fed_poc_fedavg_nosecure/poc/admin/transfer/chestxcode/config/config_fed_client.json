@@ -29,7 +29,7 @@
         "analytic_sender_id": "analytic_sender",
         "chosen_labels": [0, 1],
         "subsets": ["p10"],
-        "valid": false,
+        "valid": true,
         "n_local_iterations": 1
       }
     },

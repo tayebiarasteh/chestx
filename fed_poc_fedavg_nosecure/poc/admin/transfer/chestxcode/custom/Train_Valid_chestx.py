@@ -33,6 +33,7 @@ from pt_constants import PTConstants
 
 from configs.serde import read_config, write_config
 from models.Xception_model import Xception
+from models.resnet_18 import ResNet18
 from Prediction_chestx import Prediction
 from data.data_provider import data_loader
 from data.data_handler_pv_defect import ChallengeDataset
@@ -86,10 +87,9 @@ class Training(Learner):
         write_config(self.params, self.params["cfg_path"], sort_keys=True)
 
         # Changeable network parameters
-        self.model = Xception(num_classes=len(self.chosen_labels))
+        # self.model = Xception(num_classes=len(self.chosen_labels))
+        self.model = ResNet18(n_out_classes=len(self.chosen_labels))
         # self.model = self.load_pretrained_model(num_classes=len(self.chosen_labels))
-
-
 
         loss_function = BCEWithLogitsLoss
         optimizer = torch.optim.Adam(self.model.parameters(), lr=float(self.params['Network']['lr']),
@@ -97,9 +97,9 @@ class Training(Learner):
                                      amsgrad=self.params['Network']['amsgrad'])
 
         #####################################################################################################################
-        # train_mean = params['train_mean_p10']
-        # train_std = params['train_std_p10']
-
+        # train_mean = self.params['train_mean_p10']
+        # train_std = self.params['train_std_p10']
+        #
         # trans = transforms.Compose([transforms.ToPILImage(), transforms.ToTensor(),
         #                             transforms.Normalize(train_mean, train_std)])
         # train_dataset = ChallengeDataset(cfg_path=self.cfg_path, transform=trans, chosen_labels=self.chosen_labels, training=True)
@@ -264,6 +264,7 @@ class Training(Learner):
         if not dxo.data_kind == DataKind.WEIGHTS:
             self.log_error(fl_ctx, f"data_kind expected WEIGHTS but got {dxo.data_kind} instead.")
             return make_reply(ReturnCode.BAD_TASK_DATA)
+        print('\n\n\n\n\n\n printing incoming dxooooooooooooooooooooooo', dxo.meta)
 
         # Convert weights to tensor. Run training
         torch_weights = {k: torch.as_tensor(v) for k, v in dxo.data.items()}
@@ -346,6 +347,7 @@ class Training(Learner):
                     self.log_info(fl_ctx, f'\ntime: {iteration_hours}h {iteration_mins}m {iteration_secs}s'
                                           f'| total: {total_hours}h {total_mins}m {total_secs}s\n')
                     self.writer.add_scalar('Train_Loss', train_loss, self.step)
+                    break # this is important TODO
 
             # Validation iteration & calculate metrics
             if (self.step) % (self.params['display_stats_freq']) == 0:

@@ -22,7 +22,7 @@ train_std_solar: [0.16043035, 0.16043035, 0.16043035]
 file_path: /home/soroosh/Documents/datasets/MIMIC/
 #file_path: /home/soroosh/Documents/datasets/solar_cells/
 network_save_freq: 500 # based on the batch size, shows the number of batches done
-display_stats_freq: 200 # valid freq is also the same as this
-display_train_loss_freq: 100
+display_stats_freq: 50 # valid freq is also the same as this
+display_train_loss_freq: 50
 network_checkpoint_freq: 1
 num_epochs: 1000
