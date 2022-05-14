@@ -2,9 +2,9 @@
 Created on Feb 2, 2022.
 csv_data_preprocess.py
 
-creating a master list for mimic dataset.
+data preprocessing for X-Ray images.
 
-@author: Soroosh Tayebi Arasteh <sarasteh@ukaachen.de>
+@author: Soroosh Tayebi Arasteh <soroosh.arasteh@rwth-aachen.de>
 https://github.com/tayebiarasteh/
 """
 import glob
@@ -14,10 +14,7 @@ import pandas as pd
 from tqdm import tqdm
 import pydicom as dicom
 import numpy as np
-import os
-import nibabel as nib
 import cv2
-from PIL import Image
 import matplotlib.pyplot as plt
 from skimage.util import img_as_ubyte
 from scipy.ndimage.interpolation import zoom
@@ -30,8 +27,9 @@ warnings.filterwarnings('ignore')
 HEIGHT, WIDTH = 512, 512
 
 
+
 class csv_preprocess_mimic():
-    def __init__(self, cfg_path="/home/soroosh/Documents/Repositories/chestx/central/config/config.yaml"):
+    def __init__(self, cfg_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml"):
         self.params = read_config(cfg_path)
 
 
@@ -335,22 +333,63 @@ class csv_preprocess_mimic():
 
 
 
-def vindr_normalizer_resizer():
 
-    path = "/home/soroosh/Documents/datasets/vindr-cxr1/original"
-    flag = 0
+class normalizer_resizer():
+    def __init__(self, cfg_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml"):
+        self.params = read_config(cfg_path)
 
-    train_file_list = glob.glob(os.path.join(path, 'train/*.dicom'))
-    for file_path in tqdm(train_file_list):
 
-        RefDs = dicom.dcmread(file_path)
+    def mimic_normalizer_resizer(self):
+        base_path = '/home/soroosh/Documents/datasets/MIMIC'
 
-        try:
-            src = RefDs.pixel_array
+        df_path = os.path.join(base_path, 'mimic_master_list.csv')
+        df = pd.read_csv(df_path, sep=',')
+
+        file_list = df['jpg_rel_path'].to_list()
+        for file_path in tqdm(file_list):
+
+            image_path = os.path.join(base_path, file_path)
+            image = cv2.imread(image_path)
+
+            # color to gray
+            img = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
             # resize
-            resize_ratio = np.divide((HEIGHT, WIDTH), src.shape)
-            img = zoom(src, resize_ratio, order=2)
+            resize_ratio = np.divide((HEIGHT, WIDTH), img.shape)
+            img = zoom(img, resize_ratio, order=2)
+
+            # normalization
+            min_ = np.min(img)
+            max_ = np.max(img)
+            scale = max_ - min_
+            img = (img - min_) / scale
+
+            # converting to the range [0 255]
+            img = img_as_ubyte(img)
+
+            # histogram equalization
+            img = cv2.equalizeHist(img)
+            output_path = image_path.replace('/files/', '/preprocessed/')
+            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
+            cv2.imwrite(output_path, img)
+
+
+
+    def vindr_normalizer_resizer(self):
+
+        path = "/home/soroosh/Documents/datasets/vindr-cxr1/original"
+
+        train_file_list = glob.glob(os.path.join(path, 'train/*.dicom'))
+        for file_path in tqdm(train_file_list):
+
+            RefDs = dicom.dcmread(file_path)
+
+            img = RefDs.pixel_array
+
+            # resize
+            resize_ratio = np.divide((HEIGHT, WIDTH), img.shape)
+            img = zoom(img, resize_ratio, order=2)
 
             # normalization
             min_ = np.min(img)
@@ -372,19 +411,56 @@ def vindr_normalizer_resizer():
             os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
             cv2.imwrite(output_path, img)
-        except:
-            flag += 1
-            print(flag)
 
 
-    test_file_list = glob.glob(os.path.join(path, 'test/*.dicom'))
-    for file_path in test_file_list:
+        test_file_list = glob.glob(os.path.join(path, 'test/*.dicom'))
+        for file_path in test_file_list:
 
-        RefDs = dicom.dcmread(file_path)
+            RefDs = dicom.dcmread(file_path)
 
-        try:
-            src = RefDs.pixel_array
+            img = RefDs.pixel_array
 
+            resize_ratio = np.divide((HEIGHT, WIDTH), img.shape)
+            img = zoom(img, resize_ratio, order=2)
+
+            # normalization
+            min_ = np.min(img)
+            max_ = np.max(img)
+            scale = max_ - min_
+            img = (img - min_) / scale
+
+            # converting to the range [0 255]
+            img = img_as_ubyte(img)
+
+            # invert the values if necessary
+            if RefDs[0x0028, 0x0004].value == 'MONOCHROME1':
+                img = np.invert(img)
+
+            # histogram equalization
+            img = cv2.equalizeHist(img)
+            output_path = file_path.replace('/original/', '/preprocessed/')
+            output_path = output_path.replace('.dicom', '.jpg')
+            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
+            cv2.imwrite(output_path, img)
+
+
+
+    def chexpert_normalizer_resizer(self):
+        base_path = '/mnt/hdd/Share/Chexpert_dataset/'
+        valid_path = os.path.join(base_path, 'CheXpert-v1.0/valid.csv')
+        valid_df = pd.read_csv(valid_path, sep=',')
+
+        valid_file_list = valid_df['Path'].to_list()
+        for file_path in tqdm(valid_file_list):
+
+            image_path = os.path.join(base_path, file_path)
+            image = cv2.imread(image_path)
+
+            # color to gray
+            src = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+            # resize
             resize_ratio = np.divide((HEIGHT, WIDTH), src.shape)
             img = zoom(src, resize_ratio, order=2)
 
@@ -397,158 +473,140 @@ def vindr_normalizer_resizer():
             # converting to the range [0 255]
             img = img_as_ubyte(img)
 
-            # invert the values if necessary
-            img = np.invert(img)
+            # histogram equalization
+            img = cv2.equalizeHist(img)
+            output_path = image_path.replace('/CheXpert-v1.0/', '/CheXpert-v1.0/preprocessed/')
+            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+            cv2.imwrite(output_path, img)
+
+
+        train_path = os.path.join(base_path, 'CheXpert-v1.0/train.csv')
+        train_df = pd.read_csv(train_path, sep=',')
+
+        train_file_list = train_df['Path'].to_list()
+        for file_path in tqdm(train_file_list):
+
+            image_path = os.path.join(base_path, file_path)
+            image = cv2.imread(image_path)
+
+            # color to gray
+            src = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+            # resize
+            resize_ratio = np.divide((HEIGHT, WIDTH), src.shape)
+            img = zoom(src, resize_ratio, order=2)
+
+            # normalization
+            min_ = np.min(img)
+            max_ = np.max(img)
+            scale = max_ - min_
+            img = (img - min_) / scale
+
+            # converting to the range [0 255]
+            img = img_as_ubyte(img)
 
             # histogram equalization
             img = cv2.equalizeHist(img)
-            output_path = file_path.replace('/original/', '/preprocessed/')
+            output_path = image_path.replace('/CheXpert-v1.0/', '/CheXpert-v1.0/preprocessed/')
+            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+            cv2.imwrite(output_path, img)
+
+
+
+    def pediatric_corona_normalizer_resizer(self):
+        base_path = '/home/soroosh/Documents/datasets/Coronahack_Chest_XRay/original'
+
+        df_path = os.path.join(base_path, 'Chest_xray_Corona_Metadata.csv')
+        df = pd.read_csv(df_path, sep=',')
+
+        for index, row in tqdm(df.iterrows()):
+
+            if row['Dataset_type'] == 'TRAIN':
+                image_path = os.path.join(base_path, 'train', row['X_ray_image_name'])
+            else:
+                image_path = os.path.join(base_path, 'test', row['X_ray_image_name'])
+
+            image = cv2.imread(image_path)
+
+            # color to gray
+            src = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+            # resize
+            resize_ratio = np.divide((HEIGHT, WIDTH), src.shape)
+            img = zoom(src, resize_ratio, order=2)
+
+            # normalization
+            min_ = np.min(img)
+            max_ = np.max(img)
+            scale = max_ - min_
+            img = (img - min_) / scale
+
+            # converting to the range [0 255]
+            img = img_as_ubyte(img)
+
+            # histogram equalization
+            img = cv2.equalizeHist(img)
+            output_path = image_path.replace('/original/', '/preprocessed/')
             os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
             cv2.imwrite(output_path, img)
-        except:
-            flag += 1
-            print(flag)
 
 
 
-def mimic_normalizer_resizer():
-    path = '/home/soroosh/Documents/datasets/xrays/MIMIC/p10000032/s50414267/02aa804e-bde0afdd-112c0b34-7bc16630-4e384014.jpg'
+    def UKA_normalizer_resizer(self):
 
-    file_list = glob.glob(os.path.join(path, 'train/*.dicom'))
-    for file_path in file_list:
+        base_path = "/home/data/chest_radiograph/dicom_files"
+        flag = 0
 
-        image = cv2.imread(file_path)
+        file_list = glob.glob(os.path.join(base_path, '*/*/*'))
 
-        # color to gray
-        src = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        for file_path in tqdm(file_list):
 
-        # resize
-        resize_ratio = np.divide((HEIGHT, WIDTH), src.shape)
-        img = zoom(src, resize_ratio, order=2)
+            RefDs = dicom.dcmread(file_path)
 
-        # normalization
-        min_ = np.min(img)
-        max_ = np.max(img)
-        scale = max_ - min_
-        img = (img - min_) / scale
+            try:
+                img = RefDs.pixel_array
 
-        # converting to the range [0 255]
-        img = img_as_ubyte(img)
+                # resize
+                resize_ratio = np.divide((HEIGHT, WIDTH), img.shape)
+                img = zoom(img, resize_ratio, order=2)
 
-        # histogram equalization
-        img = cv2.equalizeHist(img)
-        output_path = file_path.replace('/original/', '/preprocessed/')
+                # normalization
+                min_ = np.min(img)
+                max_ = np.max(img)
+                scale = max_ - min_
+                img = (img - min_) / scale
 
-        cv2.imwrite(output_path, img)
+                # converting to the range [0 255]
+                img = img_as_ubyte(img)
 
+                # invert the values if necessary
+                if RefDs[0x0028, 0x0004].value == 'MONOCHROME1':
+                    img = np.invert(img)
 
-def chexpert_normalizer_resizer():
-    base_path = '/mnt/hdd/Share/Chexpert_dataset/'
-    valid_path = os.path.join(base_path, 'CheXpert-v1.0/valid.csv')
-    valid_df = pd.read_csv(valid_path, sep=',')
-    pdb.set_trace()
+                # histogram equalization
+                img = cv2.equalizeHist(img)
+                output_path = file_path.replace('/dicom_files/', '/preprocessed/')
 
-    valid_file_list = valid_df['Path'].to_list()
-    for file_path in tqdm(valid_file_list):
+                if '.dcm' in os.path.basename(output_path):
+                    output_path = output_path.replace('.dcm', '.jpg')
+                elif '.dicom' in os.path.basename(output_path):
+                    output_path = output_path.replace('.dicom', '.jpg')
+                os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
-        image_path = os.path.join(base_path, file_path)
-        image = cv2.imread(image_path)
-
-        # color to gray
-        src = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-
-        # resize
-        resize_ratio = np.divide((HEIGHT, WIDTH), src.shape)
-        img = zoom(src, resize_ratio, order=2)
-
-        # normalization
-        min_ = np.min(img)
-        max_ = np.max(img)
-        scale = max_ - min_
-        img = (img - min_) / scale
-
-        # converting to the range [0 255]
-        img = img_as_ubyte(img)
-
-        # histogram equalization
-        img = cv2.equalizeHist(img)
-        output_path = image_path.replace('/CheXpert-v1.0/', '/CheXpert-v1.0/preprocessed/')
-        os.makedirs(os.path.dirname(output_path), exist_ok=True)
-        cv2.imwrite(output_path, img)
-
-
-    train_path = os.path.join(base_path, 'CheXpert-v1.0/train.csv')
-    train_df = pd.read_csv(train_path, sep=',')
-
-    train_file_list = train_df['Path'].to_list()
-    for file_path in tqdm(train_file_list):
-
-        image_path = os.path.join(base_path, file_path)
-        image = cv2.imread(image_path)
-
-        # color to gray
-        src = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-
-        # resize
-        resize_ratio = np.divide((HEIGHT, WIDTH), src.shape)
-        img = zoom(src, resize_ratio, order=2)
-
-        # normalization
-        min_ = np.min(img)
-        max_ = np.max(img)
-        scale = max_ - min_
-        img = (img - min_) / scale
-
-        # converting to the range [0 255]
-        img = img_as_ubyte(img)
-
-        # histogram equalization
-        img = cv2.equalizeHist(img)
-        output_path = image_path.replace('/CheXpert-v1.0/', '/CheXpert-v1.0/preprocessed/')
-        os.makedirs(os.path.dirname(output_path), exist_ok=True)
-        cv2.imwrite(output_path, img)
+                cv2.imwrite(output_path, img)
+            except:
+                flag += 1
+                print(flag, file_path)
 
 
 
 
-def pediatric_corona_normalizer_resizer():
-    base_path = '/home/soroosh/Documents/datasets/Coronahack_Chest_XRay/original'
+class csv_processor():
+    def __init__(self, cfg_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml"):
+        self.params = read_config(cfg_path)
 
-    df_path = os.path.join(base_path, 'Chest_xray_Corona_Metadata.csv')
-    df = pd.read_csv(df_path, sep=',')
 
-    for index, row in tqdm(df.iterrows()):
-
-        if row['Dataset_type'] == 'TRAIN':
-            image_path = os.path.join(base_path, 'train', row['X_ray_image_name'])
-        else:
-            image_path = os.path.join(base_path, 'test', row['X_ray_image_name'])
-
-        image = cv2.imread(image_path)
-
-        # color to gray
-        src = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-
-        # resize
-        resize_ratio = np.divide((HEIGHT, WIDTH), src.shape)
-        img = zoom(src, resize_ratio, order=2)
-
-        # normalization
-        min_ = np.min(img)
-        max_ = np.max(img)
-        scale = max_ - min_
-        img = (img - min_) / scale
-
-        # converting to the range [0 255]
-        img = img_as_ubyte(img)
-
-        # histogram equalization
-        img = cv2.equalizeHist(img)
-        output_path = image_path.replace('/original/', '/preprocessed/')
-        os.makedirs(os.path.dirname(output_path), exist_ok=True)
-
-        cv2.imwrite(output_path, img)
 
 
 
@@ -556,6 +614,10 @@ def pediatric_corona_normalizer_resizer():
 if __name__ == '__main__':
     # handler = csv_preprocess_mimic()
     # handler.csv_creator()
-    # vindr_normalizer_resizer()
-    # chexpert_normalizer_resizer()
-    pediatric_corona_normalizer_resizer()
+
+    handler2 = normalizer_resizer()
+    # handler2.mimic_normalizer_resizer()
+    # handler2.vindr_normalizer_resizer()
+    # handler2.chexpert_normalizer_resizer()
+    # handler2.pediatric_corona_normalizer_resizer()
+    # handler2.UKA_normalizer_resizer()

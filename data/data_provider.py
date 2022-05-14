@@ -2,7 +2,7 @@
 Created on Feb 1, 2022.
 data_provider.py
 
-@author: Soroosh Tayebi Arasteh <sarasteh@ukaachen.de>
+@author: Soroosh Tayebi Arasteh <soroosh.arasteh@rwth-aachen.de>
 https://github.com/tayebiarasteh/
 """
 
@@ -22,7 +22,6 @@ from config.serde import read_config
 
 
 
-HEIGHT, WIDTH = 299, 299
 epsilon = 1e-15
 
 
