@@ -16,3 +16,6 @@
 /fed_poc_fedavg_nosecure/poc/site-7/
 /fed_poc_fedavg_nosecure/poc/site-8/
 /config/__pycache__/
+/__pycache__/
+/models/__pycache__/
+/data/__pycache__/

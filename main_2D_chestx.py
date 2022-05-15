@@ -18,22 +18,22 @@ from models.Xception_model import Xception
 from models.resnet_18 import ResNet18
 from Train_Valid_chestx import Training
 from Prediction_chestx import Prediction
-from data.data_provider import data_loader
+from data.data_provider import vindr_data_loader_2D
 
 import warnings
 warnings.filterwarnings('ignore')
 
 
 
-def main_train_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml", valid=False,
-                  resume=False, augment=False, experiment_name='name', chosen_labels=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13],
-                  subsets=["p10", "p11", "p12", "p13", ",p14", "p15", "p16", "p17", "p18", "p19"]):
-    """Main function for multi label training + validation for directly 2d-wise
+
+def main_train_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml", valid=False,
+                  resume=False, augment=False, experiment_name='name'):
+    """Main function for training + validation centrally
 
         Parameters
         ----------
         global_config_path: str
-            always global_config_path="/home/soroosh/Documents/Repositories/chestx/central/config/config.yaml"
+            always global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml"
 
         valid: bool
             if we want to do validation
@@ -41,15 +41,12 @@ def main_train_2D(global_config_path="/home/soroosh/Documents/Repositories/chest
         resume: bool
             if we are resuming training on a model
 
+        augment: bool
+            if we want to have data augmentation during training
+
         experiment_name: str
             name of the experiment, in case of resuming training.
             name of new experiment, in case of new training.
-
-        chosen_labels: list of integers
-            index of the classes that we want to have in our training.
-
-        subsets: list of strings
-            name of the data subsets from MIMIC dataset that we want to have in our training.
     """
     if resume == True:
         params = open_experiment(experiment_name, global_config_path)
@@ -57,44 +54,33 @@ def main_train_2D(global_config_path="/home/soroosh/Documents/Repositories/chest
         params = create_experiment(experiment_name, global_config_path)
     cfg_path = params["cfg_path"]
 
-    model_info = params['Network']
-    model_info['subsets'] = subsets
-    params['Network'] = model_info
-    write_config(params, cfg_path, sort_keys=True)
-    # train_mean = params['train_mean_p10']
-    # train_std = params['train_std_p10']
-
     # Changeable network parameters
     # not pretrained resnet34
-    model = load_pretrained_model(num_classes=len(chosen_labels))
+    model = load_pretrained_model(num_classes=5)
     # model = Xception(num_classes=len(chosen_labels))
     # model = ResNet18(n_out_classes=len(chosen_labels))
     loss_function = BCEWithLogitsLoss
     optimizer = torch.optim.Adam(model.parameters(), lr=float(params['Network']['lr']),
                                  weight_decay=float(params['Network']['weight_decay']), amsgrad=params['Network']['amsgrad'])
 
-    trans = transforms.Compose([transforms.ToPILImage(), transforms.ToTensor()])
-    train_dataset = data_loader(cfg_path=cfg_path, mode='train', chosen_labels=chosen_labels, subsets=subsets, transform=trans)
-
-    # class weights corresponding to the dataset
-    pos_weight = train_dataset.pos_weight(chosen_labels=chosen_labels)
-
+    train_dataset = vindr_data_loader_2D(cfg_path=cfg_path, mode='train')
     train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=params['Network']['batch_size'],
-                                               pin_memory=True, drop_last=True, shuffle=True, num_workers=20)
+                                               pin_memory=True, drop_last=True, shuffle=True, num_workers=10)
+    weight = train_dataset.pos_weight()
+
     if valid:
-        trans = transforms.Compose([transforms.ToPILImage(), transforms.ToTensor()])
-        valid_dataset = data_loader(cfg_path=cfg_path, mode='valid', chosen_labels=chosen_labels, subsets=subsets, transform=trans)
+        valid_dataset = vindr_data_loader_2D(cfg_path=cfg_path, mode='test')
         valid_loader = torch.utils.data.DataLoader(dataset=valid_dataset, batch_size=params['Network']['batch_size'],
-                                                   pin_memory=True, drop_last=True, shuffle=False, num_workers=10)
+                                                   pin_memory=True, drop_last=True, shuffle=False, num_workers=5)
     else:
         valid_loader = None
 
-    trainer = Training(cfg_path, num_epochs=params['num_epochs'], resume=resume, chosen_labels=chosen_labels)
+    trainer = Training(cfg_path, num_epochs=params['num_epochs'], resume=resume)
     if resume == True:
-        trainer.load_checkpoint(model=model, optimiser=optimizer, loss_function=loss_function)
+        trainer.load_checkpoint(model=model, optimiser=optimizer, loss_function=loss_function, weight=weight)
     else:
-        trainer.setup_model(model=model, optimiser=optimizer, loss_function=loss_function, weight=pos_weight)
-    trainer.train_epoch(train_loader=train_loader, batch_size=params['Network']['batch_size'], valid_loader=valid_loader)
+        trainer.setup_model(model=model, optimiser=optimizer, loss_function=loss_function, weight=weight)
+    trainer.train_epoch(train_loader=train_loader, valid_loader=valid_loader)
 
 
 
@@ -201,8 +187,7 @@ def load_pretrained_model(num_classes=2):
 
 
 if __name__ == '__main__':
-    # delete_experiment(experiment_name='newnew', global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml")
-    main_train_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
-                  valid=True, resume=False, augment=False, experiment_name='central_resnet34_p10_labels_0_1_batch4_5e5',
-                  chosen_labels=[0, 1], subsets=["p10"])
+    delete_experiment(experiment_name='tempp', global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml")
+    main_train_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
+                  valid=True, resume=False, augment=False, experiment_name='tempp')
     # main_test_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml", experiment_name='first_try')

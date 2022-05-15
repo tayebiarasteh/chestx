@@ -15,17 +15,20 @@ import torch
 import torch.nn.functional as F
 from tqdm import tqdm
 import torchmetrics
+import syft as sy
+from sklearn import metrics
 
 from config.serde import read_config, write_config
 
 import warnings
 warnings.filterwarnings('ignore')
 epsilon = 1e-15
+hook = sy.TorchHook(torch)
 
 
 
 class Training:
-    def __init__(self, cfg_path, num_epochs=10, resume=False, chosen_labels=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]):
+    def __init__(self, cfg_path, num_epochs=10, resume=False):
         """This class represents training and validation processes.
 
         Parameters
@@ -42,13 +45,11 @@ class Training:
         self.params = read_config(cfg_path)
         self.cfg_path = cfg_path
         self.num_epochs = num_epochs
-        self.chosen_labels = chosen_labels
         self.label_names = self.params['label_names']
 
         if resume == False:
             self.model_info = self.params['Network']
             self.epoch = 0
-            self.step = 0
             self.best_loss = float('inf')
             self.setup_cuda()
             self.writer = SummaryWriter(log_dir=os.path.join(self.params['target_dir'], self.params['tb_logs_path']))
@@ -99,7 +100,8 @@ class Training:
             elapsed_secs = int(elapsed_time - (elapsed_hours * 3600) - (elapsed_mins * 60))
         else:
             elapsed_mins = int(elapsed_time / 60)
-            elapsed_secs = int(elapsed_time - (elapsed_mins * 60))
+            elapsed_secs = elapsed_time - (elapsed_mins * 60)
+            # elapsed_secs = int(elapsed_time - (elapsed_mins * 60))
         return elapsed_hours, elapsed_mins, elapsed_secs
 
 
@@ -128,11 +130,10 @@ class Training:
         print('----------------------------------------------------\n')
 
         self.model = model.to(self.device)
-        if not weight==None:
-            self.loss_weight = weight.to(self.device)
-            self.loss_function = loss_function(pos_weight=self.loss_weight)
-        else:
-            self.loss_function = loss_function()
+        # self.model = self.model.half() # float16
+
+        self.loss_weight = weight.to(self.device)
+        self.loss_function = loss_function(pos_weight=self.loss_weight)
         self.optimiser = optimiser
 
         # Saves the model, optimiser,loss function name for writing to config file
@@ -141,12 +142,11 @@ class Training:
         self.model_info['total_param_num'] = total_param_num
         self.model_info['loss_function'] = loss_function.__name__
         self.model_info['num_epochs'] = self.num_epochs
-        self.model_info['chosen_labels'] = self.chosen_labels
         self.params['Network'] = self.model_info
         write_config(self.params, self.cfg_path, sort_keys=True)
 
 
-    def load_checkpoint(self, model, optimiser, loss_function):
+    def load_checkpoint(self, model, optimiser, loss_function, weight):
         """In case of resuming training from a checkpoint,
         loads the weights for all the models, optimizers, and
         loss functions, and device, tensorboard events, number
@@ -169,7 +169,7 @@ class Training:
         self.model_info = checkpoint['model_info']
         self.setup_cuda()
         self.model = model.to(self.device)
-        self.loss_weight = checkpoint['loss_state_dict']['pos_weight']
+        self.loss_weight = weight
         self.loss_weight = self.loss_weight.to(self.device)
         self.loss_function = loss_function(weight=self.loss_weight)
         self.optimiser = optimiser
@@ -181,26 +181,24 @@ class Training:
         self.step = checkpoint['step']
         self.best_loss = checkpoint['best_loss']
         self.writer = SummaryWriter(log_dir=os.path.join(os.path.join(
-            self.params['target_dir'], self.params['tb_logs_path'])), purge_step=self.step + 1)
+            self.params['target_dir'], self.params['tb_logs_path'])), purge_step=self.epoch + 1)
 
 
 
-    def train_epoch(self, train_loader, batch_size, valid_loader=None):
+    def train_epoch(self, train_loader, valid_loader=None):
         """Training epoch
         """
         self.params = read_config(self.cfg_path)
+        total_start_time = time.time()
 
         for epoch in range(self.num_epochs - self.epoch):
             self.epoch += 1
 
             # initializing the loss list
             batch_loss = 0
-            batch_count = 0
-
             start_time = time.time()
-            total_start_time = time.time()
 
-            for idx, (image, label) in enumerate(train_loader):
+            for idx, (image, label) in enumerate(tqdm(train_loader)):
                 self.model.train()
 
                 image = image.to(self.device)
@@ -210,135 +208,160 @@ class Training:
 
                 with torch.set_grad_enabled(True):
 
-                    image = image.float()
-                    label = label.float()
-
                     output = self.model(image)
+                    loss = self.loss_function(output, label.float()) # for multilabel
 
-                    # Loss
-                    loss = self.loss_function(output, label)
-                    batch_loss += loss.item()
-                    batch_count += 1
-
-                    #Backward and optimize
                     loss.backward()
                     self.optimiser.step()
-                    self.step += 1
 
-                    # Prints train loss after number of steps specified.
-                    if (self.step) % self.params['display_train_loss_freq'] == 0:
-                        end_time = time.time()
-                        iteration_hours, iteration_mins, iteration_secs = self.time_duration(start_time, end_time)
-                        total_hours, total_mins, total_secs = self.time_duration(total_start_time, end_time)
-                        train_loss = batch_loss / batch_count
-                        batch_loss = 0
-                        batch_count = 0
-                        start_time = time.time()
+                    batch_loss += loss.item()
 
-                        print('Step {} | train epoch {} | batch {} / {} | loss: {:.3f}'.
-                              format(self.step, self.epoch, idx+1, len(train_loader), train_loss),
-                              f'\ntime: {iteration_hours}h {iteration_mins}m {iteration_secs}s',
-                              f'| total: {total_hours}h {total_mins}m {total_secs}s\n')
-                        self.writer.add_scalar('Train_Loss', train_loss, self.step)
+                #     output_sigmoided = F.sigmoid(output)
+                #     output_sigmoided = (output_sigmoided > 0.5).float()
+                #
+                # ############ Evaluation metric calculation ########
+                #
+                # # Metrics calculation (macro) over the whole set
+                # output_sigmoided = output_sigmoided.int().cpu().numpy()
+                # label = label.cpu().numpy()
+                #
+                # confusion = metrics.multilabel_confusion_matrix(label, output_sigmoided)
+                #
+                # F1_disease = []
+                # accuracy_disease = []
+                # specifity_disease = []
+                # sensitivity_disease = []
+                # precision_disease = []
+                #
+                # for idx, disease in enumerate(confusion):
+                #     TN = disease[0, 0]
+                #     FP = disease[0, 1]
+                #     FN = disease[1, 0]
+                #     TP = disease[1, 1]
+                #     F1_disease.append(2 * TP / (2 * TP + FN + FP + epsilon))
+                #     accuracy_disease.append((TP + TN) / (TP + TN + FP + FN + epsilon))
+                #     specifity_disease.append(TN / (TN + FP + epsilon))
+                #     sensitivity_disease.append(TP / (TP + FN + epsilon))
+                #     precision_disease.append(TP / (TP + FP + epsilon))
+                #
+                #
+                # for class_num in range(output_sigmoided.shape[1]):
+                #     fpr, tpr, thresholds = metrics.roc_curve(label[:, class_num], output_sigmoided[:, class_num], pos_label=1)
+                #     aucc = metrics.auc(fpr, tpr)
+                #     pdb.set_trace()
 
-                # Validation iteration & calculate metrics
-                if (self.step) % (self.params['display_stats_freq']) == 0:
 
-                    # saving the model, checkpoint, TensorBoard, etc.
-                    if not valid_loader == None:
-                        valid_acc, valid_sensitivity, valid_specifity, valid_loss, valid_F1 = self.valid_epoch(valid_loader, batch_size)
-                        end_time = time.time()
-                        total_hours, total_mins, total_secs = self.time_duration(total_start_time, end_time)
+            train_loss = batch_loss / len(train_loader)
+            self.writer.add_scalar('Train_loss_avg', train_loss, self.epoch)
 
-                        self.calculate_tb_stats(valid_acc, valid_sensitivity, valid_specifity, valid_loss, valid_F1)
-                        self.savings_prints(iteration_hours, iteration_mins, iteration_secs, total_hours,
-                                            total_mins, total_secs, train_loss,
-                                            valid_acc, valid_sensitivity, valid_specifity, valid_loss, valid_F1)
-                    else:
-                        self.savings_prints(iteration_hours, iteration_mins, iteration_secs, total_hours,
-                                            total_mins, total_secs, train_loss)
+            # Validation iteration & calculate metrics
+            if (self.epoch) % (self.params['display_stats_freq']) == 0:
+
+                # saving the model, checkpoint, TensorBoard, etc.
+                if not valid_loader == None:
+                    valid_loss, valid_F1, valid_AUC, valid_accuracy, valid_specifity, valid_sensitivity, valid_precision = self.valid_epoch(valid_loader)
+                    end_time = time.time()
+                    total_time = end_time - total_start_time
+                    iteration_hours, iteration_mins, iteration_secs = self.time_duration(start_time, end_time)
+                    total_hours, total_mins, total_secs = self.time_duration(total_start_time, end_time)
+
+                    self.calculate_tb_stats(valid_loss=valid_loss, valid_F1=valid_F1, valid_AUC=valid_AUC, valid_accuracy=valid_accuracy, valid_specifity=valid_specifity,
+                                            valid_sensitivity=valid_sensitivity, valid_precision=valid_precision)
+                    self.savings_prints(iteration_hours, iteration_mins, iteration_secs, total_hours,
+                                        total_mins, total_secs, train_loss, total_time, valid_loss=valid_loss, valid_F1=valid_F1,
+                                        valid_AUC=valid_AUC, valid_accuracy=valid_accuracy, valid_specifity= valid_specifity,
+                                        valid_sensitivity=valid_sensitivity, valid_precision=valid_precision)
+                else:
+                    end_time = time.time()
+                    total_time = end_time - total_start_time
+                    iteration_hours, iteration_mins, iteration_secs = self.time_duration(start_time, end_time)
+                    total_hours, total_mins, total_secs = self.time_duration(total_start_time, end_time)
+                    self.savings_prints(iteration_hours, iteration_mins, iteration_secs, total_hours,
+                                        total_mins, total_secs, train_loss, total_time)
 
 
 
-    def valid_epoch(self, valid_loader, batch_size):
+    def valid_epoch(self, valid_loader):
         """Validation epoch
 
         Returns
         -------
-        epoch_f1_score: float
-            average validation F1 score
-
-        epoch_accuracy: float
-            average validation accuracy
-
-        epoch_loss: float
-            average validation loss
         """
         self.model.eval()
+        total_loss = 0.0
+        total_f1_score = []
+        total_AUROC = []
+        total_accuracy = []
+        total_specifity_score = []
+        total_sensitivity_score = []
+        total_precision_score = []
 
-        # initializing the metrics lists
-        accuracy_disease = []
-        sensitivity_disease = []
-        specifity_disease = []
-        F1_disease = []
+        for idx, (image, label) in enumerate(valid_loader):
 
-        with torch.no_grad():
+            image = image.to(self.device)
+            label = label.to(self.device)
 
-            # initializing the caches
-            logits_with_sigmoid_cache = torch.from_numpy(np.zeros((len(valid_loader) * batch_size, len(self.chosen_labels))))
-            logits_no_sigmoid_cache = torch.from_numpy(np.zeros_like(logits_with_sigmoid_cache))
-            labels_cache = torch.from_numpy(np.zeros_like(logits_with_sigmoid_cache))
-
-            for idx, (image, label) in enumerate(valid_loader):
-                self.model.eval()
-
-                image = image.to(self.device)
-                label = label.to(self.device)
-                image = image.float()
-                label = label.float()
-
+            with torch.no_grad():
                 output = self.model(image)
+                loss = self.loss_function(output, label.float())  # for multilabel
+
                 output_sigmoided = F.sigmoid(output)
                 output_sigmoided = (output_sigmoided > 0.5).float()
 
-                # saving the logits and labels of this batch
-                for i, batch in enumerate(output_sigmoided):
-                    logits_with_sigmoid_cache[idx * batch_size + i] = batch
-                for i, batch in enumerate(output):
-                    logits_no_sigmoid_cache[idx * batch_size + i] = batch
-                for i, batch in enumerate(label):
-                    labels_cache[idx * batch_size + i] = batch
+            ############ Evaluation metric calculation ########
+            total_loss += loss.item()
 
-        # Metrics calculation (macro) over the whole set
-        confusioner = torchmetrics.ConfusionMatrix(num_classes=len(self.chosen_labels), multilabel=True).to(self.device)
-        confusion = confusioner(logits_with_sigmoid_cache.to(self.device), labels_cache.int().to(self.device))
+            # Metrics calculation (macro) over the whole set
+            output_sigmoided = output_sigmoided.int().cpu().numpy()
+            label = label.cpu().numpy()
 
-        for idx, disease in enumerate(confusion):
-            TN = disease[0, 0]
-            FP = disease[0, 1]
-            FN = disease[1, 0]
-            TP = disease[1, 1]
-            accuracy_disease.append((TP + TN) / (TP + TN + FP + FN + epsilon))
-            sensitivity_disease.append(TP / (TP + FN + epsilon))
-            specifity_disease.append(TN / (TN + FP + epsilon))
-            F1_disease.append(2 * TP / (2 * TP + FN + FP + epsilon))
+            confusion = metrics.multilabel_confusion_matrix(label, output_sigmoided)
 
-        # Macro averaging
-        epoch_accuracy = torch.stack(accuracy_disease)
-        epoch_sensitivity = torch.stack(sensitivity_disease)
-        epoch_specifity = torch.stack(specifity_disease)
-        epoch_f1_score = torch.stack(F1_disease)
+            F1_disease = []
+            AUROC_disease = []
+            accuracy_disease = []
+            specifity_disease = []
+            sensitivity_disease = []
+            precision_disease = []
 
-        loss = self.loss_function(logits_no_sigmoid_cache.to(self.device), labels_cache.to(self.device))
-        epoch_loss = loss.item()
+            for idx, disease in enumerate(confusion):
+                TN = disease[0, 0]
+                FP = disease[0, 1]
+                FN = disease[1, 0]
+                TP = disease[1, 1]
+                F1_disease.append(2 * TP / (2 * TP + FN + FP + epsilon))
+                accuracy_disease.append((TP + TN) / (TP + TN + FP + FN + epsilon))
+                specifity_disease.append(TN / (TN + FP + epsilon))
+                sensitivity_disease.append(TP / (TP + FN + epsilon))
+                precision_disease.append(TP / (TP + FP + epsilon))
 
-        return epoch_accuracy, epoch_sensitivity, epoch_specifity, epoch_loss, epoch_f1_score
+            for class_num in range(output_sigmoided.shape[1]):
+                fpr, tpr, thresholds = metrics.roc_curve(label[:, class_num], output_sigmoided[:, class_num], pos_label=1)
+                AUROC_disease.append(metrics.auc(fpr, tpr))
+
+            # Macro averaging
+            total_f1_score.append(np.stack(F1_disease))
+            total_AUROC.append(np.stack(AUROC_disease))
+            total_accuracy.append(np.stack(accuracy_disease))
+            total_specifity_score.append(np.stack(specifity_disease))
+            total_sensitivity_score.append(np.stack(sensitivity_disease))
+            total_precision_score.append(np.stack(precision_disease))
+
+        average_loss = total_loss / len(valid_loader)
+        average_f1_score = np.stack(total_f1_score).mean(0)
+        average_AUROC = np.stack(total_AUROC).mean(0)
+        average_accuracy = np.stack(total_accuracy).mean(0)
+        average_specifity = np.stack(total_specifity_score).mean(0)
+        average_sensitivity = np.stack(total_sensitivity_score).mean(0)
+        average_precision = np.stack(total_precision_score).mean(0)
+
+        return average_loss, average_f1_score, average_AUROC, average_accuracy, average_specifity, average_sensitivity, average_precision
 
 
 
     def savings_prints(self, iteration_hours, iteration_mins, iteration_secs, total_hours,
-                       total_mins, total_secs, train_loss, valid_acc=None, valid_sensitivity=None,
-                       valid_specifity=None, valid_loss=None, valid_F1=None):
+                       total_mins, total_secs, train_loss, total_time, total_overhead_time=0, total_datacopy_time=0, valid_loss=None, valid_F1=None, valid_AUC=None, valid_accuracy=None,
+                       valid_specifity=None, valid_sensitivity=None, valid_precision=None):
         """Saving the model weights, checkpoint, information,
         and training and validation loss and evaluation statistics.
 
@@ -380,8 +403,13 @@ class Training:
 
         # Saves information about training to config file
         self.params['Network']['num_epoch'] = self.epoch
-        self.params['Network']['step'] = self.step
         write_config(self.params, self.cfg_path, sort_keys=True)
+
+        overhead_hours, overhead_mins, overhead_secs = self.time_duration(0, total_overhead_time)
+        noncopy_time = total_time - total_datacopy_time
+        netto_time = total_time - total_overhead_time - total_datacopy_time
+        noncopy_hours, noncopy_mins, noncopy_secs = self.time_duration(0, noncopy_time)
+        netto_hours, netto_mins, netto_secs = self.time_duration(0, netto_time)
 
         # Saving the model based on the best loss
         if valid_loss:
@@ -395,63 +423,67 @@ class Training:
                 torch.save(self.model.state_dict(), os.path.join(self.params['target_dir'],
                                                                  self.params['network_output_path'], self.params['trained_model_name']))
 
-        # Saving every couple of steps
-        if (self.step) % self.params['network_save_freq'] == 0:
+        # Saving every couple of epochs
+        if (self.epoch) % self.params['network_save_freq'] == 0:
             torch.save(self.model.state_dict(), os.path.join(self.params['target_dir'], self.params['network_output_path'],
-                                                             'step{}_'.format(self.step) + self.params['trained_model_name']))
+                       'epoch{}_'.format(self.epoch) + self.params['trained_model_name']))
 
-        # Save a checkpoint every step
-        if (self.step) % self.params['network_checkpoint_freq'] == 0:
-            torch.save({'epoch': self.epoch, 'step': self.step,
-                        'model_state_dict': self.model.state_dict(),
-                        'optimizer_state_dict': self.optimiser.state_dict(),
-                        'loss_state_dict': self.loss_function.state_dict(), 'num_epochs': self.num_epochs,
-                        'model_info': self.model_info, 'best_loss': self.best_loss},
-                       os.path.join(self.params['target_dir'], self.params['network_output_path'], self.params['checkpoint_name']))
+        # Save a checkpoint every epoch
+        torch.save({'epoch': self.epoch,
+                    'model_state_dict': self.model.state_dict(),
+                    'optimizer_state_dict': self.optimiser.state_dict(),
+                    'loss_state_dict': self.loss_function.state_dict(), 'num_epochs': self.num_epochs,
+                    'model_info': self.model_info, 'best_loss': self.best_loss},
+                   os.path.join(self.params['target_dir'], self.params['network_output_path'], self.params['checkpoint_name']))
 
         print('------------------------------------------------------'
               '----------------------------------')
-        print(f'Step: {self.step} (epoch: {self.epoch}) | '
-              f'Step time: {iteration_hours}h {iteration_mins}m {iteration_secs}s | '
-              f'Total time: {total_hours}h {total_mins}m {total_secs}s')
+        print(f'epoch: {self.epoch} | '
+              f'epoch time: {iteration_hours}h {iteration_mins}m {iteration_secs:.2f}s | '
+              f'total time: {total_hours}h {total_mins}m {total_secs:.2f}s | communication overhead time so far: {overhead_hours}h {overhead_mins}m {overhead_secs:.2f}s')
         print(f'\n\tTrain loss: {train_loss:.4f}')
 
         if valid_loss:
-            print(f'\t Val. loss: {valid_loss:.4f} | Acc: {valid_acc.mean().item() * 100:.2f}% | F1: {valid_F1.mean().item() * 100:.2f}%'
-                  f' | Sensitivity: {valid_sensitivity.mean().item() * 100:.2f}% | Specifity: {valid_specifity.mean().item() * 100:.2f}%')
+            print(f'\t Val. loss: {valid_loss:.4f} | Average F1: {valid_F1.mean() * 100:.2f}% | Average AUROC: {valid_AUC.mean() * 100:.2f}% | accuracy: {valid_accuracy.mean() * 100:.2f}%'
+            f' | specifity: {valid_specifity.mean() * 100:.2f}%'
+            f' | recall (sensitivity): {valid_sensitivity.mean() * 100:.2f}% | precision: {valid_precision.mean() * 100:.2f}%\n')
 
-            print('\nIndividual F1 scores:')
-            for idx, pathology in enumerate(self.chosen_labels):
-                print(f'\t{self.label_names[pathology]}: {valid_F1[idx].item() * 100:.2f}%')
-
-            print('\nIndividual accuracy scores:')
-            for idx, pathology in enumerate(self.chosen_labels):
-                print(f'\t{self.label_names[pathology]}: {valid_acc[idx].item() * 100:.2f}%')
-
-            print('\nIndividual sensitivity (recall) scores:')
-            for idx, pathology in enumerate(self.chosen_labels):
-                print(f'\t{self.label_names[pathology]}: {valid_sensitivity[idx].item() * 100:.2f}%')
-
-            print('\nIndividual specifity scores:')
-            for idx, pathology in enumerate(self.chosen_labels):
-                print(f'\t{self.label_names[pathology]}: {valid_specifity[idx].item() * 100:.2f}%')
+            print('Individual AUROC:')
+            print(f'class 1: {valid_AUC[0] * 100:.2f}%')
+            print(f'class 2: {valid_AUC[1] * 100:.2f}%')
+            print(f'class 3: {valid_AUC[2] * 100:.2f}%')
+            print(f'class 4: {valid_AUC[3] * 100:.2f}%')
+            print(f'class 5: {valid_AUC[4] * 100:.2f}%')
 
             # saving the training and validation stats
             msg = f'----------------------------------------------------------------------------------------\n' \
-                   f'Step: {self.step} (epoch: {self.epoch}) | Step time: {iteration_hours}h {iteration_mins}m {iteration_secs}s' \
-                   f' | Total time: {total_hours}h {total_mins}m {total_secs}s\n\n\tTrain loss: {train_loss:.4f} | ' \
-                   f'Val. loss: {valid_loss:.4f} | Acc: {valid_acc.mean().item() *100:.2f}% | F1: {valid_F1.mean().item() * 100:.2f}% ' \
-                  f'| Sensitivity: {valid_sensitivity.mean().item() * 100:.2f}% | Specifity: {valid_specifity.mean().item() * 100:.2f}%\n\n'
+                   f'epoch: {self.epoch} | epoch Time: {iteration_hours}h {iteration_mins}m {iteration_secs:.2f}s' \
+                   f' | total time: {total_hours}h {total_mins}m {total_secs:.2f}s | ' \
+                  f'communication overhead time so far: {overhead_hours}h {overhead_mins}m {overhead_secs:.2f}s\n' \
+                  f' | total time - copy time: {noncopy_hours}h {noncopy_mins}m {noncopy_secs:.2f}s' \
+                  f' | total time - copy time - overhead time: {netto_hours}h {netto_mins}m {netto_secs:.2f}s' \
+                  f'\n\n\tTrain loss: {train_loss:.4f} | ' \
+                   f'Val. loss: {valid_loss:.4f} | Average F1: {valid_F1.mean() * 100:.2f}% | Average AUROC: {valid_AUC.mean() * 100:.2f}% | accuracy: {valid_accuracy.mean() * 100:.2f}% ' \
+                   f' | specifity: {valid_specifity.mean() * 100:.2f}%' \
+                   f' | recall (sensitivity): {valid_sensitivity.mean() * 100:.2f}% | precision: {valid_precision.mean() * 100:.2f}%\n\n' \
+                   f'  AUROC class 1: {valid_AUC[0] * 100:.2f}% | ' \
+                   f'  AUROC class 2: {valid_AUC[1] * 100:.2f}% | ' \
+                   f'  AUROC class 3: {valid_AUC[2] * 100:.2f}% | ' \
+                   f'  AUROC class 4: {valid_AUC[2] * 100:.2f}% | ' \
+                   f'  AUROC class 5: {valid_AUC[4] * 100:.2f}%\n\n'
         else:
             msg = f'----------------------------------------------------------------------------------------\n' \
-                   f'Step: {self.step} (epoch: {self.epoch}) | Step time: {iteration_hours}h {iteration_mins}m {iteration_secs}s' \
-                   f' | Total time: {total_hours}h {total_mins}m {total_secs}s\n\n\tTrain loss: {train_loss:.4f}\n\n'
+                   f'epoch: {self.epoch} | epoch time: {iteration_hours}h {iteration_mins}m {iteration_secs:.2f}s' \
+                   f' | total time: {total_hours}h {total_mins}m {total_secs:.2f}s\n\n\ttrain loss: {train_loss:.4f}' \
+                  f' | communication overhead time so far: {overhead_hours}h {overhead_mins}m {overhead_secs:.2f}s\n' \
+                  f' | total time - copy time: {noncopy_hours}h {noncopy_mins}m {noncopy_secs:.2f}s' \
+                  f' | total time - copy time - overhead time: {netto_hours}h {netto_mins}m {netto_secs:.2f}s\n\n'
         with open(os.path.join(self.params['target_dir'], self.params['stat_log_path']) + '/Stats', 'a') as f:
             f.write(msg)
 
 
 
-    def calculate_tb_stats(self, valid_acc=None, valid_sensitivity=None, valid_specifity=None, valid_loss=None, valid_F1=None):
+    def calculate_tb_stats(self, valid_loss=None, valid_F1=None, valid_AUC=None, valid_accuracy=None, valid_specifity=None, valid_sensitivity=None, valid_precision=None):
         """Adds the evaluation metrics and loss values to the tensorboard.
 
         Parameters
@@ -468,11 +500,11 @@ class Training:
         valid_loss: float
             validation loss of the model
         """
-        if valid_acc is not None:
-            self.writer.add_scalar('Valid_Accuracy', valid_acc.mean().item(), self.step)
-            self.writer.add_scalar('Valid_Loss', valid_loss, self.step)
-            self.writer.add_scalar('Valid_sensitivity', valid_sensitivity.mean().item(), self.step)
-            self.writer.add_scalar('Valid_specifity', valid_specifity.mean().item(), self.step)
-            self.writer.add_scalar('Valid_F1 score', valid_F1.mean().item(), self.step)
-            self.writer.add_scalar('Valid_Accuracy class 1', valid_acc[0].item(), self.step)
-            self.writer.add_scalar('Valid_Accuracy class 2', valid_acc[1].item(), self.step)
+        if valid_loss is not None:
+            self.writer.add_scalar('Valid_loss', valid_loss, self.epoch)
+            self.writer.add_scalar('valid_F1', valid_F1.mean(), self.epoch)
+            self.writer.add_scalar('Valid_AUROC', valid_AUC.mean(), self.epoch)
+            self.writer.add_scalar('Valid_accuracy', valid_accuracy.mean(), self.epoch)
+            self.writer.add_scalar('Valid_specifity', valid_specifity.mean(), self.epoch)
+            self.writer.add_scalar('Valid_precision', valid_precision.mean(), self.epoch)
+            self.writer.add_scalar('Valid_recall_sensitivity', valid_sensitivity.mean(), self.epoch)

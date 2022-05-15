@@ -601,10 +601,59 @@ class normalizer_resizer():
 
 
 
-
-class csv_processor():
+class csv_summarizer():
     def __init__(self, cfg_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml"):
         self.params = read_config(cfg_path)
+
+
+    def vindr(self):
+
+        final_train = pd.DataFrame(columns=['image_id', 'split', 'Aortic enlargement', 'Atelectasis', 'Calcification',
+                                            'Cardiomegaly', 'Clavicle fracture', 'Consolidation', 'Edema', 'Emphysema', 'Enlarged PA',
+                     'ILD', 'Infiltration',	'Lung Opacity',	'Lung cavity', 'Lung cyst', 'Mediastinal shift', 'Nodule/Mass',
+                                            'Pleural effusion', 'Pleural thickening', 'Pneumothorax',
+                     'Pulmonary fibrosis', 'Rib fracture', 'Other lesion', 'COPD', 'Lung tumor', 'Pneumonia',
+                                            'Tuberculosis', 'Other diseases', 'No finding'])
+
+        trainlabel_path = '/home/soroosh/Documents/datasets/XRay/vindr-cxr1/preprocessed/image_labels_train.csv'
+        trainlabel = pd.read_csv(trainlabel_path, sep=',')
+
+        disease_list = ['Aortic enlargement', 'Atelectasis', 'Calcification', 'Cardiomegaly', 'Clavicle fracture', 'Consolidation', 'Edema', 'Emphysema', 'Enlarged PA',
+                     'ILD', 'Infiltration',	'Lung Opacity',	'Lung cavity', 'Lung cyst', 'Mediastinal shift', 'Nodule/Mass', 'Pleural effusion', 'Pleural thickening', 'Pneumothorax',
+                     'Pulmonary fibrosis', 'Rib fracture', 'Other lesion', 'COPD', 'Lung tumor', 'Pneumonia', 'Tuberculosis', 'Other diseases', 'No finding']
+
+        train_list = glob.glob('/home/soroosh/Documents/datasets/XRay/vindr-cxr1/preprocessed/train/*')
+        train_list.sort()
+
+        for image_path in tqdm(train_list):
+
+            image_idlist = os.path.basename(image_path)
+            image_idlist = image_idlist.split(".")
+            assert len(image_idlist) == 2
+            image_id = image_idlist[0]
+            image = trainlabel[trainlabel['image_id'] == image_id]
+
+            value_list =[]
+            for disease in disease_list:
+                if image[disease].mean() < 0.5:
+                    value_list.append(int(0))
+                else:
+                    value_list.append(int(1))
+
+            tempp = pd.DataFrame([[image_id, 'train', value_list[0], value_list[1], value_list[2], value_list[3], value_list[4], value_list[5], value_list[6],
+                                   value_list[7], value_list[8], value_list[9], value_list[10], value_list[11], value_list[12], value_list[13],
+                                   value_list[14], value_list[15], value_list[16], value_list[17], value_list[18], value_list[19], value_list[20],
+                                   value_list[21], value_list[22], value_list[23], value_list[24], value_list[25], value_list[26], value_list[27]]],
+                                 columns=['image_id', 'split', 'Aortic enlargement', 'Atelectasis', 'Calcification', 'Cardiomegaly', 'Clavicle fracture', 'Consolidation', 'Edema', 'Emphysema', 'Enlarged PA',
+                     'ILD', 'Infiltration',	'Lung Opacity',	'Lung cavity', 'Lung cyst', 'Mediastinal shift', 'Nodule/Mass', 'Pleural effusion', 'Pleural thickening', 'Pneumothorax',
+                     'Pulmonary fibrosis', 'Rib fracture', 'Other lesion', 'COPD', 'Lung tumor', 'Pneumonia', 'Tuberculosis', 'Other diseases', 'No finding'])
+            final_train = final_train.append(tempp)
+
+        final_train.to_csv('/home/soroosh/Documents/datasets/XRay/vindr-cxr1/preprocessed/train_master_list.csv', sep=',', index=False)
+
+
+
+
 
 
 
@@ -615,9 +664,11 @@ if __name__ == '__main__':
     # handler = csv_preprocess_mimic()
     # handler.csv_creator()
 
-    handler2 = normalizer_resizer()
+    # handler2 = normalizer_resizer()
     # handler2.mimic_normalizer_resizer()
     # handler2.vindr_normalizer_resizer()
     # handler2.chexpert_normalizer_resizer()
     # handler2.pediatric_corona_normalizer_resizer()
     # handler2.UKA_normalizer_resizer()
+    hendler3 = csv_summarizer()
+    hendler3.vindr()
