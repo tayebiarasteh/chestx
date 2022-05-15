@@ -18,7 +18,7 @@ from models.Xception_model import Xception
 from models.resnet_18 import ResNet18
 from Train_Valid_chestx import Training
 from Prediction_chestx import Prediction
-from data.data_provider import vindr_data_loader_2D
+from data.data_provider import vindr_data_loader_2D, coronahack_data_loader_2D
 
 import warnings
 warnings.filterwarnings('ignore')
@@ -27,7 +27,7 @@ warnings.filterwarnings('ignore')
 
 
 def main_train_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml", valid=False,
-                  resume=False, augment=False, experiment_name='name'):
+                  resume=False, augment=False, experiment_name='name', dataset_name='vindr'):
     """Main function for training + validation centrally
 
         Parameters
@@ -54,16 +54,11 @@ def main_train_central_2D(global_config_path="/home/soroosh/Documents/Repositori
         params = create_experiment(experiment_name, global_config_path)
     cfg_path = params["cfg_path"]
 
-    # Changeable network parameters
-    # not pretrained resnet34
-    model = load_pretrained_model(num_classes=5)
-    # model = Xception(num_classes=len(chosen_labels))
-    # model = ResNet18(n_out_classes=len(chosen_labels))
-    loss_function = BCEWithLogitsLoss
-    optimizer = torch.optim.Adam(model.parameters(), lr=float(params['Network']['lr']),
-                                 weight_decay=float(params['Network']['weight_decay']), amsgrad=params['Network']['amsgrad'])
+    if dataset_name == 'vindr':
+        train_dataset = vindr_data_loader_2D(cfg_path=cfg_path, mode='train')
+    elif dataset_name == 'coronahack':
+        train_dataset = coronahack_data_loader_2D(cfg_path=cfg_path, mode='train')
 
-    train_dataset = vindr_data_loader_2D(cfg_path=cfg_path, mode='train')
     train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=params['Network']['batch_size'],
                                                pin_memory=True, drop_last=True, shuffle=True, num_workers=10)
     weight = train_dataset.pos_weight()
@@ -74,6 +69,15 @@ def main_train_central_2D(global_config_path="/home/soroosh/Documents/Repositori
                                                    pin_memory=True, drop_last=True, shuffle=False, num_workers=5)
     else:
         valid_loader = None
+
+    # Changeable network parameters
+    # not pretrained resnet34
+    model = load_pretrained_model(num_classes=len(weight))
+    # model = Xception(num_classes=len(weight))
+    # model = ResNet18(n_out_classes=len(weight))
+    loss_function = BCEWithLogitsLoss
+    optimizer = torch.optim.Adam(model.parameters(), lr=float(params['Network']['lr']),
+                                 weight_decay=float(params['Network']['weight_decay']), amsgrad=params['Network']['amsgrad'])
 
     trainer = Training(cfg_path, num_epochs=params['num_epochs'], resume=resume)
     if resume == True:
@@ -189,5 +193,5 @@ def load_pretrained_model(num_classes=2):
 if __name__ == '__main__':
     delete_experiment(experiment_name='tempp', global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml")
     main_train_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
-                  valid=True, resume=False, augment=False, experiment_name='tempp')
+                  valid=True, resume=False, augment=False, experiment_name='tempp', dataset_name='coronahack')
     # main_test_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml", experiment_name='first_try')

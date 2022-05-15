@@ -9,18 +9,10 @@ tb_logs_path: tensor_board_logs/
 stat_log_path: stat_logs
 checkpoint_name: checkpoint.tar
 trained_model_name: trained_model.pth
-label_names: ['atelectasis', 'cardiomegaly', 'consolidation', 'edema', 'enlarged_cardiomediastinum', 'fracture',
-              'lung_lesion', 'lung_opacity', 'no_finding', 'pleural_effusion', 'pleural_other', 'pneumonia',
-              'pneumothorax', 'support_devices']
-#label_names: ['poly_wafer', 'crack', 'inactive']
-#train_mean_p10: []
-#train_std_p10: []
-train_mean_solar: [0.59685254, 0.59685254, 0.59685254]
-train_std_solar: [0.16043035, 0.16043035, 0.16043035]
 
 # changeable items:
 file_path: /home/soroosh/Documents/datasets/XRay/
 target_dir: /home/soroosh/Documents/Repositories_target_files/chestx/
-network_save_freq: 200 # based on the batch size, shows the number of epochs done; every half an hour is good
+network_save_freq: 20 # number of epochs to save
 display_stats_freq: 1 # valid freq is equal to this
 num_epochs: 1000
