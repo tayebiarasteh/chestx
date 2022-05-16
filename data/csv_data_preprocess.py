@@ -266,14 +266,14 @@ class csv_preprocess_mimic():
 
     def class_num_change(self):
         """
+        Class 0 will stay 0: "negative"
         Class 1 will stay 1: "positive"
-        Class 0 will become class 2: "negative"
-        Class -1 will become class 3: "not sure"
-        Class NaN will become class 0: background (not given; none of the "positive", "negative", "not sure")
+        Class -1 will become class 3: "uncertain positive"
+        Class NaN will become class 2: not given; not mentioned in the report
         """
 
-        output_path = "/home/soroosh/Documents/datasets/MIMIC/mimic_master_list.csv"
-        newoutput_path = "/home/soroosh/Documents/datasets/MIMIC/newmimic_master_list.csv"
+        output_path = "/home/soroosh/Documents/datasets/XRay/MIMIC/mimic_master_list.csv"
+        newoutput_path = "/home/soroosh/Documents/datasets/XRay/MIMIC/newmimic_master_list.csv"
 
         df1 = pd.read_csv(output_path, sep=',')
 
@@ -283,21 +283,6 @@ class csv_preprocess_mimic():
             ['atelectasis', 'cardiomegaly', 'consolidation', 'edema', 'enlarged_cardiomediastinum', 'fracture',
              'lung_lesion', 'lung_opacity', 'no_finding', 'pleural_effusion', 'pleural_other', 'pneumonia',
              'pneumothorax', 'support_devices']].fillna(5).astype(int)
-
-        df1.loc[df1.atelectasis == 0, 'atelectasis'] = 2
-        df1.loc[df1.cardiomegaly == 0, 'cardiomegaly'] = 2
-        df1.loc[df1.consolidation == 0, 'consolidation'] = 2
-        df1.loc[df1.edema == 0, 'edema'] = 2
-        df1.loc[df1.enlarged_cardiomediastinum == 0, 'enlarged_cardiomediastinum'] = 2
-        df1.loc[df1.fracture == 0, 'fracture'] = 2
-        df1.loc[df1.lung_lesion == 0, 'lung_lesion'] = 2
-        df1.loc[df1.lung_opacity == 0, 'lung_opacity'] = 2
-        df1.loc[df1.no_finding == 0, 'no_finding'] = 2
-        df1.loc[df1.pleural_effusion == 0, 'pleural_effusion'] = 2
-        df1.loc[df1.pleural_other == 0, 'pleural_other'] = 2
-        df1.loc[df1.pneumonia == 0, 'pneumonia'] = 2
-        df1.loc[df1.pneumothorax == 0, 'pneumothorax'] = 2
-        df1.loc[df1.support_devices == 0, 'support_devices'] = 2
 
         df1.loc[df1.atelectasis == -1, 'atelectasis'] = 3
         df1.loc[df1.cardiomegaly == -1, 'cardiomegaly'] = 3
@@ -314,22 +299,42 @@ class csv_preprocess_mimic():
         df1.loc[df1.pneumothorax == -1, 'pneumothorax'] = 3
         df1.loc[df1.support_devices == -1, 'support_devices'] = 3
 
-        df1.loc[df1.atelectasis == 5, 'atelectasis'] = 0
-        df1.loc[df1.cardiomegaly == 5, 'cardiomegaly'] = 0
-        df1.loc[df1.consolidation == 5, 'consolidation'] = 0
-        df1.loc[df1.edema == 5, 'edema'] = 0
-        df1.loc[df1.enlarged_cardiomediastinum == 5, 'enlarged_cardiomediastinum'] = 0
-        df1.loc[df1.fracture == 5, 'fracture'] = 0
-        df1.loc[df1.lung_lesion == 5, 'lung_lesion'] = 0
-        df1.loc[df1.lung_opacity == 5, 'lung_opacity'] = 0
-        df1.loc[df1.no_finding == 5, 'no_finding'] = 0
-        df1.loc[df1.pleural_effusion == 5, 'pleural_effusion'] = 0
-        df1.loc[df1.pleural_other == 5, 'pleural_other'] = 0
-        df1.loc[df1.pneumonia == 5, 'pneumonia'] = 0
-        df1.loc[df1.pneumothorax == 5, 'pneumothorax'] = 0
-        df1.loc[df1.support_devices == 5, 'support_devices'] = 0
+        df1.loc[df1.atelectasis == 5, 'atelectasis'] = 2
+        df1.loc[df1.cardiomegaly == 5, 'cardiomegaly'] = 2
+        df1.loc[df1.consolidation == 5, 'consolidation'] = 2
+        df1.loc[df1.edema == 5, 'edema'] = 2
+        df1.loc[df1.enlarged_cardiomediastinum == 5, 'enlarged_cardiomediastinum'] = 2
+        df1.loc[df1.fracture == 5, 'fracture'] = 2
+        df1.loc[df1.lung_lesion == 5, 'lung_lesion'] = 2
+        df1.loc[df1.lung_opacity == 5, 'lung_opacity'] = 2
+        df1.loc[df1.no_finding == 5, 'no_finding'] = 2
+        df1.loc[df1.pleural_effusion == 5, 'pleural_effusion'] = 2
+        df1.loc[df1.pleural_other == 5, 'pleural_other'] = 2
+        df1.loc[df1.pneumonia == 5, 'pneumonia'] = 2
+        df1.loc[df1.pneumothorax == 5, 'pneumothorax'] = 2
+        df1.loc[df1.support_devices == 5, 'support_devices'] = 2
 
         df1.to_csv(newoutput_path, sep=',', index=False)
+
+
+    def threetwo_remover(self):
+        path = "/home/soroosh/Documents/datasets/XRay/MIMIC/mimic_master_list.csv"
+        newoutput_path = "/home/soroosh/Documents/datasets/XRay/MIMIC/nothree_master_list.csv"
+
+        final_data = pd.DataFrame(columns=['jpg_rel_path','split', 'gender', 'age', 'view', 'AP_PA', 'no_finding',
+                             'enlarged_cardiomediastinum', 'cardiomegaly', 'lung_opacity', 'lung_lesion',
+                             'edema', 'consolidation', 'pneumonia', 'atelectasis', 'pneumothorax',
+                             'pleural_effusion', 'pleural_other', 'fracture', 'support_devices'])
+
+        df = pd.read_csv(path, sep=',')
+        for index, row in tqdm(df.iterrows()):
+            # if (row['enlarged_cardiomediastinum'] < 2) and (row['consolidation'] < 2) and (row['pleural_effusion'] < 2) and (row['pneumothorax'] < 2) and (row['atelectasis'] < 2):
+            if (row['enlarged_cardiomediastinum'] < 3) and (row['consolidation'] < 3) and (row['pleural_effusion'] < 3) and (row['pneumothorax'] < 3) and (row['atelectasis'] < 3):
+            # if (row['cardiomegaly'] < 2):
+                final_data = final_data.append(row)
+
+        final_data.to_csv(newoutput_path, sep=',', index=False)
+
 
 
 
@@ -655,14 +660,91 @@ class csv_summarizer():
 
 
 
+class csv_preprocess_chexpert():
+    def __init__(self, cfg_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml"):
+        self.params = read_config(cfg_path)
+
+
+    def class_num_change(self):
+        """
+        Class 0 will stay 0: "negative"
+        Class 1 will stay 1: "positive"
+        Class -1 will become class 3: "uncertain positive"
+        Class NaN will become class 2: not given; not mentioned in the report
+        """
+
+        input_path = "/home/soroosh/Documents/datasets/XRay/CheXpert-v1.0/preprocessed/valid.csv"
+        newoutput_path = "/home/soroosh/Documents/datasets/XRay/CheXpert-v1.0/preprocessed/valid_master_list.csv"
+
+        df1 = pd.read_csv(input_path, sep=',')
+
+        df1[['no_finding', 'enlarged_cardiomediastinum', 'cardiomegaly', 'lung_opacity', 'lung_lesion', 'edema',
+             'consolidation', 'pneumonia', 'atelectasis', 'pneumothorax', 'pleural_effusion', 'pleural_other',
+             'fracture', 'support_devices']] = df1[
+            ['no_finding', 'enlarged_cardiomediastinum', 'cardiomegaly', 'lung_opacity', 'lung_lesion', 'edema',
+             'consolidation', 'pneumonia', 'atelectasis', 'pneumothorax', 'pleural_effusion', 'pleural_other',
+             'fracture', 'support_devices']].fillna(5).astype(int)
+
+        df1.loc[df1.atelectasis == -1, 'atelectasis'] = 3
+        df1.loc[df1.cardiomegaly == -1, 'cardiomegaly'] = 3
+        df1.loc[df1.consolidation == -1, 'consolidation'] = 3
+        df1.loc[df1.edema == -1, 'edema'] = 3
+        df1.loc[df1.enlarged_cardiomediastinum == -1, 'enlarged_cardiomediastinum'] = 3
+        df1.loc[df1.fracture == -1, 'fracture'] = 3
+        df1.loc[df1.lung_lesion == -1, 'lung_lesion'] = 3
+        df1.loc[df1.lung_opacity == -1, 'lung_opacity'] = 3
+        df1.loc[df1.no_finding == -1, 'no_finding'] = 3
+        df1.loc[df1.pleural_effusion == -1, 'pleural_effusion'] = 3
+        df1.loc[df1.pleural_other == -1, 'pleural_other'] = 3
+        df1.loc[df1.pneumonia == -1, 'pneumonia'] = 3
+        df1.loc[df1.pneumothorax == -1, 'pneumothorax'] = 3
+        df1.loc[df1.support_devices == -1, 'support_devices'] = 3
+
+        df1.loc[df1.atelectasis == 5, 'atelectasis'] = 2
+        df1.loc[df1.cardiomegaly == 5, 'cardiomegaly'] = 2
+        df1.loc[df1.consolidation == 5, 'consolidation'] = 2
+        df1.loc[df1.edema == 5, 'edema'] = 2
+        df1.loc[df1.enlarged_cardiomediastinum == 5, 'enlarged_cardiomediastinum'] = 2
+        df1.loc[df1.fracture == 5, 'fracture'] = 2
+        df1.loc[df1.lung_lesion == 5, 'lung_lesion'] = 2
+        df1.loc[df1.lung_opacity == 5, 'lung_opacity'] = 2
+        df1.loc[df1.no_finding == 5, 'no_finding'] = 2
+        df1.loc[df1.pleural_effusion == 5, 'pleural_effusion'] = 2
+        df1.loc[df1.pleural_other == 5, 'pleural_other'] = 2
+        df1.loc[df1.pneumonia == 5, 'pneumonia'] = 2
+        df1.loc[df1.pneumothorax == 5, 'pneumothorax'] = 2
+        df1.loc[df1.support_devices == 5, 'support_devices'] = 2
+
+        df1.to_csv(newoutput_path, sep=',', index=False)
+
+
+
+    def threetwo_remover(self):
+        path = "/home/soroosh/Documents/datasets/XRay/CheXpert-v1.0/master_list.csv"
+        newoutput_path = "/home/soroosh/Documents/datasets/XRay/CheXpert-v1.0/nothree_master_list.csv"
+
+        final_data = pd.DataFrame(columns=['jpg_rel_path','split', 'gender', 'age', 'view', 'AP_PA', 'no_finding',
+                             'enlarged_cardiomediastinum', 'cardiomegaly', 'lung_opacity', 'lung_lesion',
+                             'edema', 'consolidation', 'pneumonia', 'atelectasis', 'pneumothorax',
+                             'pleural_effusion', 'pleural_other', 'fracture', 'support_devices'])
+
+        df = pd.read_csv(path, sep=',')
+        for index, row in tqdm(df.iterrows()):
+            if (row['cardiomegaly'] < 3) and (row['lung_opacity'] < 3) and (row['lung_lesion'] < 3) and (row['pneumonia'] < 3) and (row['edema'] < 3):
+            # if (row['cardiomegaly'] < 2):
+                final_data = final_data.append(row)
+
+        final_data.to_csv(newoutput_path, sep=',', index=False)
 
 
 
 
 
 if __name__ == '__main__':
-    # handler = csv_preprocess_mimic()
+    handler = csv_preprocess_mimic()
     # handler.csv_creator()
+    # handler.class_num_change()
+    handler.threetwo_remover()
 
     # handler2 = normalizer_resizer()
     # handler2.mimic_normalizer_resizer()
@@ -670,5 +752,9 @@ if __name__ == '__main__':
     # handler2.chexpert_normalizer_resizer()
     # handler2.pediatric_corona_normalizer_resizer()
     # handler2.UKA_normalizer_resizer()
-    hendler3 = csv_summarizer()
-    hendler3.vindr()
+    # hendler3 = csv_summarizer()
+    # hendler3.vindr()
+
+    # handler4 = csv_preprocess_chexpert()
+    # handler4.class_num_change()
+    # handler4.threetwo_remover()

@@ -28,7 +28,7 @@ hook = sy.TorchHook(torch)
 
 
 class Training:
-    def __init__(self, cfg_path, num_epochs=10, resume=False):
+    def __init__(self, cfg_path, num_epochs=10, resume=False, label_names=None):
         """This class represents training and validation processes.
 
         Parameters
@@ -45,7 +45,7 @@ class Training:
         self.params = read_config(cfg_path)
         self.cfg_path = cfg_path
         self.num_epochs = num_epochs
-        self.label_names = self.params['label_names']
+        self.label_names = label_names
 
         if resume == False:
             self.model_info = self.params['Network']
@@ -146,7 +146,7 @@ class Training:
         write_config(self.params, self.cfg_path, sort_keys=True)
 
 
-    def load_checkpoint(self, model, optimiser, loss_function, weight):
+    def load_checkpoint(self, model, optimiser, loss_function, weight, label_names):
         """In case of resuming training from a checkpoint,
         loads the weights for all the models, optimizers, and
         loss functions, and device, tensorboard events, number
@@ -173,12 +173,11 @@ class Training:
         self.loss_weight = self.loss_weight.to(self.device)
         self.loss_function = loss_function(weight=self.loss_weight)
         self.optimiser = optimiser
-        self.chosen_labels = checkpoint['chosen_labels']
+        self.label_names = label_names
 
         self.model.load_state_dict(checkpoint['model_state_dict'])
         self.optimiser.load_state_dict(checkpoint['optimizer_state_dict'])
         self.epoch = checkpoint['epoch']
-        self.step = checkpoint['step']
         self.best_loss = checkpoint['best_loss']
         self.writer = SummaryWriter(log_dir=os.path.join(os.path.join(
             self.params['target_dir'], self.params['tb_logs_path'])), purge_step=self.epoch + 1)
@@ -448,12 +447,13 @@ class Training:
             f' | specifity: {valid_specifity.mean() * 100:.2f}%'
             f' | recall (sensitivity): {valid_sensitivity.mean() * 100:.2f}% | precision: {valid_precision.mean() * 100:.2f}%\n')
 
-            print('Individual AUROC:')
-            print(f'class 1: {valid_AUC[0] * 100:.2f}%')
-            print(f'class 2: {valid_AUC[1] * 100:.2f}%')
-            print(f'class 3: {valid_AUC[2] * 100:.2f}%')
-            print(f'class 4: {valid_AUC[3] * 100:.2f}%')
-            print(f'class 5: {valid_AUC[4] * 100:.2f}%')
+            print('Individual F1 scores:')
+            for idx, pathology in enumerate(self.label_names):
+                print(f'\t{pathology}: {valid_F1[idx] * 100:.2f}%')
+
+            print('\nIndividual AUROC:')
+            for idx, pathology in enumerate(self.label_names):
+                print(f'\t{pathology}: {valid_AUC[idx] * 100:.2f}%')
 
             # saving the training and validation stats
             msg = f'----------------------------------------------------------------------------------------\n' \
@@ -465,12 +465,12 @@ class Training:
                   f'\n\n\tTrain loss: {train_loss:.4f} | ' \
                    f'Val. loss: {valid_loss:.4f} | Average F1: {valid_F1.mean() * 100:.2f}% | Average AUROC: {valid_AUC.mean() * 100:.2f}% | accuracy: {valid_accuracy.mean() * 100:.2f}% ' \
                    f' | specifity: {valid_specifity.mean() * 100:.2f}%' \
-                   f' | recall (sensitivity): {valid_sensitivity.mean() * 100:.2f}% | precision: {valid_precision.mean() * 100:.2f}%\n\n' \
-                   f'  AUROC class 1: {valid_AUC[0] * 100:.2f}% | ' \
-                   f'  AUROC class 2: {valid_AUC[1] * 100:.2f}% | ' \
-                   f'  AUROC class 3: {valid_AUC[2] * 100:.2f}% | ' \
-                   f'  AUROC class 4: {valid_AUC[2] * 100:.2f}% | ' \
-                   f'  AUROC class 5: {valid_AUC[4] * 100:.2f}%\n\n'
+                   f' | recall (sensitivity): {valid_sensitivity.mean() * 100:.2f}% | precision: {valid_precision.mean() * 100:.2f}%\n\n'
+                   # f'  AUROC class 1: {valid_AUC[0] * 100:.2f}% | ' \
+                   # f'  AUROC class 2: {valid_AUC[1] * 100:.2f}% | ' \
+                   # f'  AUROC class 3: {valid_AUC[2] * 100:.2f}% | ' \
+                   # f'  AUROC class 4: {valid_AUC[2] * 100:.2f}% | ' \
+                   # f'  AUROC class 5: {valid_AUC[4] * 100:.2f}%\n\n'
         else:
             msg = f'----------------------------------------------------------------------------------------\n' \
                    f'epoch: {self.epoch} | epoch time: {iteration_hours}h {iteration_mins}m {iteration_secs:.2f}s' \
@@ -502,9 +502,13 @@ class Training:
         """
         if valid_loss is not None:
             self.writer.add_scalar('Valid_loss', valid_loss, self.epoch)
-            self.writer.add_scalar('valid_F1', valid_F1.mean(), self.epoch)
-            self.writer.add_scalar('Valid_AUROC', valid_AUC.mean(), self.epoch)
-            self.writer.add_scalar('Valid_accuracy', valid_accuracy.mean(), self.epoch)
-            self.writer.add_scalar('Valid_specifity', valid_specifity.mean(), self.epoch)
-            self.writer.add_scalar('Valid_precision', valid_precision.mean(), self.epoch)
-            self.writer.add_scalar('Valid_recall_sensitivity', valid_sensitivity.mean(), self.epoch)
+            self.writer.add_scalar('valid_avg_F1', valid_F1.mean(), self.epoch)
+            self.writer.add_scalar('Valid_avg_AUROC', valid_AUC.mean(), self.epoch)
+
+            for idx, pathology in enumerate(self.label_names):
+                self.writer.add_scalar('valid_F1' + pathology, valid_F1[idx], self.epoch)
+
+            self.writer.add_scalar('Valid_avg_accuracy', valid_accuracy.mean(), self.epoch)
+            self.writer.add_scalar('Valid_avg_specifity', valid_specifity.mean(), self.epoch)
+            self.writer.add_scalar('Valid_avg_precision', valid_precision.mean(), self.epoch)
+            self.writer.add_scalar('Valid_avg_recall_sensitivity', valid_sensitivity.mean(), self.epoch)
