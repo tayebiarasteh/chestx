@@ -215,41 +215,6 @@ class Training:
 
                     batch_loss += loss.item()
 
-                #     output_sigmoided = F.sigmoid(output)
-                #     output_sigmoided = (output_sigmoided > 0.5).float()
-                #
-                # ############ Evaluation metric calculation ########
-                #
-                # # Metrics calculation (macro) over the whole set
-                # output_sigmoided = output_sigmoided.int().cpu().numpy()
-                # label = label.cpu().numpy()
-                #
-                # confusion = metrics.multilabel_confusion_matrix(label, output_sigmoided)
-                #
-                # F1_disease = []
-                # accuracy_disease = []
-                # specifity_disease = []
-                # sensitivity_disease = []
-                # precision_disease = []
-                #
-                # for idx, disease in enumerate(confusion):
-                #     TN = disease[0, 0]
-                #     FP = disease[0, 1]
-                #     FN = disease[1, 0]
-                #     TP = disease[1, 1]
-                #     F1_disease.append(2 * TP / (2 * TP + FN + FP + epsilon))
-                #     accuracy_disease.append((TP + TN) / (TP + TN + FP + FN + epsilon))
-                #     specifity_disease.append(TN / (TN + FP + epsilon))
-                #     sensitivity_disease.append(TP / (TP + FN + epsilon))
-                #     precision_disease.append(TP / (TP + FP + epsilon))
-                #
-                #
-                # for class_num in range(output_sigmoided.shape[1]):
-                #     fpr, tpr, thresholds = metrics.roc_curve(label[:, class_num], output_sigmoided[:, class_num], pos_label=1)
-                #     aucc = metrics.auc(fpr, tpr)
-                #     pdb.set_trace()
-
-
             train_loss = batch_loss / len(train_loader)
             self.writer.add_scalar('Train_loss_avg', train_loss, self.epoch)
 
@@ -287,7 +252,7 @@ class Training:
         -------
         """
         self.model.eval()
-        total_loss = 0.0
+        # total_loss = 0.0
         total_f1_score = []
         total_AUROC = []
         total_accuracy = []
@@ -295,58 +260,74 @@ class Training:
         total_sensitivity_score = []
         total_precision_score = []
 
+        # initializing the caches
+        logits_with_sigmoid_cache = torch.Tensor([]).to(self.device)
+        logits_no_sigmoid_cache = torch.Tensor([]).to(self.device)
+        labels_cache = torch.Tensor([]).to(self.device)
+
+
+
         for idx, (image, label) in enumerate(valid_loader):
 
             image = image.to(self.device)
             label = label.to(self.device)
+            label = label.float()
 
             with torch.no_grad():
                 output = self.model(image)
-                loss = self.loss_function(output, label.float())  # for multilabel
+                # loss = self.loss_function(output, label.float())  # for multilabel
 
                 output_sigmoided = F.sigmoid(output)
                 output_sigmoided = (output_sigmoided > 0.5).float()
 
-            ############ Evaluation metric calculation ########
-            total_loss += loss.item()
+                # saving the logits and labels of this batch
+                logits_with_sigmoid_cache = torch.cat((logits_with_sigmoid_cache, output_sigmoided))
+                logits_no_sigmoid_cache = torch.cat((logits_no_sigmoid_cache, output))
+                labels_cache = torch.cat((labels_cache, label))
 
-            # Metrics calculation (macro) over the whole set
-            output_sigmoided = output_sigmoided.int().cpu().numpy()
-            label = label.cpu().numpy()
+            # total_loss += loss.item()
 
-            confusion = metrics.multilabel_confusion_matrix(label, output_sigmoided)
+        ############ Evaluation metric calculation ########
 
-            F1_disease = []
-            AUROC_disease = []
-            accuracy_disease = []
-            specifity_disease = []
-            sensitivity_disease = []
-            precision_disease = []
+        loss = self.loss_function(logits_no_sigmoid_cache.to(self.device), labels_cache.to(self.device))
+        epoch_loss = loss.item()
 
-            for idx, disease in enumerate(confusion):
-                TN = disease[0, 0]
-                FP = disease[0, 1]
-                FN = disease[1, 0]
-                TP = disease[1, 1]
-                F1_disease.append(2 * TP / (2 * TP + FN + FP + epsilon))
-                accuracy_disease.append((TP + TN) / (TP + TN + FP + FN + epsilon))
-                specifity_disease.append(TN / (TN + FP + epsilon))
-                sensitivity_disease.append(TP / (TP + FN + epsilon))
-                precision_disease.append(TP / (TP + FP + epsilon))
+        # Metrics calculation (macro) over the whole set
+        logits_with_sigmoid_cache = logits_with_sigmoid_cache.int().cpu().numpy()
+        labels_cache = labels_cache.int().cpu().numpy()
 
-            for class_num in range(output_sigmoided.shape[1]):
-                fpr, tpr, thresholds = metrics.roc_curve(label[:, class_num], output_sigmoided[:, class_num], pos_label=1)
-                AUROC_disease.append(metrics.auc(fpr, tpr))
+        confusion = metrics.multilabel_confusion_matrix(labels_cache, logits_with_sigmoid_cache)
 
-            # Macro averaging
-            total_f1_score.append(np.stack(F1_disease))
-            total_AUROC.append(np.stack(AUROC_disease))
-            total_accuracy.append(np.stack(accuracy_disease))
-            total_specifity_score.append(np.stack(specifity_disease))
-            total_sensitivity_score.append(np.stack(sensitivity_disease))
-            total_precision_score.append(np.stack(precision_disease))
+        F1_disease = []
+        accuracy_disease = []
+        specifity_disease = []
+        sensitivity_disease = []
+        precision_disease = []
 
-        average_loss = total_loss / len(valid_loader)
+        for idx, disease in enumerate(confusion):
+            TN = disease[0, 0]
+            FP = disease[0, 1]
+            FN = disease[1, 0]
+            TP = disease[1, 1]
+            F1_disease.append(2 * TP / (2 * TP + FN + FP + epsilon))
+            accuracy_disease.append((TP + TN) / (TP + TN + FP + FN + epsilon))
+            specifity_disease.append(TN / (TN + FP + epsilon))
+            sensitivity_disease.append(TP / (TP + FN + epsilon))
+            precision_disease.append(TP / (TP + FP + epsilon))
+
+        # Macro averaging
+        total_f1_score.append(np.stack(F1_disease))
+        try:
+            total_AUROC.append(metrics.roc_auc_score(labels_cache, logits_with_sigmoid_cache, average=None))
+        except:
+            print('hi')
+            pass
+        total_accuracy.append(np.stack(accuracy_disease))
+        total_specifity_score.append(np.stack(specifity_disease))
+        total_sensitivity_score.append(np.stack(sensitivity_disease))
+        total_precision_score.append(np.stack(precision_disease))
+
+        # average_loss = total_loss / len(valid_loader)
         average_f1_score = np.stack(total_f1_score).mean(0)
         average_AUROC = np.stack(total_AUROC).mean(0)
         average_accuracy = np.stack(total_accuracy).mean(0)
@@ -354,7 +335,7 @@ class Training:
         average_sensitivity = np.stack(total_sensitivity_score).mean(0)
         average_precision = np.stack(total_precision_score).mean(0)
 
-        return average_loss, average_f1_score, average_AUROC, average_accuracy, average_specifity, average_sensitivity, average_precision
+        return epoch_loss, average_f1_score, average_AUROC, average_accuracy, average_specifity, average_sensitivity, average_precision
 
 
 
@@ -466,11 +447,6 @@ class Training:
                    f'Val. loss: {valid_loss:.4f} | Average F1: {valid_F1.mean() * 100:.2f}% | Average AUROC: {valid_AUC.mean() * 100:.2f}% | accuracy: {valid_accuracy.mean() * 100:.2f}% ' \
                    f' | specifity: {valid_specifity.mean() * 100:.2f}%' \
                    f' | recall (sensitivity): {valid_sensitivity.mean() * 100:.2f}% | precision: {valid_precision.mean() * 100:.2f}%\n\n'
-                   # f'  AUROC class 1: {valid_AUC[0] * 100:.2f}% | ' \
-                   # f'  AUROC class 2: {valid_AUC[1] * 100:.2f}% | ' \
-                   # f'  AUROC class 3: {valid_AUC[2] * 100:.2f}% | ' \
-                   # f'  AUROC class 4: {valid_AUC[2] * 100:.2f}% | ' \
-                   # f'  AUROC class 5: {valid_AUC[4] * 100:.2f}%\n\n'
         else:
             msg = f'----------------------------------------------------------------------------------------\n' \
                    f'epoch: {self.epoch} | epoch time: {iteration_hours}h {iteration_mins}m {iteration_secs:.2f}s' \

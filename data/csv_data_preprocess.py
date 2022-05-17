@@ -337,8 +337,6 @@ class csv_preprocess_mimic():
 
 
 
-
-
 class normalizer_resizer():
     def __init__(self, cfg_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml"):
         self.params = read_config(cfg_path)
@@ -655,8 +653,6 @@ class csv_summarizer():
             final_train = final_train.append(tempp)
 
         final_train.to_csv('/home/soroosh/Documents/datasets/XRay/vindr-cxr1/preprocessed/train_master_list.csv', sep=',', index=False)
-
-
 
 
 

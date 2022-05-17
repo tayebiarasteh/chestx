@@ -1,5 +1,5 @@
 Network:
-  batch_size: 15
+  batch_size: 8
   lr: 5e-5
   weight_decay: 0
   amsgrad: False

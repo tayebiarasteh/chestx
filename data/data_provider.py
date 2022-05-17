@@ -49,13 +49,13 @@ class vindr_data_loader_2D(Dataset):
 
         if mode == 'train':
             self.subset_df = self.org_df[self.org_df['split'] == 'train']
-            self.file_base_dir = os.path.join(self.file_base_dir, 'train')
+            self.file_base_dir = os.path.join(self.file_base_dir, 'preprocessed/train')
         elif mode == 'valid':
             self.subset_df = self.org_df[self.org_df['split'] == 'valid']
-            self.file_base_dir = os.path.join(self.file_base_dir, 'train')
+            self.file_base_dir = os.path.join(self.file_base_dir, 'preprocessed/train')
         elif mode == 'test':
             self.subset_df = self.org_df[self.org_df['split'] == 'test']
-            self.file_base_dir = os.path.join(self.file_base_dir, 'test')
+            self.file_base_dir = os.path.join(self.file_base_dir, 'preprocessed/test')
 
         self.file_path_list = list(self.subset_df['image_id'])
         self.chosen_labels = ['No finding', 'Aortic enlargement', 'Pleural thickening', 'Cardiomegaly', 'Pleural effusion']

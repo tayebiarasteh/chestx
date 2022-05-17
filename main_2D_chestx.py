@@ -74,12 +74,12 @@ def main_train_central_2D(global_config_path="/home/soroosh/Documents/Repositori
 
     if valid:
         valid_loader = torch.utils.data.DataLoader(dataset=valid_dataset, batch_size=params['Network']['batch_size'],
-                                                   pin_memory=True, drop_last=True, shuffle=False, num_workers=5)
+                                                   pin_memory=True, drop_last=False, shuffle=False, num_workers=5)
     else:
         valid_loader = None
 
     # Changeable network parameters
-    # not pretrained resnet34
+    # not pretrained resnet50
     model = load_pretrained_model(num_classes=len(weight))
     # model = Xception(num_classes=len(weight))
     # model = ResNet18(n_out_classes=len(weight))
@@ -186,11 +186,12 @@ def load_pretrained_model(num_classes=2):
     # self.model.load_state_dict(torch.load(self.model_info['pretrain_model_path']))
 
     # Load a pre-trained model from Torchvision
-    model = models.resnet34(pretrained=False)
+    model = models.resnet50(pretrained=False)
     for param in model.parameters():
         param.requires_grad = True
     model.fc = torch.nn.Sequential(
-        torch.nn.Linear(512, num_classes))
+        torch.nn.Linear(2048, num_classes)) # for resnet 50
+        # torch.nn.Linear(512, num_classes)) # for resnet 34
     # for param in model.fc.parameters():
     #     param.requires_grad = True
 
@@ -201,5 +202,5 @@ def load_pretrained_model(num_classes=2):
 if __name__ == '__main__':
     delete_experiment(experiment_name='tempp', global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml")
     main_train_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
-                  valid=True, resume=False, augment=False, experiment_name='tempp', dataset_name='coronahack')
+                  valid=True, resume=False, augment=False, experiment_name='tempp', dataset_name='vindr')
     # main_test_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml", experiment_name='first_try')
