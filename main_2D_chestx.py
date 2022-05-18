@@ -56,10 +56,10 @@ def main_train_central_2D(global_config_path="/home/soroosh/Documents/Repositori
 
     if dataset_name == 'vindr':
         train_dataset = vindr_data_loader_2D(cfg_path=cfg_path, mode='train')
-        valid_dataset = vindr_data_loader_2D(cfg_path=cfg_path, mode='test')
+        valid_dataset = vindr_data_loader_2D(cfg_path=cfg_path, mode='valid')
     elif dataset_name == 'coronahack':
         train_dataset = coronahack_data_loader_2D(cfg_path=cfg_path, mode='train')
-        valid_dataset = coronahack_data_loader_2D(cfg_path=cfg_path, mode='test')
+        valid_dataset = coronahack_data_loader_2D(cfg_path=cfg_path, mode='valid')
     elif dataset_name == 'chexpert':
         train_dataset = chexpert_data_loader_2D(cfg_path=cfg_path, mode='train')
         valid_dataset = chexpert_data_loader_2D(cfg_path=cfg_path, mode='valid')
@@ -79,8 +79,9 @@ def main_train_central_2D(global_config_path="/home/soroosh/Documents/Repositori
         valid_loader = None
 
     # Changeable network parameters
-    # not pretrained resnet50
-    model = load_pretrained_model(num_classes=len(weight))
+    # not pretrained resnet
+    model = load_pretrained_model(num_classes=len(weight), resnet_num=50)
+    pdb.set_trace()
     # model = Xception(num_classes=len(weight))
     # model = ResNet18(n_out_classes=len(weight))
     loss_function = BCEWithLogitsLoss
@@ -181,17 +182,31 @@ def main_test_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx
 
 
 
-def load_pretrained_model(num_classes=2):
+def load_pretrained_model(num_classes=2, resnet_num=34):
     # Load a pre-trained model from config file
     # self.model.load_state_dict(torch.load(self.model_info['pretrain_model_path']))
 
     # Load a pre-trained model from Torchvision
-    model = models.resnet50(pretrained=False)
-    for param in model.parameters():
-        param.requires_grad = True
-    model.fc = torch.nn.Sequential(
+    if resnet_num == 34:
+        model = models.resnet34(pretrained=False)
+        for param in model.parameters():
+            param.requires_grad = True
+        model.fc = torch.nn.Sequential(
+            torch.nn.Linear(512, num_classes))  # for resnet 34
+
+    elif resnet_num == 50:
+        model = models.resnet50(pretrained=False)
+        for param in model.parameters():
+            param.requires_grad = True
+        model.fc = torch.nn.Sequential(
+        #     torch.nn.Linear(2048, 1028), torch.nn.ReLU(), torch.nn.Dropout(p=0.2),
+        #     torch.nn.Linear(1028, 1028), torch.nn.ReLU(), torch.nn.Dropout(p=0.2),
+        #     torch.nn.Linear(1028, 512), torch.nn.ReLU(), torch.nn.Dropout(p=0.2),
+        # torch.nn.Linear(512, 256), torch.nn.ReLU(), torch.nn.Dropout(p=0.2),
+        # torch.nn.Linear(256, 256), torch.nn.ReLU(), torch.nn.Dropout(p=0.2),
+        # torch.nn.Linear(256, 128), torch.nn.ReLU(), torch.nn.Dropout(p=0.2),
+        # torch.nn.Linear(128, num_classes)) # for resnet 50
         torch.nn.Linear(2048, num_classes)) # for resnet 50
-        # torch.nn.Linear(512, num_classes)) # for resnet 34
     # for param in model.fc.parameters():
     #     param.requires_grad = True
 

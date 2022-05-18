@@ -18,6 +18,7 @@ import cv2
 import matplotlib.pyplot as plt
 from skimage.util import img_as_ubyte
 from scipy.ndimage.interpolation import zoom
+import random
 
 from config.serde import read_config
 
@@ -321,10 +322,10 @@ class csv_preprocess_mimic():
         path = "/home/soroosh/Documents/datasets/XRay/MIMIC/mimic_master_list.csv"
         newoutput_path = "/home/soroosh/Documents/datasets/XRay/MIMIC/nothree_master_list.csv"
 
-        final_data = pd.DataFrame(columns=['jpg_rel_path','split', 'gender', 'age', 'view', 'AP_PA', 'no_finding',
-                             'enlarged_cardiomediastinum', 'cardiomegaly', 'lung_opacity', 'lung_lesion',
-                             'edema', 'consolidation', 'pneumonia', 'atelectasis', 'pneumothorax',
-                             'pleural_effusion', 'pleural_other', 'fracture', 'support_devices'])
+        final_data = pd.DataFrame(columns=['jpg_rel_path', 'report_rel_path', 'subject_id', 'study_id', 'split', 'view', 'available_views',
+                     'n_x_pixels', 'n_y_pixels', 'atelectasis', 'cardiomegaly', 'consolidation', 'edema',
+                     'enlarged_cardiomediastinum', 'fracture', 'lung_lesion', 'lung_opacity', 'no_finding',
+                     'pleural_effusion', 'pleural_other', 'pneumonia', 'pneumothorax', 'support_devices', 'subset'])
 
         df = pd.read_csv(path, sep=',')
         for index, row in tqdm(df.iterrows()):
@@ -560,6 +561,15 @@ class normalizer_resizer():
 
         base_path = "/home/data/chest_radiograph/dicom_files"
         flag = 0
+        final_df = pd.DataFrame(columns=['patient_id', 'split', 'subset', 'birth_date', 'examination_date', 'study_time',
+                                            'patient_sex', 'ExposureinuAs', 'heart_size', 'congestion', 'pleural_effusion_right', 'pleural_effusion_left',
+                     'pneumonic_infiltrates_right', 'pneumonic_infiltrates_left', 'disturbances_right',	'disturbances_left', 'pneumothorax_right', 'pneumothorax_left'])
+
+        label_path = '/home/data/chest_radiograph/UKA_master_list.csv'
+        final_df_output_path = '/home/data/chest_radiograph/final_UKA_master_list.csv'
+        df = pd.read_csv(label_path, sep=',')
+        counter = 0
+        subset_num = 1
 
         file_list = glob.glob(os.path.join(base_path, '*/*/*'))
 
@@ -590,14 +600,53 @@ class normalizer_resizer():
                 # histogram equalization
                 img = cv2.equalizeHist(img)
                 output_path = file_path.replace('/dicom_files/', '/preprocessed/')
+                basename1 = os.path.basename(output_path)
+                basename2 = os.path.basename(os.path.dirname(output_path))
+                patient_id = os.path.basename(os.path.dirname(os.path.dirname(output_path)))
 
-                if '.dcm' in os.path.basename(output_path):
-                    output_path = output_path.replace('.dcm', '.jpg')
-                elif '.dicom' in os.path.basename(output_path):
-                    output_path = output_path.replace('.dicom', '.jpg')
+                output_path = output_path.replace('/' + basename1, '')
+                output_path = output_path.replace('/' + basename2, '')
+
+                chosen_df = df[df['patient_id'] == patient_id]
+                try:
+                    if chosen_df['split'].values[0] == 'test':
+                        subset = 'test'
+                        output_path = output_path.replace(patient_id, subset + '/' + patient_id + '.jpg')
+
+                    if chosen_df['split'].values[0] == 'valid':
+                        subset = 'valid'
+                        output_path = output_path.replace(patient_id, subset + '/' + patient_id + '.jpg')
+
+                    if chosen_df['split'].values[0] == 'train':
+                        counter += 1
+                        if counter < 12000:
+                            subset = 'p' + str(int(subset_num))
+                            output_path = output_path.replace(patient_id, subset + '/' + patient_id + '.jpg')
+                        else:
+                            counter = 0
+                            subset_num += 1
+                            subset = 'p' + str(int(subset_num))
+                            output_path = output_path.replace(patient_id, subset + '/' + patient_id + '.jpg')
+                except:
+                    continue
+
                 os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
                 cv2.imwrite(output_path, img)
+                tempp = pd.DataFrame(
+                    [[chosen_df['patient_id'].values[0], chosen_df['split'].values[0], subset, chosen_df['birth_date'].values[0], chosen_df['examination_date'].values[0], chosen_df['study_time'].values[0],
+                      chosen_df['patient_sex'].values[0], chosen_df['ExposureinuAs'].values[0], chosen_df['heart_size'].values[0], chosen_df['congestion'].values[0], chosen_df['pleural_effusion_right'].values[0],
+                             chosen_df['pleural_effusion_left'].values[0],
+                             chosen_df['pneumonic_infiltrates_right'].values[0], chosen_df['pneumonic_infiltrates_left'].values[0], chosen_df['disturbances_right'].values[0],
+                             chosen_df['disturbances_left'].values[0], chosen_df['pneumothorax_right'].values[0], chosen_df['pneumothorax_left'].values[0]]],
+                    columns=['patient_id', 'split', 'subset', 'birth_date', 'examination_date', 'study_time',
+                             'patient_sex', 'ExposureinuAs', 'heart_size', 'congestion', 'pleural_effusion_right',
+                             'pleural_effusion_left',
+                             'pneumonic_infiltrates_right', 'pneumonic_infiltrates_left', 'disturbances_right',
+                             'disturbances_left', 'pneumothorax_right', 'pneumothorax_left'])
+                final_df = final_df.append(tempp)
+                final_df.to_csv(final_df_output_path, sep=',', index=False)
+
             except:
                 flag += 1
                 print(flag, file_path)
@@ -653,6 +702,280 @@ class csv_summarizer():
             final_train = final_train.append(tempp)
 
         final_train.to_csv('/home/soroosh/Documents/datasets/XRay/vindr-cxr1/preprocessed/train_master_list.csv', sep=',', index=False)
+
+
+
+    def UKA(self):
+        final_df = pd.DataFrame(columns=['patient_id', 'split', 'birth_date', 'examination_date', 'study_time',
+                                            'patient_sex', 'ExposureinuAs', 'heart_size', 'congestion', 'pleural_effusion_right', 'pleural_effusion_left',
+                     'pneumonic_infiltrates_right', 'pneumonic_infiltrates_left', 'disturbances_right',	'disturbances_left', 'pneumothorax_right', 'pneumothorax_left'])
+
+        label_path = '/home/soroosh/Documents/datasets/XRay/UKA/chest_radiograph/onehot_UKA_master_list.csv'
+        output_path = '/home/soroosh/Documents/datasets/XRay/UKA/chest_radiograph/UKA_master_list.csv'
+        df = pd.read_csv(label_path, sep=',')
+
+        for index, row in tqdm(df.iterrows()):
+            if row['Herzgröße_1.0'] == 1:
+                heart_size = 1
+            elif row['Herzgröße_2.0'] == 1:
+                heart_size = 2
+            elif row['Herzgröße_3.0'] == 1:
+                heart_size = 3
+            elif row['Herzgröße_4.0'] == 1:
+                heart_size = 4
+            elif row['Herzgröße_5.0'] == 1:
+                heart_size = 5
+            else:
+                heart_size = 0
+
+            if row['congestion_1.0'] == 1:
+                congestion = 1
+            elif row['congestion_2.0'] == 1:
+                congestion = 2
+            elif row['congestion_3.0'] == 1:
+                congestion = 3
+            elif row['congestion_4.0'] == 1:
+                congestion = 4
+            elif row['congestion_5.0'] == 1:
+                congestion = 5
+            else:
+                congestion = 0
+
+            if row['pleural_effusion_right_1.0'] == 1:
+                pleural_effusion_right = 1
+            elif row['pleural_effusion_right_2.0'] == 1:
+                pleural_effusion_right = 2
+            elif row['pleural_effusion_right_3.0'] == 1:
+                pleural_effusion_right = 3
+            elif row['pleural_effusion_right_4.0'] == 1:
+                pleural_effusion_right = 4
+            elif row['pleural_effusion_right_5.0'] == 1:
+                pleural_effusion_right = 5
+            else:
+                pleural_effusion_right = 0
+
+            if row['pleural_effusion_left_1.0'] == 1:
+                pleural_effusion_left = 1
+            elif row['pleural_effusion_left_2.0'] == 1:
+                pleural_effusion_left = 2
+            elif row['pleural_effusion_left_3.0'] == 1:
+                pleural_effusion_left = 3
+            elif row['pleural_effusion_left_4.0'] == 1:
+                pleural_effusion_left = 4
+            elif row['pleural_effusion_left_5.0'] == 1:
+                pleural_effusion_left = 5
+            else:
+                pleural_effusion_left = 0
+
+            if row['pneumonic_infiltrates_right_1.0'] == 1:
+                pneumonic_infiltrates_right = 1
+            elif row['pneumonic_infiltrates_right_2.0'] == 1:
+                pneumonic_infiltrates_right = 2
+            elif row['pneumonic_infiltrates_right_3.0'] == 1:
+                pneumonic_infiltrates_right = 3
+            elif row['pneumonic_infiltrates_right_4.0'] == 1:
+                pneumonic_infiltrates_right = 4
+            elif row['pneumonic_infiltrates_right_5.0'] == 1:
+                pneumonic_infiltrates_right = 5
+            else:
+                pneumonic_infiltrates_right = 0
+
+            if row['pneumonic_infiltrates_left_1.0'] == 1:
+                pneumonic_infiltrates_left = 1
+            elif row['pneumonic_infiltrates_left_2.0'] == 1:
+                pneumonic_infiltrates_left = 2
+            elif row['pneumonic_infiltrates_left_3.0'] == 1:
+                pneumonic_infiltrates_left = 3
+            elif row['pneumonic_infiltrates_left_4.0'] == 1:
+                pneumonic_infiltrates_left = 4
+            elif row['pneumonic_infiltrates_left_5.0'] == 1:
+                pneumonic_infiltrates_left = 5
+            else:
+                pneumonic_infiltrates_left = 0
+
+            if row['Belstörungen_re_1.0'] == 1:
+                disturbances_right = 1
+            elif row['Belstörungen_re_2.0'] == 1:
+                disturbances_right = 2
+            elif row['Belstörungen_re_3.0'] == 1:
+                disturbances_right = 3
+            elif row['Belstörungen_re_4.0'] == 1:
+                disturbances_right = 4
+            elif row['Belstörungen_re_5.0'] == 1:
+                disturbances_right = 5
+            else:
+                disturbances_right = 0
+
+            if row['Belstörungen_li_1.0'] == 1:
+                disturbances_left = 1
+            elif row['Belstörungen_li_2.0'] == 1:
+                disturbances_left = 2
+            elif row['Belstörungen_li_3.0'] == 1:
+                disturbances_left = 3
+            elif row['Belstörungen_li_4.0'] == 1:
+                disturbances_left = 4
+            elif row['Belstörungen_li_5.0'] == 1:
+                disturbances_left = 5
+            else:
+                disturbances_left = 0
+
+            if row['Pneumothorax_re_1.0'] == 1:
+                pneumothorax_right = 1
+            elif row['Pneumothorax_re_2.0'] == 1:
+                pneumothorax_right = 2
+            elif row['Pneumothorax_re_3.0'] == 1:
+                pneumothorax_right = 3
+            elif row['Pneumothorax_re_4.0'] == 1:
+                pneumothorax_right = 4
+            elif row['Pneumothorax_re_5.0'] == 1:
+                pneumothorax_right = 5
+            elif row['Pneumothorax_re_6.0'] == 1:
+                pneumothorax_right = 6
+            elif row['Pneumothorax_re_7.0'] == 1:
+                pneumothorax_right = 7
+            else:
+                pneumothorax_right = 0
+
+            if row['Pneumothorax_li_1.0'] == 1:
+                pneumothorax_left = 1
+            elif row['Pneumothorax_li_2.0'] == 1:
+                pneumothorax_left = 2
+            elif row['Pneumothorax_li_3.0'] == 1:
+                pneumothorax_left = 3
+            elif row['Pneumothorax_li_4.0'] == 1:
+                pneumothorax_left = 4
+            elif row['Pneumothorax_li_5.0'] == 1:
+                pneumothorax_left = 5
+            elif row['Pneumothorax_li_6.0'] == 1:
+                pneumothorax_left = 6
+            elif row['Pneumothorax_li_7.0'] == 1:
+                pneumothorax_left = 7
+            else:
+                pneumothorax_left = 0
+
+            tempp = pd.DataFrame([[row['patient_id'], row['split'], row['birth_date'], row['examination_date'], row['StudyTime'],
+                                            row['PatientSex'], row['ExposureinuAs'], heart_size, congestion, pleural_effusion_right, pleural_effusion_left,
+                                   pneumonic_infiltrates_right, pneumonic_infiltrates_left, disturbances_right, disturbances_left, pneumothorax_right, pneumothorax_left]],
+                                 columns=['patient_id', 'split', 'birth_date', 'examination_date', 'study_time',
+                                            'patient_sex', 'ExposureinuAs', 'heart_size', 'congestion', 'pleural_effusion_right', 'pleural_effusion_left',
+                     'pneumonic_infiltrates_right', 'pneumonic_infiltrates_left',	'disturbances_right',	'disturbances_left', 'pneumothorax_right', 'pneumothorax_left'])
+            final_df = final_df.append(tempp)
+            final_df.to_csv(output_path, sep=',', index=False)
+
+        final_df.to_csv(output_path, sep=',', index=False)
+
+
+    def cxr14(self):
+        final_df = pd.DataFrame(columns=['image_id', 'patient_id', 'split', 'atelectasis', 'cardiomegaly', 'effusion',
+                                            'infiltration', 'mass', 'nodule', 'pneumonia', 'pneumothorax', 'consolidation',
+                     'edema', 'emphysema', 'fibrosis',	'pleural_thickening', 'hernia', 'no_finding',
+                                         'followup_num', 'age', 'gender', 'view_position', 'n_x_pixels',
+                                         'n_y_pixels', 'x_spacing', 'y_spacing'])
+
+        label_path = '/home/soroosh/Documents/datasets/XRay/NIH_ChestX-ray14/Data_Entry_2017_v2020new.csv'
+        split_path = '/home/soroosh/Documents/datasets/XRay/NIH_ChestX-ray14/test_list.txt'
+        output_path = '/home/soroosh/Documents/datasets/XRay/NIH_ChestX-ray14/cxr14_master_list.csv'
+        df = pd.read_csv(label_path, sep=',')
+        split_df = pd.read_csv(split_path, sep=',')
+        test_list = split_df['name'].to_list()
+
+        for index, row in tqdm(df.iterrows()):
+            if 'Cardiomegaly' in row['finding_labels']:
+                cardiomegaly = 1
+            else:
+                cardiomegaly = 0
+
+            if 'No Finding' in row['finding_labels']:
+                no_finding = 1
+            else:
+                no_finding = 0
+
+            if 'Infiltration' in row['finding_labels']:
+                infiltration = 1
+            else:
+                infiltration = 0
+
+            if 'Hernia' in row['finding_labels']:
+                hernia = 1
+            else:
+                hernia = 0
+
+            if 'Emphysema' in row['finding_labels']:
+                emphysema = 1
+            else:
+                emphysema = 0
+
+            if 'Effusion' in row['finding_labels']:
+                effusion = 1
+            else:
+                effusion = 0
+
+            if 'Atelectasis' in row['finding_labels']:
+                atelectasis = 1
+            else:
+                atelectasis = 0
+
+            if 'Pneumothorax' in row['finding_labels']:
+                pneumothorax = 1
+            else:
+                pneumothorax = 0
+
+            if 'Mass' in row['finding_labels']:
+                mass = 1
+            else:
+                mass = 0
+
+            if 'Nodule' in row['finding_labels']:
+                nodule = 1
+            else:
+                nodule = 0
+
+            if 'Pleural_Thickening' in row['finding_labels']:
+                pleural_thickening = 1
+            else:
+                pleural_thickening = 0
+
+            if 'Fibrosis' in row['finding_labels']:
+                fibrosis = 1
+            else:
+                fibrosis = 0
+
+            if 'Consolidation' in row['finding_labels']:
+                consolidation = 1
+            else:
+                consolidation = 0
+
+            if 'Edema' in row['finding_labels']:
+                edema = 1
+            else:
+                edema = 0
+
+            if 'Pneumonia' in row['finding_labels']:
+                pneumonia = 1
+            else:
+                pneumonia = 0
+
+            if row['image_id'] in test_list:
+                split = 'test'
+            else:
+                split = 'train'
+
+            tempp = pd.DataFrame([[row['image_id'], row['patient_id'], split, atelectasis, cardiomegaly, effusion,
+                                            infiltration, mass, nodule, pneumonia, pneumothorax, consolidation,
+                     edema, emphysema, fibrosis,	pleural_thickening, hernia, no_finding,
+                                         row['followup_num'], row['age'], row['gender'], row['view_position'], row['n_x_pixels'],
+                                         row['n_y_pixels'], row['x_spacing'], row['y_spacing']]],
+                                 columns=['image_id', 'patient_id', 'split', 'atelectasis', 'cardiomegaly', 'effusion',
+                                            'infiltration', 'mass', 'nodule', 'pneumonia', 'pneumothorax', 'consolidation',
+                     'edema', 'emphysema', 'fibrosis',	'pleural_thickening', 'hernia', 'no_finding',
+                                         'followup_num', 'age', 'gender', 'view_position', 'n_x_pixels',
+                                         'n_y_pixels', 'x_spacing', 'y_spacing'])
+            final_df = final_df.append(tempp)
+            final_df.to_csv(output_path, sep=',', index=False)
+
+        final_df = final_df.sort_values(['split'])
+        final_df.to_csv(output_path, sep=',', index=False)
+
 
 
 
@@ -734,13 +1057,199 @@ class csv_preprocess_chexpert():
 
 
 
+class csv_reducer():
+    def __init__(self, cfg_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml"):
+        self.params = read_config(cfg_path)
+
+
+    def vindr(self, num_images):
+
+        # initiating the df
+        final_df = pd.DataFrame(columns=['image_id', 'split', 'Aortic enlargement', 'Atelectasis', 'Calcification',
+                                            'Cardiomegaly', 'Clavicle fracture', 'Consolidation', 'Edema', 'Emphysema', 'Enlarged PA',
+                     'ILD', 'Infiltration',	'Lung Opacity',	'Lung cavity', 'Lung cyst', 'Mediastinal shift', 'Nodule/Mass',
+                                            'Pleural effusion', 'Pleural thickening', 'Pneumothorax',
+                     'Pulmonary fibrosis', 'Rib fracture', 'Other lesion', 'COPD', 'Lung tumor', 'Pneumonia',
+                                            'Tuberculosis', 'Other diseases', 'No finding'])
+
+        org_df_path = '/home/soroosh/Documents/datasets/XRay/vindr-cxr1/officialsoroosh_master_list.csv'
+        output_df_path = '/home/soroosh/Documents/datasets/XRay/vindr-cxr1/reduced_officialsoroosh_master_list.csv'
+
+        org_df = pd.read_csv(org_df_path, sep=',')
+
+        train_df = org_df[org_df['split'] == 'train']
+        valid_df = org_df[org_df['split'] == 'valid']
+        test_df = org_df[org_df['split'] == 'test']
+
+        train_list = train_df['image_id'].unique().tolist()
+        random.shuffle(train_list)
+
+        chosen_list = train_list[:num_images]
+
+        for patient in tqdm(chosen_list):
+            selected_patient_df = train_df[train_df['image_id'] == patient]
+            final_df = final_df.append(selected_patient_df)
+
+        final_df = final_df.sort_values(['image_id'])
+        final_df = final_df.append(valid_df)
+        final_df = final_df.append(test_df)
+        final_df.to_csv(output_df_path, sep=',', index=False)
+
+
+    def chexpert(self, num_images):
+
+        # initiating the df
+        final_df = pd.DataFrame(columns=['jpg_rel_path','split', 'gender', 'age', 'view', 'AP_PA', 'no_finding',
+                             'enlarged_cardiomediastinum', 'cardiomegaly', 'lung_opacity', 'lung_lesion',
+                             'edema', 'consolidation', 'pneumonia', 'atelectasis', 'pneumothorax',
+                             'pleural_effusion', 'pleural_other', 'fracture', 'support_devices'])
+
+        org_df_path = '/home/soroosh/Documents/datasets/XRay/CheXpert-v1.0/nothree_master_list.csv'
+        output_df_path = '/home/soroosh/Documents/datasets/XRay/CheXpert-v1.0/reduced_nothree_master_list.csv'
+
+        org_df = pd.read_csv(org_df_path, sep=',')
+
+        train_df = org_df[org_df['split'] == 'train']
+        valid_df = org_df[org_df['split'] == 'valid']
+
+        train_list = train_df['jpg_rel_path'].unique().tolist()
+        random.shuffle(train_list)
+
+        chosen_list = train_list[:num_images]
+
+        for patient in tqdm(chosen_list):
+            selected_patient_df = train_df[train_df['jpg_rel_path'] == patient]
+            final_df = final_df.append(selected_patient_df)
+
+        final_df = final_df.sort_values(['jpg_rel_path'])
+        final_df = final_df.append(valid_df)
+        final_df.to_csv(output_df_path, sep=',', index=False)
+
+
+    def mimic(self, num_images):
+
+        # initiating the df
+        final_df = pd.DataFrame(columns=['jpg_rel_path', 'report_rel_path', 'subject_id', 'study_id', 'split', 'view', 'available_views',
+                     'n_x_pixels', 'n_y_pixels', 'atelectasis', 'cardiomegaly', 'consolidation', 'edema',
+                     'enlarged_cardiomediastinum', 'fracture', 'lung_lesion', 'lung_opacity', 'no_finding',
+                     'pleural_effusion', 'pleural_other', 'pneumonia', 'pneumothorax', 'support_devices', 'subset'])
+
+        org_df_path = '/home/soroosh/Documents/datasets/XRay/MIMIC/nothree_master_list.csv'
+        output_df_path = '/home/soroosh/Documents/datasets/XRay/MIMIC/reduced_nothree_master_list.csv'
+
+        org_df = pd.read_csv(org_df_path, sep=',')
+
+        train_df = org_df[org_df['split'] == 'train']
+        valid_df = org_df[org_df['split'] == 'valid']
+        test_df = org_df[org_df['split'] == 'test']
+
+        train_list = train_df['jpg_rel_path'].unique().tolist()
+        random.shuffle(train_list)
+
+        chosen_list = train_list[:num_images]
+
+        for patient in tqdm(chosen_list):
+            selected_patient_df = train_df[train_df['jpg_rel_path'] == patient]
+            final_df = final_df.append(selected_patient_df)
+
+        final_df = final_df.sort_values(['jpg_rel_path'])
+        final_df = final_df.append(valid_df)
+        final_df = final_df.append(test_df)
+        final_df.to_csv(output_df_path, sep=',', index=False)
+
+
+    def vindr_validmaker(self, num_images):
+
+        # initiating the df
+        final_valid_df = pd.DataFrame(columns=['image_id', 'split', 'Aortic enlargement', 'Atelectasis', 'Calcification',
+                                            'Cardiomegaly', 'Clavicle fracture', 'Consolidation', 'Edema', 'Emphysema', 'Enlarged PA',
+                     'ILD', 'Infiltration',	'Lung Opacity',	'Lung cavity', 'Lung cyst', 'Mediastinal shift', 'Nodule/Mass',
+                                            'Pleural effusion', 'Pleural thickening', 'Pneumothorax',
+                     'Pulmonary fibrosis', 'Rib fracture', 'Other lesion', 'COPD', 'Lung tumor', 'Pneumonia',
+                                            'Tuberculosis', 'Other diseases', 'No finding'])
+        final_train_df = pd.DataFrame(columns=['image_id', 'split', 'Aortic enlargement', 'Atelectasis', 'Calcification',
+                                            'Cardiomegaly', 'Clavicle fracture', 'Consolidation', 'Edema', 'Emphysema', 'Enlarged PA',
+                     'ILD', 'Infiltration',	'Lung Opacity',	'Lung cavity', 'Lung cyst', 'Mediastinal shift', 'Nodule/Mass',
+                                            'Pleural effusion', 'Pleural thickening', 'Pneumothorax',
+                     'Pulmonary fibrosis', 'Rib fracture', 'Other lesion', 'COPD', 'Lung tumor', 'Pneumonia',
+                                            'Tuberculosis', 'Other diseases', 'No finding'])
+
+        org_df_path = '/home/soroosh/Documents/datasets/XRay/vindr-cxr1/master_list.csv'
+        output_df_path = '/home/soroosh/Documents/datasets/XRay/vindr-cxr1/officialsoroosh_master_list.csv'
+
+        org_df = pd.read_csv(org_df_path, sep=',')
+
+        train_df = org_df[org_df['split'] == 'train']
+        test_df = org_df[org_df['split'] == 'test']
+
+        train_files = train_df['image_id'].unique().tolist()
+        random.shuffle(train_files)
+
+        valid_list = train_files[:num_images]
+        train_list = train_files[num_images:]
+
+        for patient in tqdm(valid_list):
+            selected_patient_df = train_df[train_df['image_id'] == patient]
+            final_valid_df = final_valid_df.append(selected_patient_df)
+
+        for patient in tqdm(train_list):
+            selected_patient_df = train_df[train_df['image_id'] == patient]
+            final_train_df = final_train_df.append(selected_patient_df)
+
+        final_valid_df.loc[final_valid_df.split == 'train', 'split'] = 'valid'
+        final_valid_df = final_valid_df.sort_values(['image_id'])
+        final_train_df = final_train_df.sort_values(['image_id'])
+
+
+        final_df = final_train_df.append(final_valid_df)
+        final_df = final_df.append(test_df)
+        final_df.to_csv(output_df_path, sep=',', index=False)
+
+
+    def coronahack_validmaker(self, num_images):
+
+        # initiating the df
+        final_valid_df = pd.DataFrame(columns=['X_ray_image_name', 'Label', 'Dataset_type', 'Label_2_Virus_category', 'Label_1_Virus_category'])
+        final_train_df = pd.DataFrame(columns=['X_ray_image_name', 'Label', 'Dataset_type', 'Label_2_Virus_category', 'Label_1_Virus_category'])
+
+        org_df_path = '/home/soroosh/Documents/datasets/XRay/Coronahack_Chest_XRay/coronahack_master_list.csv'
+        output_df_path = '/home/soroosh/Documents/datasets/XRay/Coronahack_Chest_XRay/officialsoroosh_coronahack_master_list.csv'
+
+        org_df = pd.read_csv(org_df_path, sep=',')
+
+        train_df = org_df[org_df['Dataset_type'] == 'TRAIN']
+        test_df = org_df[org_df['Dataset_type'] == 'TEST']
+
+        train_files = train_df['X_ray_image_name'].unique().tolist()
+        random.shuffle(train_files)
+
+        valid_list = train_files[:num_images]
+        train_list = train_files[num_images:]
+
+        for patient in tqdm(valid_list):
+            selected_patient_df = train_df[train_df['X_ray_image_name'] == patient]
+            final_valid_df = final_valid_df.append(selected_patient_df)
+
+        for patient in tqdm(train_list):
+            selected_patient_df = train_df[train_df['X_ray_image_name'] == patient]
+            final_train_df = final_train_df.append(selected_patient_df)
+
+        final_valid_df.loc[final_valid_df.Dataset_type == 'TRAIN', 'Dataset_type'] = 'VALID'
+        final_valid_df = final_valid_df.sort_values(['X_ray_image_name'])
+        final_train_df = final_train_df.sort_values(['X_ray_image_name'])
+
+        final_df = final_train_df.append(final_valid_df)
+        final_df = final_df.append(test_df)
+        final_df.to_csv(output_df_path, sep=',', index=False)
+
+
 
 
 if __name__ == '__main__':
-    handler = csv_preprocess_mimic()
+    # handler = csv_preprocess_mimic()
     # handler.csv_creator()
     # handler.class_num_change()
-    handler.threetwo_remover()
+    # handler.threetwo_remover()
 
     # handler2 = normalizer_resizer()
     # handler2.mimic_normalizer_resizer()
@@ -748,9 +1257,15 @@ if __name__ == '__main__':
     # handler2.chexpert_normalizer_resizer()
     # handler2.pediatric_corona_normalizer_resizer()
     # handler2.UKA_normalizer_resizer()
-    # hendler3 = csv_summarizer()
+    hendler3 = csv_summarizer()
     # hendler3.vindr()
+    hendler3.cxr14()
 
     # handler4 = csv_preprocess_chexpert()
     # handler4.class_num_change()
     # handler4.threetwo_remover()
+
+    # handler5 = csv_reducer()
+    # handler5.vindr(num_images=5000)
+    # handler5.chexpert(num_images=5000)
+    # handler5.mimic(num_images=5000)

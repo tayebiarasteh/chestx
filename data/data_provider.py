@@ -45,7 +45,9 @@ class vindr_data_loader_2D(Dataset):
         self.params = read_config(cfg_path)
         self.file_base_dir = self.params['file_path']
         self.file_base_dir = os.path.join(self.file_base_dir, 'vindr-cxr1')
-        self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "master_list.csv"), sep=',')
+        # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "master_list.csv"), sep=',')
+        # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "officialsoroosh_master_list.csv"), sep=',')
+        self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "5000_officialsoroosh_master_list.csv"), sep=',')
 
         if mode == 'train':
             self.subset_df = self.org_df[self.org_df['split'] == 'train']
@@ -59,7 +61,15 @@ class vindr_data_loader_2D(Dataset):
 
         self.file_path_list = list(self.subset_df['image_id'])
         self.chosen_labels = ['No finding', 'Aortic enlargement', 'Pleural thickening', 'Cardiomegaly', 'Pleural effusion']
+        img = cv2.imread(os.path.join(self.file_base_dir, self.file_path_list[0] + '.jpg')) # (h, w, d)
 
+        trans = transforms.Compose([transforms.ToPILImage(), transforms.RandomVerticalFlip(p=0.5),
+                                    transforms.RandomHorizontalFlip(p=0.5), transforms.ToTensor()])
+        pdb.set_trace()
+        img = trans(img)
+        # img = img.transpose(2, 0, 1)
+        # img = torch.from_numpy(img)  # (d, h, w)
+        img = img.float() # float32
 
 
 
@@ -133,7 +143,8 @@ class coronahack_data_loader_2D(Dataset):
         self.params = read_config(cfg_path)
         self.file_base_dir = self.params['file_path']
         self.file_base_dir = os.path.join(self.file_base_dir, 'Coronahack_Chest_XRay')
-        self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "coronahack_master_list.csv"), sep=',')
+        # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "coronahack_master_list.csv"), sep=',')
+        self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "officialsoroosh_coronahack_master_list.csv"), sep=',')
 
         if mode == 'train':
             self.subset_df = self.org_df[self.org_df['Dataset_type'] == 'TRAIN']
@@ -229,7 +240,8 @@ class chexpert_data_loader_2D(Dataset):
         self.params = read_config(cfg_path)
         self.file_base_dir = self.params['file_path']
         # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "CheXpert-v1.0", "master_list.csv"), sep=',')
-        self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "CheXpert-v1.0", "nothree_master_list.csv"), sep=',')
+        # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "CheXpert-v1.0", "nothree_master_list.csv"), sep=',')
+        self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "CheXpert-v1.0", "5000_nothree_master_list.csv"), sep=',')
 
         if mode == 'train':
             self.subset_df = self.org_df[self.org_df['split'] == 'train']
@@ -320,7 +332,8 @@ class mimic_data_loader_2D(Dataset):
         self.file_base_dir = self.params['file_path']
         self.file_base_dir = os.path.join(self.file_base_dir, "MIMIC")
         # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "master_list.csv"), sep=',')
-        self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "nothree_master_list.csv"), sep=',')
+        # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "nothree_master_list.csv"), sep=',')
+        self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "5000_nothree_master_list.csv"), sep=',')
 
         if mode == 'train':
             self.subset_df = self.org_df[self.org_df['split'] == 'train']
