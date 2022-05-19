@@ -55,17 +55,17 @@ def main_train_central_2D(global_config_path="/home/soroosh/Documents/Repositori
     cfg_path = params["cfg_path"]
 
     if dataset_name == 'vindr':
-        train_dataset = vindr_data_loader_2D(cfg_path=cfg_path, mode='train')
-        valid_dataset = vindr_data_loader_2D(cfg_path=cfg_path, mode='valid')
+        train_dataset = vindr_data_loader_2D(cfg_path=cfg_path, mode='train', augment=augment)
+        valid_dataset = vindr_data_loader_2D(cfg_path=cfg_path, mode='valid', augment=False)
     elif dataset_name == 'coronahack':
-        train_dataset = coronahack_data_loader_2D(cfg_path=cfg_path, mode='train')
-        valid_dataset = coronahack_data_loader_2D(cfg_path=cfg_path, mode='valid')
+        train_dataset = coronahack_data_loader_2D(cfg_path=cfg_path, mode='train', augment=augment)
+        valid_dataset = coronahack_data_loader_2D(cfg_path=cfg_path, mode='valid', augment=False)
     elif dataset_name == 'chexpert':
-        train_dataset = chexpert_data_loader_2D(cfg_path=cfg_path, mode='train')
-        valid_dataset = chexpert_data_loader_2D(cfg_path=cfg_path, mode='valid')
+        train_dataset = chexpert_data_loader_2D(cfg_path=cfg_path, mode='train', augment=augment)
+        valid_dataset = chexpert_data_loader_2D(cfg_path=cfg_path, mode='valid', augment=False)
     elif dataset_name == 'mimic':
-        train_dataset = mimic_data_loader_2D(cfg_path=cfg_path, mode='train')
-        valid_dataset = mimic_data_loader_2D(cfg_path=cfg_path, mode='valid')
+        train_dataset = mimic_data_loader_2D(cfg_path=cfg_path, mode='train', augment=augment)
+        valid_dataset = mimic_data_loader_2D(cfg_path=cfg_path, mode='valid', augment=False)
 
     train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=params['Network']['batch_size'],
                                                pin_memory=True, drop_last=True, shuffle=True, num_workers=10)
@@ -81,7 +81,6 @@ def main_train_central_2D(global_config_path="/home/soroosh/Documents/Repositori
     # Changeable network parameters
     # not pretrained resnet
     model = load_pretrained_model(num_classes=len(weight), resnet_num=50)
-    pdb.set_trace()
     # model = Xception(num_classes=len(weight))
     # model = ResNet18(n_out_classes=len(weight))
     loss_function = BCEWithLogitsLoss
@@ -98,7 +97,8 @@ def main_train_central_2D(global_config_path="/home/soroosh/Documents/Repositori
 
 
 
-def main_test_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml", experiment_name='name'):
+def main_test_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml", experiment_name='name',
+                 dataset_name='vindr'):
     """Main function for multi label prediction
 
     Parameters
@@ -108,76 +108,62 @@ def main_test_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx
     """
     params = open_experiment(experiment_name, global_config_path)
     cfg_path = params['cfg_path']
-    label_names = params['label_names']
-    chosen_labels = params['Network']['chosen_labels']
-    subsets = params['Network']['subsets']
+
+    if dataset_name == 'vindr':
+        test_dataset = vindr_data_loader_2D(cfg_path=cfg_path, mode='test', augment=False)
+    elif dataset_name == 'coronahack':
+        test_dataset = coronahack_data_loader_2D(cfg_path=cfg_path, mode='test', augment=False)
+    elif dataset_name == 'chexpert':
+        test_dataset = chexpert_data_loader_2D(cfg_path=cfg_path, mode='test', augment=False)
+    elif dataset_name == 'mimic':
+        test_dataset = mimic_data_loader_2D(cfg_path=cfg_path, mode='test', augment=False)
+    weight = test_dataset.pos_weight()
+    label_names = test_dataset.chosen_labels
 
     # Changeable network parameters
-    model = Xception(num_classes=len(chosen_labels))
-    # model = ResNet18(n_out_classes=len(chosen_labels))
+    # not pretrained resnet
+    model = load_pretrained_model(num_classes=len(weight), resnet_num=50)
+    # model = Xception(num_classes=len(weight))
+    # model = ResNet18(n_out_classes=len(weight))
 
-    test_dataset = data_loader(cfg_path=cfg_path, mode='test', chosen_labels=chosen_labels, subsets=subsets)
     test_loader = torch.utils.data.DataLoader(dataset=test_dataset, batch_size=params['Network']['batch_size'],
-                                               pin_memory=True, drop_last=True, shuffle=False, num_workers=40)
+                                               pin_memory=True, drop_last=False, shuffle=False, num_workers=16)
 
     # Initialize prediction
-    predictor = Prediction(cfg_path, chosen_labels)
+    predictor = Prediction(cfg_path, label_names)
     predictor.setup_model(model=model)
-    accuracy_disease, sensitivity_disease, specifity_disease, F1_disease = predictor.evaluate_2D(test_loader, params['Network']['batch_size'])
+    average_f1_score, average_AUROC, average_accuracy, average_specifity, average_sensitivity, average_precision = predictor.evaluate_2D(test_loader)
 
     print('------------------------------------------------------'
           '----------------------------------')
-    print(f'\tTotal accuracy: {accuracy_disease.mean() * 100:.2f}% | total sensitivity: {sensitivity_disease.mean() * 100:.2f}%'
-          f' | total specifity: {specifity_disease.mean() * 100:.2f}% | total F1 score: {F1_disease.mean() * 100:.2f}%')
-    print('\nIndividual accuracy scores:')
-    for idx, pathology in enumerate(chosen_labels):
-        print(f'\t{label_names[pathology]}: {accuracy_disease[idx] * 100:.2f}%')
+    print(f'\t experiment: {experiment_name}\n')
+    print(f'\t model tested on the {dataset_name} test set\n')
 
-    print('\nIndividual sensitivity scores:')
-    for idx, pathology in enumerate(chosen_labels):
-        print(f'\t{label_names[pathology]}: {sensitivity_disease[idx] * 100:.2f}%')
+    print(f'\t Average F1: {average_f1_score.mean() * 100:.2f}% | Average AUROC: {average_AUROC.mean() * 100:.2f}% | Average accuracy: {average_accuracy.mean() * 100:.2f}%'
+    f' | Average specifity: {average_specifity.mean() * 100:.2f}%'
+    f' | Average recall (sensitivity): {average_sensitivity.mean() * 100:.2f}% | Average precision: {average_precision.mean() * 100:.2f}%\n')
 
-    print('\nIndividual specifity scores:')
-    for idx, pathology in enumerate(chosen_labels):
-        print(f'\t{label_names[pathology]}: {specifity_disease[idx] * 100:.2f}%')
+    print('Individual F1 scores:')
+    for idx, pathology in enumerate(predictor.label_names):
+        print(f'\t{pathology}: {average_f1_score[idx] * 100:.2f}%')
 
-    print('\nIndividual F1 scores:')
-    for idx, pathology in enumerate(chosen_labels):
-        print(f'\t{label_names[pathology]}: {F1_disease[idx] * 100:.2f}%')
+    print('\nIndividual AUROC:')
+    for idx, pathology in enumerate(predictor.label_names):
+        print(f'\t{pathology}: {average_AUROC[idx] * 100:.2f}%')
 
     print('------------------------------------------------------'
           '----------------------------------')
 
-    # # saving the stats
-    # mesg = f'\n\n----------------------------------------------------------------------------------------\n' \
-    #        f'\tTotal Accuracy: {accuracy_disease.mean() * 100:.2f}% | Total sensitivity: {sensitivity_disease.mean() * 100:.2f}%' \
-    #        f' | Total specifity: {specifity_disease.mean() * 100:.2f}%' \
-    #        f'\n\nIndividual Accuracy scores:' \
-    #        f'\tAtelectasis: {accuracy_disease[0] * 100:.2f}% | Cardiomegaly: {accuracy_disease[1] * 100:.2f}% ' \
-    #       f'| Consolidation: {accuracy_disease[2] * 100:.2f}% | Edema: {accuracy_disease[3] * 100:.2f}%' \
-    #        f'\tEnlarged Cardiomediastinum: {accuracy_disease[4] * 100:.2f}% | Fracture: {accuracy_disease[5] * 100:.2f}% ' \
-    #        f'| Lung Lesion: {accuracy_disease[6] * 100:.2f}% | Lung Opacity: {accuracy_disease[7] * 100:.2f}%' \
-    #     f'\tNo Finding: {accuracy_disease[8] * 100:.2f}% | Pleural Effusion: {accuracy_disease[9] * 100:.2f}% ' \
-    #        f'| Pleural Other: {accuracy_disease[10] * 100:.2f}% | Pneumonia: {accuracy_disease[11] * 100:.2f}%' \
-    #        f'\tPneumothorax: {accuracy_disease[12] * 100:.2f}% | Support Devices: {accuracy_disease[13] * 100:.2f}%' \
-    #        f'\n\nIndividual sensitivity scores:' \
-    #        f'\tAtelectasis: {sensitivity_disease[0] * 100:.2f}% | Cardiomegaly: {sensitivity_disease[1] * 100:.2f}% ' \
-    #       f'| Consolidation: {sensitivity_disease[2] * 100:.2f}% | Edema: {sensitivity_disease[3] * 100:.2f}%' \
-    #        f'\tEnlarged Cardiomediastinum: {sensitivity_disease[4] * 100:.2f}% | Fracture: {sensitivity_disease[5] * 100:.2f}% ' \
-    #        f'| Lung Lesion: {sensitivity_disease[6] * 100:.2f}% | Lung Opacity: {sensitivity_disease[7] * 100:.2f}%' \
-    #     f'\tNo Finding: {sensitivity_disease[8] * 100:.2f}% | Pleural Effusion: {sensitivity_disease[9] * 100:.2f}% ' \
-    #        f'| Pleural Other: {sensitivity_disease[10] * 100:.2f}% | Pneumonia: {sensitivity_disease[11] * 100:.2f}%' \
-    #        f'\tPneumothorax: {sensitivity_disease[12] * 100:.2f}% | Support Devices: {sensitivity_disease[13] * 100:.2f}%' \
-    #        f'\n\nIndividual specifity scores:' \
-    #        f'\tAtelectasis: {specifity_disease[0] * 100:.2f}% | Cardiomegaly: {specifity_disease[1] * 100:.2f}% ' \
-    #       f'| Consolidation: {specifity_disease[2] * 100:.2f}% | Edema: {specifity_disease[3] * 100:.2f}%' \
-    #        f'\tEnlarged Cardiomediastinum: {specifity_disease[4] * 100:.2f}% | Fracture: {specifity_disease[5] * 100:.2f}% ' \
-    #        f'| Lung Lesion: {specifity_disease[6] * 100:.2f}% | Lung Opacity: {specifity_disease[7] * 100:.2f}%' \
-    #     f'\tNo Finding: {specifity_disease[8] * 100:.2f}% | Pleural Effusion: {specifity_disease[9] * 100:.2f}% ' \
-    #        f'| Pleural Other: {specifity_disease[10] * 100:.2f}% | Pneumonia: {specifity_disease[11] * 100:.2f}%' \
-    #        f'\tPneumothorax: {specifity_disease[12] * 100:.2f}% | Support Devices: {specifity_disease[13] * 100:.2f}%'
-    # with open(os.path.join(params['target_dir'], params['stat_log_path'], '/test_results'), 'a') as f:
-    #     f.write(mesg)
+    # saving the stats
+    msg = f'----------------------------------------------------------------------------------------\n' \
+          f'\t experiment: {experiment_name}\n\n' \
+          f'\t model tested on the {dataset_name} test set\n\n' \
+          f'Average F1: {average_f1_score.mean() * 100:.2f}% | Average AUROC: {average_AUROC.mean() * 100:.2f}% | Average accuracy: {average_accuracy.mean() * 100:.2f}% ' \
+          f' | Average specifity: {average_specifity.mean() * 100:.2f}%' \
+          f' | Average recall (sensitivity): {average_sensitivity.mean() * 100:.2f}% | Average precision: {average_precision.mean() * 100:.2f}%\n\n'
+
+    with open(os.path.join(params['target_dir'], params['stat_log_path']) + '/test_Stats', 'a') as f:
+        f.write(msg)
 
 
 
@@ -215,7 +201,7 @@ def load_pretrained_model(num_classes=2, resnet_num=34):
 
 
 if __name__ == '__main__':
-    delete_experiment(experiment_name='tempp', global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml")
-    main_train_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
-                  valid=True, resume=False, augment=False, experiment_name='tempp', dataset_name='vindr')
-    # main_test_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml", experiment_name='first_try')
+    # delete_experiment(experiment_name='tempp', global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml")
+    # main_train_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
+    #               valid=True, resume=False, augment=True, experiment_name='vindr_batch12_resnet50', dataset_name='vindr')
+    main_test_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml", experiment_name='tempp', dataset_name='vindr')

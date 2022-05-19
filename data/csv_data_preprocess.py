@@ -562,7 +562,7 @@ class normalizer_resizer():
         base_path = "/data/chest_radiograph/dicom_files"
         flag = 0
         final_df = pd.DataFrame(columns=['patient_id', 'split', 'subset', 'birth_date', 'examination_date', 'study_time',
-                                            'patient_sex', 'ExposureinuAs', 'heart_size', 'congestion', 'pleural_effusion_right', 'pleural_effusion_left',
+                                            'patient_sex', 'ExposureinuAs', 'cardiomegaly', 'congestion', 'pleural_effusion_right', 'pleural_effusion_left',
                      'pneumonic_infiltrates_right', 'pneumonic_infiltrates_left', 'disturbances_right',	'disturbances_left', 'pneumothorax_right', 'pneumothorax_left'])
 
         label_path = '/data/chest_radiograph/UKA_master_list.csv'
@@ -607,7 +607,7 @@ class normalizer_resizer():
                 output_path = output_path.replace('/' + basename1, '')
                 output_path = output_path.replace('/' + basename2, '')
 
-                chosen_df = df[df['patient_id'] == patient_id]
+                chosen_df = df[df['patient_id'] == int(patient_id)]
                 try:
                     if chosen_df['split'].values[0] == 'test':
                         subset = 'test'
@@ -635,12 +635,12 @@ class normalizer_resizer():
                 cv2.imwrite(output_path, img)
                 tempp = pd.DataFrame(
                     [[chosen_df['patient_id'].values[0], chosen_df['split'].values[0], subset, chosen_df['birth_date'].values[0], chosen_df['examination_date'].values[0], chosen_df['study_time'].values[0],
-                      chosen_df['patient_sex'].values[0], chosen_df['ExposureinuAs'].values[0], chosen_df['heart_size'].values[0], chosen_df['congestion'].values[0], chosen_df['pleural_effusion_right'].values[0],
+                      chosen_df['patient_sex'].values[0], chosen_df['ExposureinuAs'].values[0], chosen_df['cardiomegaly'].values[0], chosen_df['congestion'].values[0], chosen_df['pleural_effusion_right'].values[0],
                              chosen_df['pleural_effusion_left'].values[0],
                              chosen_df['pneumonic_infiltrates_right'].values[0], chosen_df['pneumonic_infiltrates_left'].values[0], chosen_df['disturbances_right'].values[0],
                              chosen_df['disturbances_left'].values[0], chosen_df['pneumothorax_right'].values[0], chosen_df['pneumothorax_left'].values[0]]],
                     columns=['patient_id', 'split', 'subset', 'birth_date', 'examination_date', 'study_time',
-                             'patient_sex', 'ExposureinuAs', 'heart_size', 'congestion', 'pleural_effusion_right',
+                             'patient_sex', 'ExposureinuAs', 'cardiomegaly', 'congestion', 'pleural_effusion_right',
                              'pleural_effusion_left',
                              'pneumonic_infiltrates_right', 'pneumonic_infiltrates_left', 'disturbances_right',
                              'disturbances_left', 'pneumothorax_right', 'pneumothorax_left'])
@@ -733,7 +733,6 @@ class normalizer_resizer():
 
 
 
-
 class csv_summarizer():
     def __init__(self, cfg_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml"):
         pass
@@ -788,7 +787,7 @@ class csv_summarizer():
 
     def UKA(self):
         final_df = pd.DataFrame(columns=['patient_id', 'split', 'birth_date', 'examination_date', 'study_time',
-                                            'patient_sex', 'ExposureinuAs', 'heart_size', 'congestion', 'pleural_effusion_right', 'pleural_effusion_left',
+                                            'patient_sex', 'ExposureinuAs', 'cardiomegaly', 'congestion', 'pleural_effusion_right', 'pleural_effusion_left',
                      'pneumonic_infiltrates_right', 'pneumonic_infiltrates_left', 'disturbances_right',	'disturbances_left', 'pneumothorax_right', 'pneumothorax_left'])
 
         label_path = '/home/soroosh/Documents/datasets/XRay/UKA/chest_radiograph/onehot_UKA_master_list.csv'
@@ -796,18 +795,18 @@ class csv_summarizer():
         df = pd.read_csv(label_path, sep=',')
 
         for index, row in tqdm(df.iterrows()):
-            if row['Herzgröße_1.0'] == 1:
-                heart_size = 1
-            elif row['Herzgröße_2.0'] == 1:
-                heart_size = 2
-            elif row['Herzgröße_3.0'] == 1:
-                heart_size = 3
-            elif row['Herzgröße_4.0'] == 1:
-                heart_size = 4
-            elif row['Herzgröße_5.0'] == 1:
-                heart_size = 5
+            if row['cardiomegaly_1.0'] == 1:
+                cardiomegaly = 1
+            elif row['cardiomegaly_2.0'] == 1:
+                cardiomegaly = 2
+            elif row['cardiomegaly_3.0'] == 1:
+                cardiomegaly = 3
+            elif row['cardiomegaly_4.0'] == 1:
+                cardiomegaly = 4
+            elif row['cardiomegaly_5.0'] == 1:
+                cardiomegaly = 5
             else:
-                heart_size = 0
+                cardiomegaly = 0
 
             if row['congestion_1.0'] == 1:
                 congestion = 1
@@ -935,10 +934,10 @@ class csv_summarizer():
                 pneumothorax_left = 0
 
             tempp = pd.DataFrame([[row['patient_id'], row['split'], row['birth_date'], row['examination_date'], row['StudyTime'],
-                                            row['PatientSex'], row['ExposureinuAs'], heart_size, congestion, pleural_effusion_right, pleural_effusion_left,
+                                            row['PatientSex'], row['ExposureinuAs'], cardiomegaly, congestion, pleural_effusion_right, pleural_effusion_left,
                                    pneumonic_infiltrates_right, pneumonic_infiltrates_left, disturbances_right, disturbances_left, pneumothorax_right, pneumothorax_left]],
                                  columns=['patient_id', 'split', 'birth_date', 'examination_date', 'study_time',
-                                            'patient_sex', 'ExposureinuAs', 'heart_size', 'congestion', 'pleural_effusion_right', 'pleural_effusion_left',
+                                            'patient_sex', 'ExposureinuAs', 'cardiomegaly', 'congestion', 'pleural_effusion_right', 'pleural_effusion_left',
                      'pneumonic_infiltrates_right', 'pneumonic_infiltrates_left',	'disturbances_right',	'disturbances_left', 'pneumothorax_right', 'pneumothorax_left'])
             final_df = final_df.append(tempp)
             final_df.to_csv(output_path, sep=',', index=False)
@@ -1062,7 +1061,7 @@ class csv_summarizer():
 
 class csv_preprocess_chexpert():
     def __init__(self, cfg_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml"):
-        self.params = read_config(cfg_path)
+        pass
 
 
     def class_num_change(self):
@@ -1140,7 +1139,7 @@ class csv_preprocess_chexpert():
 
 class csv_reducer():
     def __init__(self, cfg_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml"):
-        self.params = read_config(cfg_path)
+        pass
 
 
     def vindr(self, num_images):

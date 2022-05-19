@@ -7,6 +7,8 @@ https://github.com/tayebiarasteh/
 """
 
 import os
+
+import matplotlib.pyplot as plt
 import torch
 import pdb
 import pandas as pd
@@ -14,6 +16,7 @@ import numpy as np
 from torch.utils.data import Dataset
 from torchvision import transforms
 import cv2
+from skimage.util import img_as_ubyte
 
 from config.serde import read_config
 
@@ -28,7 +31,7 @@ class vindr_data_loader_2D(Dataset):
     """
     This is the pipeline based on Pytorch's Dataset and Dataloader
     """
-    def __init__(self, cfg_path, mode='train'):
+    def __init__(self, cfg_path, mode='train', augment=False):
         """
         Parameters
         ----------
@@ -43,6 +46,7 @@ class vindr_data_loader_2D(Dataset):
 
         self.cfg_path = cfg_path
         self.params = read_config(cfg_path)
+        self.augment = augment
         self.file_base_dir = self.params['file_path']
         self.file_base_dir = os.path.join(self.file_base_dir, 'vindr-cxr1')
         # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "master_list.csv"), sep=',')
@@ -61,15 +65,23 @@ class vindr_data_loader_2D(Dataset):
 
         self.file_path_list = list(self.subset_df['image_id'])
         self.chosen_labels = ['No finding', 'Aortic enlargement', 'Pleural thickening', 'Cardiomegaly', 'Pleural effusion']
-        img = cv2.imread(os.path.join(self.file_base_dir, self.file_path_list[0] + '.jpg')) # (h, w, d)
-
-        trans = transforms.Compose([transforms.ToPILImage(), transforms.RandomVerticalFlip(p=0.5),
-                                    transforms.RandomHorizontalFlip(p=0.5), transforms.ToTensor()])
-        pdb.set_trace()
-        img = trans(img)
-        # img = img.transpose(2, 0, 1)
-        # img = torch.from_numpy(img)  # (d, h, w)
-        img = img.float() # float32
+        # img = cv2.imread(os.path.join(self.file_base_dir, self.file_path_list[10] + '.jpg')) # (h, w, d)
+        #
+        # trans = transforms.Compose([transforms.ToPILImage(), transforms.RandomHorizontalFlip(p=0.5), transforms.RandomRotation(degrees=10),
+        #                              transforms.ToTensor()])
+        # cv2.imwrite('org.jpg', img)
+        # print(img.sum())
+        #
+        # img_transformed = trans(img)
+        # img_transformed = cv2.cvtColor(img_transformed.numpy().transpose(1, 2, 0), cv2.COLOR_BGR2GRAY)
+        # img_transformed = img_as_ubyte(img_transformed)
+        #
+        # cv2.imwrite('tem.jpg', img_transformed)
+        # print(img_transformed.sum())
+        # pdb.set_trace()
+        # # img = img.transpose(2, 0, 1)
+        # # img = torch.from_numpy(img)  # (d, h, w)
+        # img_transformed = img_transformed.float() # float32
 
 
 
@@ -90,9 +102,17 @@ class vindr_data_loader_2D(Dataset):
         label: torch tensor
         """
         img = cv2.imread(os.path.join(self.file_base_dir, self.file_path_list[idx] + '.jpg')) # (h, w, d)
-        img = img.transpose(2, 0, 1)
-        img = torch.from_numpy(img)  # (d, h, w)
-        img = img.float() # float32
+
+        if self.augment:
+            trans = transforms.Compose([transforms.ToPILImage(), transforms.RandomHorizontalFlip(p=0.5),
+                                        transforms.RandomRotation(degrees=10), transforms.ToTensor()])
+        else:
+            trans = transforms.Compose([transforms.ToPILImage(), transforms.ToTensor()])
+        img = trans(img)
+
+        # img = img.transpose(2, 0, 1)
+        # img = torch.from_numpy(img)  # (d, h, w)
+        # img = img.float() # float32
 
         label_df = self.subset_df[self.subset_df['image_id'] == self.file_path_list[idx]]
         label = np.array([int(label_df[self.chosen_labels[0]].values[0]), label_df[self.chosen_labels[1]].values[0], int(label_df[self.chosen_labels[2]].values[0]),
@@ -126,7 +146,7 @@ class coronahack_data_loader_2D(Dataset):
     """
     This is the pipeline based on Pytorch's Dataset and Dataloader
     """
-    def __init__(self, cfg_path, mode='train'):
+    def __init__(self, cfg_path, mode='train', augment=False):
         """
         Parameters
         ----------
@@ -141,6 +161,7 @@ class coronahack_data_loader_2D(Dataset):
 
         self.cfg_path = cfg_path
         self.params = read_config(cfg_path)
+        self.augment = augment
         self.file_base_dir = self.params['file_path']
         self.file_base_dir = os.path.join(self.file_base_dir, 'Coronahack_Chest_XRay')
         # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "coronahack_master_list.csv"), sep=',')
@@ -179,9 +200,17 @@ class coronahack_data_loader_2D(Dataset):
         img_path = os.path.join(self.file_base_dir, self.file_path_list[idx])
         img_path = img_path.replace("/Coronahack_Chest_XRay/", "/Coronahack_Chest_XRay/preprocessed/")
         img = cv2.imread(img_path) # (h, w, d)
-        img = img.transpose(2, 0, 1)
-        img = torch.from_numpy(img)  # (d, h, w)
-        img = img.float() # float32
+
+        if self.augment:
+            trans = transforms.Compose([transforms.ToPILImage(), transforms.RandomHorizontalFlip(p=0.5),
+                                        transforms.RandomRotation(degrees=10), transforms.ToTensor()])
+        else:
+            trans = transforms.Compose([transforms.ToPILImage(), transforms.ToTensor()])
+        img = trans(img)
+
+        # img = img.transpose(2, 0, 1)
+        # img = torch.from_numpy(img)  # (d, h, w)
+        # img = img.float() # float32
 
         label_df = self.subset_df[self.subset_df['X_ray_image_name'] == self.file_path_list[idx]]
         if label_df['Label'].values[0] == 'Normal':
@@ -223,7 +252,7 @@ class chexpert_data_loader_2D(Dataset):
     """
     This is the pipeline based on Pytorch's Dataset and Dataloader
     """
-    def __init__(self, cfg_path, mode='train'):
+    def __init__(self, cfg_path, mode='train', augment=False):
         """
         Parameters
         ----------
@@ -238,6 +267,7 @@ class chexpert_data_loader_2D(Dataset):
 
         self.cfg_path = cfg_path
         self.params = read_config(cfg_path)
+        self.augment = augment
         self.file_base_dir = self.params['file_path']
         # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "CheXpert-v1.0", "master_list.csv"), sep=',')
         # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "CheXpert-v1.0", "nothree_master_list.csv"), sep=',')
@@ -274,9 +304,17 @@ class chexpert_data_loader_2D(Dataset):
         img_path = os.path.join(self.file_base_dir, self.file_path_list[idx])
         img_path = img_path.replace("/CheXpert-v1.0/", "/CheXpert-v1.0/preprocessed/")
         img = cv2.imread(img_path) # (h, w, d)
-        img = img.transpose(2, 0, 1)
-        img = torch.from_numpy(img)  # (d, h, w)
-        img = img.float() # float32
+
+        if self.augment:
+            trans = transforms.Compose([transforms.ToPILImage(), transforms.RandomHorizontalFlip(p=0.5),
+                                        transforms.RandomRotation(degrees=10), transforms.ToTensor()])
+        else:
+            trans = transforms.Compose([transforms.ToPILImage(), transforms.ToTensor()])
+        img = trans(img)
+
+        # img = img.transpose(2, 0, 1)
+        # img = torch.from_numpy(img)  # (d, h, w)
+        # img = img.float() # float32
 
         label_df = self.subset_df[self.subset_df['jpg_rel_path'] == self.file_path_list[idx]]
         label = np.array([int(label_df[self.chosen_labels[0]].values[0]), label_df[self.chosen_labels[1]].values[0], int(label_df[self.chosen_labels[2]].values[0]),
@@ -314,7 +352,7 @@ class mimic_data_loader_2D(Dataset):
     """
     This is the pipeline based on Pytorch's Dataset and Dataloader
     """
-    def __init__(self, cfg_path, mode='train'):
+    def __init__(self, cfg_path, mode='train', augment=False):
         """
         Parameters
         ----------
@@ -329,6 +367,7 @@ class mimic_data_loader_2D(Dataset):
 
         self.cfg_path = cfg_path
         self.params = read_config(cfg_path)
+        self.augment = augment
         self.file_base_dir = self.params['file_path']
         self.file_base_dir = os.path.join(self.file_base_dir, "MIMIC")
         # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "master_list.csv"), sep=',')
@@ -366,9 +405,17 @@ class mimic_data_loader_2D(Dataset):
         img_path = os.path.join(self.file_base_dir, self.file_path_list[idx])
         img_path = img_path.replace("/files/", "/preprocessed/")
         img = cv2.imread(img_path) # (h, w, d)
-        img = img.transpose(2, 0, 1)
-        img = torch.from_numpy(img)  # (d, h, w)
-        img = img.float() # float32
+
+        if self.augment:
+            trans = transforms.Compose([transforms.ToPILImage(), transforms.RandomHorizontalFlip(p=0.5),
+                                        transforms.RandomRotation(degrees=10), transforms.ToTensor()])
+        else:
+            trans = transforms.Compose([transforms.ToPILImage(), transforms.ToTensor()])
+        img = trans(img)
+
+        # img = img.transpose(2, 0, 1)
+        # img = torch.from_numpy(img)  # (d, h, w)
+        # img = img.float() # float32
 
         label_df = self.subset_df[self.subset_df['jpg_rel_path'] == self.file_path_list[idx]]
         label = np.array([int(label_df[self.chosen_labels[0]].values[0]), label_df[self.chosen_labels[1]].values[0], int(label_df[self.chosen_labels[2]].values[0]),

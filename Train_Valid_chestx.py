@@ -197,7 +197,7 @@ class Training:
             batch_loss = 0
             start_time = time.time()
 
-            for idx, (image, label) in enumerate(tqdm(train_loader)):
+            for idx, (image, label) in enumerate(train_loader):
                 self.model.train()
 
                 image = image.to(self.device)
@@ -424,9 +424,9 @@ class Training:
         print(f'\n\tTrain loss: {train_loss:.4f}')
 
         if valid_loss:
-            print(f'\t Val. loss: {valid_loss:.4f} | Average F1: {valid_F1.mean() * 100:.2f}% | Average AUROC: {valid_AUC.mean() * 100:.2f}% | accuracy: {valid_accuracy.mean() * 100:.2f}%'
-            f' | specifity: {valid_specifity.mean() * 100:.2f}%'
-            f' | recall (sensitivity): {valid_sensitivity.mean() * 100:.2f}% | precision: {valid_precision.mean() * 100:.2f}%\n')
+            print(f'\t Val. loss: {valid_loss:.4f} | Average F1: {valid_F1.mean() * 100:.2f}% | Average AUROC: {valid_AUC.mean() * 100:.2f}% | Average accuracy: {valid_accuracy.mean() * 100:.2f}%'
+            f' | Average specifity: {valid_specifity.mean() * 100:.2f}%'
+            f' | Average recall (sensitivity): {valid_sensitivity.mean() * 100:.2f}% | Average precision: {valid_precision.mean() * 100:.2f}%\n')
 
             print('Individual F1 scores:')
             for idx, pathology in enumerate(self.label_names):
@@ -444,9 +444,9 @@ class Training:
                   f' | total time - copy time: {noncopy_hours}h {noncopy_mins}m {noncopy_secs:.2f}s' \
                   f' | total time - copy time - overhead time: {netto_hours}h {netto_mins}m {netto_secs:.2f}s' \
                   f'\n\n\tTrain loss: {train_loss:.4f} | ' \
-                   f'Val. loss: {valid_loss:.4f} | Average F1: {valid_F1.mean() * 100:.2f}% | Average AUROC: {valid_AUC.mean() * 100:.2f}% | accuracy: {valid_accuracy.mean() * 100:.2f}% ' \
-                   f' | specifity: {valid_specifity.mean() * 100:.2f}%' \
-                   f' | recall (sensitivity): {valid_sensitivity.mean() * 100:.2f}% | precision: {valid_precision.mean() * 100:.2f}%\n\n'
+                   f'Val. loss: {valid_loss:.4f} | Average F1: {valid_F1.mean() * 100:.2f}% | Average AUROC: {valid_AUC.mean() * 100:.2f}% | Average accuracy: {valid_accuracy.mean() * 100:.2f}% ' \
+                   f' | Average specifity: {valid_specifity.mean() * 100:.2f}%' \
+                   f' | Average recall (sensitivity): {valid_sensitivity.mean() * 100:.2f}% | Average precision: {valid_precision.mean() * 100:.2f}%\n\n'
         else:
             msg = f'----------------------------------------------------------------------------------------\n' \
                    f'epoch: {self.epoch} | epoch time: {iteration_hours}h {iteration_mins}m {iteration_secs:.2f}s' \
@@ -482,7 +482,7 @@ class Training:
             self.writer.add_scalar('Valid_avg_AUROC', valid_AUC.mean(), self.epoch)
 
             for idx, pathology in enumerate(self.label_names):
-                self.writer.add_scalar('valid_F1' + pathology, valid_F1[idx], self.epoch)
+                self.writer.add_scalar('valid_F1_' + pathology, valid_F1[idx], self.epoch)
 
             self.writer.add_scalar('Valid_avg_accuracy', valid_accuracy.mean(), self.epoch)
             self.writer.add_scalar('Valid_avg_specifity', valid_specifity.mean(), self.epoch)
