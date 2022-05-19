@@ -340,7 +340,7 @@ class csv_preprocess_mimic():
 
 class normalizer_resizer():
     def __init__(self, cfg_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml"):
-        self.params = read_config(cfg_path)
+        pass
 
 
     def mimic_normalizer_resizer(self):
@@ -559,14 +559,14 @@ class normalizer_resizer():
 
     def UKA_normalizer_resizer(self):
 
-        base_path = "/home/data/chest_radiograph/dicom_files"
+        base_path = "/data/chest_radiograph/dicom_files"
         flag = 0
         final_df = pd.DataFrame(columns=['patient_id', 'split', 'subset', 'birth_date', 'examination_date', 'study_time',
                                             'patient_sex', 'ExposureinuAs', 'heart_size', 'congestion', 'pleural_effusion_right', 'pleural_effusion_left',
                      'pneumonic_infiltrates_right', 'pneumonic_infiltrates_left', 'disturbances_right',	'disturbances_left', 'pneumothorax_right', 'pneumothorax_left'])
 
-        label_path = '/home/data/chest_radiograph/UKA_master_list.csv'
-        final_df_output_path = '/home/data/chest_radiograph/final_UKA_master_list.csv'
+        label_path = '/data/chest_radiograph/UKA_master_list.csv'
+        final_df_output_path = '/data/chest_radiograph/final_UKA_master_list.csv'
         df = pd.read_csv(label_path, sep=',')
         counter = 0
         subset_num = 1
@@ -653,9 +653,90 @@ class normalizer_resizer():
 
 
 
+    def cxr14_normalizer_resizer(self):
+        base_path = '/mnt/hdd/Share/NIH_ChestX-ray14/CXR14/files'
+
+        flag = 0
+        final_df = pd.DataFrame(columns=['image_id', 'img_rel_path', 'patient_id', 'split', 'atelectasis', 'cardiomegaly', 'effusion',
+                                            'infiltration', 'mass', 'nodule', 'pneumonia', 'pneumothorax', 'consolidation',
+                     'edema', 'emphysema', 'fibrosis',	'pleural_thickening', 'hernia', 'no_finding',
+                                         'followup_num', 'age', 'gender', 'view_position', 'n_x_pixels',
+                                         'n_y_pixels', 'x_spacing', 'y_spacing'])
+
+        label_path = '/mnt/hdd/Share/NIH_ChestX-ray14/cxr14_master_list.csv'
+        final_df_output_path = '/mnt/hdd/Share/NIH_ChestX-ray14/final_cxr14_master_list.csv'
+        df = pd.read_csv(label_path, sep=',')
+
+        file_list = glob.glob(os.path.join(base_path, '*/*/*'))
+
+        for file_path in tqdm(file_list):
+
+            try:
+                image = cv2.imread(file_path)
+
+                # color to gray
+                img = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+                # resize
+                resize_ratio = np.divide((HEIGHT, WIDTH), img.shape)
+                img = zoom(img, resize_ratio, order=2)
+
+                # normalization
+                min_ = np.min(img)
+                max_ = np.max(img)
+                scale = max_ - min_
+                img = (img - min_) / scale
+
+                # converting to the range [0 255]
+                img = img_as_ubyte(img)
+
+                # histogram equalization
+                img = cv2.equalizeHist(img)
+                output_path = file_path.replace('/files/', '/preprocessed/')
+
+                image_id = os.path.basename(output_path)
+                basename2 = os.path.basename(os.path.dirname(output_path))
+                basename3 = os.path.basename(os.path.dirname(os.path.dirname(output_path)))
+                img_rel_path = os.path.join(basename3, basename2, image_id)
+
+                chosen_df = df[df['image_id'] == image_id]
+
+                os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
+                cv2.imwrite(output_path, img)
+
+                tempp = pd.DataFrame(
+                    [[chosen_df['image_id'].values[0], img_rel_path, chosen_df['patient_id'].values[0], chosen_df['split'].values[0],
+                      chosen_df['atelectasis'].values[0], chosen_df['cardiomegaly'].values[0], chosen_df['effusion'].values[0],
+                                            chosen_df['infiltration'].values[0], chosen_df['mass'].values[0], chosen_df['nodule'].values[0],
+                      chosen_df['pneumonia'].values[0], chosen_df['pneumothorax'].values[0], chosen_df['consolidation'].values[0],
+                     chosen_df['edema'].values[0], chosen_df['emphysema'].values[0], chosen_df['fibrosis'].values[0],
+                      chosen_df['pleural_thickening'].values[0], chosen_df['hernia'].values[0], chosen_df['no_finding'].values[0],
+                                         chosen_df['followup_num'].values[0], chosen_df['age'].values[0], chosen_df['gender'].values[0],
+                      chosen_df['view_position'].values[0], chosen_df['n_x_pixels'].values[0],
+                                         chosen_df['n_y_pixels'].values[0], chosen_df['x_spacing'].values[0], chosen_df['y_spacing'].values[0]]],
+                    columns=['image_id', 'img_rel_path', 'patient_id', 'split', 'atelectasis', 'cardiomegaly', 'effusion',
+                                            'infiltration', 'mass', 'nodule', 'pneumonia', 'pneumothorax', 'consolidation',
+                     'edema', 'emphysema', 'fibrosis',	'pleural_thickening', 'hernia', 'no_finding',
+                                         'followup_num', 'age', 'gender', 'view_position', 'n_x_pixels',
+                                         'n_y_pixels', 'x_spacing', 'y_spacing'])
+                final_df = final_df.append(tempp)
+                final_df.to_csv(final_df_output_path, sep=',', index=False)
+
+            except:
+                flag += 1
+                print(flag, file_path)
+
+        final_df = final_df.sort_values(['split'])
+        final_df.to_csv(final_df_output_path, sep=',', index=False)
+
+
+
+
+
 class csv_summarizer():
     def __init__(self, cfg_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml"):
-        self.params = read_config(cfg_path)
+        pass
 
 
     def vindr(self):
@@ -872,9 +953,9 @@ class csv_summarizer():
                                          'followup_num', 'age', 'gender', 'view_position', 'n_x_pixels',
                                          'n_y_pixels', 'x_spacing', 'y_spacing'])
 
-        label_path = '/home/soroosh/Documents/datasets/XRay/NIH_ChestX-ray14/Data_Entry_2017_v2020new.csv'
-        split_path = '/home/soroosh/Documents/datasets/XRay/NIH_ChestX-ray14/test_list.txt'
-        output_path = '/home/soroosh/Documents/datasets/XRay/NIH_ChestX-ray14/cxr14_master_list.csv'
+        label_path = '/mnt/hdd/Share/NIH_ChestX-ray14/Data_Entry_2017_v2020new.csv'
+        split_path = '/mnt/hdd/Share/NIH_ChestX-ray14/test_list.txt'
+        output_path = '/mnt/hdd/Share/NIH_ChestX-ray14/cxr14_master_list.csv'
         df = pd.read_csv(label_path, sep=',')
         split_df = pd.read_csv(split_path, sep=',')
         test_list = split_df['name'].to_list()
@@ -1250,16 +1331,17 @@ if __name__ == '__main__':
     # handler.csv_creator()
     # handler.class_num_change()
     # handler.threetwo_remover()
+    # hendler3 = csv_summarizer()
+    # hendler3.vindr()
+    # hendler3.cxr14()
 
-    # handler2 = normalizer_resizer()
+    handler2 = normalizer_resizer()
     # handler2.mimic_normalizer_resizer()
     # handler2.vindr_normalizer_resizer()
     # handler2.chexpert_normalizer_resizer()
     # handler2.pediatric_corona_normalizer_resizer()
     # handler2.UKA_normalizer_resizer()
-    hendler3 = csv_summarizer()
-    # hendler3.vindr()
-    hendler3.cxr14()
+    handler2.cxr14_normalizer_resizer()
 
     # handler4 = csv_preprocess_chexpert()
     # handler4.class_num_change()
