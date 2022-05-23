@@ -280,8 +280,10 @@ class chexpert_data_loader_2D(Dataset):
         elif mode == 'test':
             self.subset_df = self.org_df[self.org_df['split'] == 'test']
 
+        self.subset_df = self.subset_df[self.subset_df['view'] == 'Frontal']
         self.file_path_list = list(self.subset_df['jpg_rel_path'])
         self.chosen_labels = ['cardiomegaly', 'lung_opacity', 'lung_lesion', 'pneumonia', 'edema']
+
 
 
 
@@ -381,6 +383,9 @@ class mimic_data_loader_2D(Dataset):
         elif mode == 'test':
             self.subset_df = self.org_df[self.org_df['split'] == 'test']
 
+        PAview = self.subset_df[self.subset_df['view'] == 'PA']
+        APview = self.subset_df[self.subset_df['view'] == 'AP']
+        self.subset_df = PAview.append(APview)
         self.file_path_list = list(self.subset_df['jpg_rel_path'])
         self.chosen_labels = ['enlarged_cardiomediastinum', 'consolidation', 'pleural_effusion', 'pneumothorax', 'atelectasis']
 
@@ -424,6 +429,125 @@ class mimic_data_loader_2D(Dataset):
         # setting the label 2 to 0 (negative)
         label[label != 1] = 0 # (h,)
 
+        label = torch.from_numpy(label)  # (h,)
+        label = label.int()
+
+        return img, label
+
+
+
+    def pos_weight(self):
+        """
+        Calculates a weight for positive examples for each class and returns it as a tensor
+        Only using the training set.
+        """
+
+        train_df = self.org_df[self.org_df['split'] == 'train']
+        full_length = len(train_df)
+        output_tensor = torch.zeros((len(self.chosen_labels)))
+
+        for idx, diseases in enumerate(self.chosen_labels):
+            disease_length = sum(train_df[diseases].values == 1)
+            output_tensor[idx] = (full_length - disease_length) / (disease_length + epsilon)
+
+        return output_tensor
+
+
+
+class UKA_data_loader_2D(Dataset):
+    """
+    This is the pipeline based on Pytorch's Dataset and Dataloader
+    """
+    def __init__(self, cfg_path, mode='train', augment=False):
+        """
+        Parameters
+        ----------
+        cfg_path: str
+            Config file path of the experiment
+
+        mode: str
+            Nature of operation to be done with the data.
+                Possible inputs are train, valid, test
+                Default value: train
+        """
+
+        self.cfg_path = cfg_path
+        self.params = read_config(cfg_path)
+        self.augment = augment
+        self.file_base_dir = self.params['file_path']
+        self.file_base_dir = os.path.join(self.file_base_dir, 'UKA/chest_radiograph')
+        # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "final_UKA_master_list.csv"), sep=',')
+        self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "5000_final_UKA_master_list.csv"), sep=',')
+
+        if mode == 'train':
+            self.subset_df = self.org_df[self.org_df['split'] == 'train']
+        elif mode == 'valid':
+            self.subset_df = self.org_df[self.org_df['split'] == 'valid']
+        elif mode == 'test':
+            self.subset_df = self.org_df[self.org_df['split'] == 'test']
+
+        self.file_base_dir = os.path.join(self.file_base_dir, 'UKA_preprocessed')
+        self.file_path_list = list(self.subset_df['patient_id'])
+        self.chosen_labels = ['pleural_effusion_left', 'pleural_effusion_right', 'congestion', 'cardiomegaly', 'pneumonic_infiltrates_left', 'pneumonic_infiltrates_right']
+
+
+
+    def __len__(self):
+        """Returns the length of the dataset"""
+        return len(self.file_path_list)
+
+
+    def __getitem__(self, idx):
+        """
+        Parameters
+        ----------
+        idx: int
+
+        Returns
+        -------
+        img: torch tensor
+        label: torch tensor
+        """
+        subset = self.subset_df[self.subset_df['patient_id'] == self.file_path_list[idx]]['subset'].values[0]
+        img = cv2.imread(os.path.join(self.file_base_dir, subset, str(self.file_path_list[idx]) + '.jpg')) # (h, w, d)
+
+        if self.augment:
+            trans = transforms.Compose([transforms.ToPILImage(), transforms.RandomHorizontalFlip(p=0.5),
+                                        transforms.RandomRotation(degrees=10), transforms.ToTensor()])
+        else:
+            trans = transforms.Compose([transforms.ToPILImage(), transforms.ToTensor()])
+        img = trans(img)
+
+        # img = img.transpose(2, 0, 1)
+        # img = torch.from_numpy(img)  # (d, h, w)
+        # img = img.float() # float32
+
+        label_df = self.subset_df[self.subset_df['patient_id'] == self.file_path_list[idx]]
+        if int(label_df[self.chosen_labels[0]].values[0]) < 3:
+            first_label = 0
+        else:
+            first_label = 1
+        if int(label_df[self.chosen_labels[1]].values[0]) < 3:
+            sec_label = 0
+        else:
+            sec_label = 1
+        if int(label_df[self.chosen_labels[2]].values[0]) < 3:
+            third_label = 0
+        else:
+            third_label = 1
+        if int(label_df[self.chosen_labels[3]].values[0]) < 3:
+            fourth_label = 0
+        else:
+            fourth_label = 1
+        if int(label_df[self.chosen_labels[4]].values[0]) < 3:
+            fifth_label = 0
+        else:
+            fifth_label = 1
+        if int(label_df[self.chosen_labels[5]].values[0]) < 3:
+            sixth_label = 0
+        else:
+            sixth_label = 1
+        label = np.array([first_label, sec_label, third_label, fourth_label, fifth_label, sixth_label]) # (h,)
         label = torch.from_numpy(label)  # (h,)
         label = label.int()
 

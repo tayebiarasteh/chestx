@@ -13,8 +13,7 @@ import numpy as np
 from tensorboardX import SummaryWriter
 import torch
 import torch.nn.functional as F
-from tqdm import tqdm
-import torchmetrics
+# import torchmetrics
 import syft as sy
 from sklearn import metrics
 
@@ -23,7 +22,6 @@ from config.serde import read_config, write_config
 import warnings
 warnings.filterwarnings('ignore')
 epsilon = 1e-15
-hook = sy.TorchHook(torch)
 
 
 

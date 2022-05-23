@@ -1238,6 +1238,70 @@ class csv_reducer():
         final_df.to_csv(output_df_path, sep=',', index=False)
 
 
+    def cxr14(self, num_images):
+
+        # initiating the df
+        final_df = pd.DataFrame(columns=['image_id', 'patient_id', 'split', 'atelectasis', 'cardiomegaly', 'effusion',
+                                            'infiltration', 'mass', 'nodule', 'pneumonia', 'pneumothorax', 'consolidation',
+                     'edema', 'emphysema', 'fibrosis',	'pleural_thickening', 'hernia', 'no_finding',
+                                         'followup_num', 'age', 'gender', 'view_position', 'n_x_pixels',
+                                         'n_y_pixels', 'x_spacing', 'y_spacing'])
+
+        org_df_path = '/home/soroosh/Documents/datasets/XRay/NIH_ChestX-ray14/officialsoroosh_cxr14_master_list.csv'
+        output_df_path = '/home/soroosh/Documents/datasets/XRay/NIH_ChestX-ray14/5000_officialsoroosh_cxr14_master_list.csv'
+
+        org_df = pd.read_csv(org_df_path, sep=',')
+
+        train_df = org_df[org_df['split'] == 'train']
+        valid_df = org_df[org_df['split'] == 'valid']
+        test_df = org_df[org_df['split'] == 'test']
+
+        train_list = train_df['image_id'].unique().tolist()
+        random.shuffle(train_list)
+
+        chosen_list = train_list[:num_images]
+
+        for patient in tqdm(chosen_list):
+            selected_patient_df = train_df[train_df['image_id'] == patient]
+            final_df = final_df.append(selected_patient_df)
+
+        final_df = final_df.sort_values(['image_id'])
+        final_df = final_df.append(valid_df)
+        final_df = final_df.append(test_df)
+        final_df.to_csv(output_df_path, sep=',', index=False)
+
+
+    def UKA(self, num_images):
+
+        # initiating the df
+        final_df = pd.DataFrame(columns=['patient_id', 'split', 'subset', 'birth_date', 'examination_date', 'study_time',
+                                            'patient_sex', 'ExposureinuAs', 'cardiomegaly', 'congestion', 'pleural_effusion_right', 'pleural_effusion_left',
+                     'pneumonic_infiltrates_right', 'pneumonic_infiltrates_left', 'disturbances_right',	'disturbances_left', 'pneumothorax_right', 'pneumothorax_left'])
+
+        org_df_path = '/home/soroosh/Documents/datasets/XRay/UKA/chest_radiograph/final_UKA_master_list.csv'
+        output_df_path = '/home/soroosh/Documents/datasets/XRay/UKA/chest_radiograph/5000_final_UKA_master_list.csv'
+
+        org_df = pd.read_csv(org_df_path, sep=',')
+
+        train_df = org_df[org_df['split'] == 'train']
+        valid_df = org_df[org_df['split'] == 'valid']
+        test_df = org_df[org_df['split'] == 'test']
+
+        train_list = train_df['patient_id'].unique().tolist()
+        random.shuffle(train_list)
+
+        chosen_list = train_list[:num_images]
+
+        for patient in tqdm(chosen_list):
+            selected_patient_df = train_df[train_df['patient_id'] == patient]
+            final_df = final_df.append(selected_patient_df)
+
+        final_df = final_df.sort_values(['patient_id'])
+        final_df = final_df.append(valid_df)
+        final_df = final_df.append(test_df)
+        final_df.to_csv(output_df_path, sep=',', index=False)
+
+
     def vindr_validmaker(self, num_images):
 
         # initiating the df
@@ -1323,6 +1387,52 @@ class csv_reducer():
         final_df.to_csv(output_df_path, sep=',', index=False)
 
 
+    def cxr14_validmaker(self, num_images):
+
+        final_train_df = pd.DataFrame(columns=['image_id', 'patient_id', 'split', 'atelectasis', 'cardiomegaly', 'effusion',
+                                            'infiltration', 'mass', 'nodule', 'pneumonia', 'pneumothorax', 'consolidation',
+                     'edema', 'emphysema', 'fibrosis',	'pleural_thickening', 'hernia', 'no_finding',
+                                         'followup_num', 'age', 'gender', 'view_position', 'n_x_pixels',
+                                         'n_y_pixels', 'x_spacing', 'y_spacing'])
+        final_valid_df = pd.DataFrame(columns=['image_id', 'patient_id', 'split', 'atelectasis', 'cardiomegaly', 'effusion',
+                                            'infiltration', 'mass', 'nodule', 'pneumonia', 'pneumothorax', 'consolidation',
+                     'edema', 'emphysema', 'fibrosis',	'pleural_thickening', 'hernia', 'no_finding',
+                                         'followup_num', 'age', 'gender', 'view_position', 'n_x_pixels',
+                                         'n_y_pixels', 'x_spacing', 'y_spacing'])
+
+        org_df_path = '/home/soroosh/Documents/datasets/XRay/NIH_ChestX-ray14/cxr14_master_list.csv'
+        output_df_path = '/home/soroosh/Documents/datasets/XRay/NIH_ChestX-ray14/officialsoroosh_cxr14_master_list.csv'
+
+        org_df = pd.read_csv(org_df_path, sep=',')
+
+        train_df = org_df[org_df['split'] == 'train']
+        test_df = org_df[org_df['split'] == 'test']
+
+        train_files = train_df['image_id'].unique().tolist()
+        random.shuffle(train_files)
+
+        valid_list = train_files[:num_images]
+        train_list = train_files[num_images:]
+
+        for patient in tqdm(valid_list):
+            selected_patient_df = train_df[train_df['image_id'] == patient]
+            final_valid_df = final_valid_df.append(selected_patient_df)
+
+        for patient in tqdm(train_list):
+            selected_patient_df = train_df[train_df['image_id'] == patient]
+            final_train_df = final_train_df.append(selected_patient_df)
+
+        final_valid_df.loc[final_valid_df.split == 'train', 'split'] = 'valid'
+        final_valid_df = final_valid_df.sort_values(['image_id'])
+        final_train_df = final_train_df.sort_values(['image_id'])
+
+
+        final_df = final_train_df.append(final_valid_df)
+        final_df = final_df.append(test_df)
+        final_df.to_csv(output_df_path, sep=',', index=False)
+
+
+
 
 
 if __name__ == '__main__':
@@ -1334,19 +1444,19 @@ if __name__ == '__main__':
     # hendler3.vindr()
     # hendler3.cxr14()
 
-    handler2 = normalizer_resizer()
+    # handler2 = normalizer_resizer()
     # handler2.mimic_normalizer_resizer()
     # handler2.vindr_normalizer_resizer()
     # handler2.chexpert_normalizer_resizer()
     # handler2.pediatric_corona_normalizer_resizer()
     # handler2.UKA_normalizer_resizer()
-    handler2.cxr14_normalizer_resizer()
+    # handler2.cxr14_normalizer_resizer()
 
     # handler4 = csv_preprocess_chexpert()
     # handler4.class_num_change()
     # handler4.threetwo_remover()
 
-    # handler5 = csv_reducer()
+    handler5 = csv_reducer()
     # handler5.vindr(num_images=5000)
-    # handler5.chexpert(num_images=5000)
-    # handler5.mimic(num_images=5000)
+    handler5.UKA(num_images=5000)
+    # handler5.cxr14_validmaker(num_images=15000)
