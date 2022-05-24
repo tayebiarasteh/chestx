@@ -435,7 +435,7 @@ class Training:
                 print(f'\t{pathology}: {valid_AUC[idx] * 100:.2f}%')
 
             # saving the training and validation stats
-            msg = f'----------------------------------------------------------------------------------------\n' \
+            msg = f'\n\n----------------------------------------------------------------------------------------\n' \
                    f'epoch: {self.epoch} | epoch Time: {iteration_hours}h {iteration_mins}m {iteration_secs:.2f}s' \
                    f' | total time: {total_hours}h {total_mins}m {total_secs:.2f}s | ' \
                   f'communication overhead time so far: {overhead_hours}h {overhead_mins}m {overhead_secs:.2f}s\n' \
@@ -455,6 +455,21 @@ class Training:
         with open(os.path.join(self.params['target_dir'], self.params['stat_log_path']) + '/Stats', 'a') as f:
             f.write(msg)
 
+        if valid_loss:
+            msg = f'Individual F1 scores:\n'
+            with open(os.path.join(self.params['target_dir'], self.params['stat_log_path']) + '/Stats', 'a') as f:
+                f.write(msg)
+            for idx, pathology in enumerate(self.label_names):
+                msg = f'{pathology}: {valid_F1[idx] * 100:.2f}% | '
+                with open(os.path.join(self.params['target_dir'], self.params['stat_log_path']) + '/Stats', 'a') as f:
+                    f.write(msg)
+            msg = f'\n\nIndividual AUROC:\n'
+            with open(os.path.join(self.params['target_dir'], self.params['stat_log_path']) + '/Stats', 'a') as f:
+                f.write(msg)
+            for idx, pathology in enumerate(self.label_names):
+                msg = f'{pathology}: {valid_AUC[idx] * 100:.2f}% | '
+                with open(os.path.join(self.params['target_dir'], self.params['stat_log_path']) + '/Stats', 'a') as f:
+                    f.write(msg)
 
 
     def calculate_tb_stats(self, valid_loss=None, valid_F1=None, valid_AUC=None, valid_accuracy=None, valid_specifity=None, valid_sensitivity=None, valid_precision=None):
@@ -479,8 +494,8 @@ class Training:
             self.writer.add_scalar('valid_avg_F1', valid_F1.mean(), self.epoch)
             self.writer.add_scalar('Valid_avg_AUROC', valid_AUC.mean(), self.epoch)
 
-            for idx, pathology in enumerate(self.label_names):
-                self.writer.add_scalar('valid_F1_' + pathology, valid_F1[idx], self.epoch)
+            # for idx, pathology in enumerate(self.label_names):
+            #     self.writer.add_scalar('valid_F1_' + pathology, valid_F1[idx], self.epoch)
 
             self.writer.add_scalar('Valid_avg_accuracy', valid_accuracy.mean(), self.epoch)
             self.writer.add_scalar('Valid_avg_specifity', valid_specifity.mean(), self.epoch)

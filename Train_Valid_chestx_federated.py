@@ -1,5 +1,5 @@
 """
-Created on Feb 1, 2022.
+Created on May 24, 2022.
 Training_Valid_chestx.py
 
 @author: Soroosh Tayebi Arasteh <sarasteh@ukaachen.de>
@@ -273,14 +273,17 @@ class Training_federated:
             new_model_client_list = []
             loss_client_list = []
 
-            for idx in tqdm(range(len(train_loader))):
+            for idx in range(len(train_loader)):
                 communication_start_time = time.time()
                 client_list[idx].clear_objects()
                 model = self.model_loader[idx].copy().send(client_list[idx])
                 total_overhead_time += (time.time() - communication_start_time)
                 epoch_overhead_time += (time.time() - communication_start_time)
+                optimizer_model = torch.optim.Adam(model.parameters(), lr=float(self.params['Network']['lr']),
+                                                   weight_decay=float(self.params['Network']['weight_decay']),
+                                                   amsgrad=self.params['Network']['amsgrad'])
 
-                new_model_client, loss_client, overhead = self.train_epoch_federated(train_loader[idx], self.optimizer_loader[idx], model, self.loss_function_loader[idx])
+                new_model_client, loss_client, overhead = self.train_epoch_federated(train_loader[idx], optimizer_model, model, self.loss_function_loader[idx])
                 total_datacopy_time += overhead
                 epoch_datacopy_time += overhead
                 new_model_client_list.append(new_model_client)
@@ -664,7 +667,7 @@ class Training_federated:
                 print(f'\t{pathology}: {valid_AUC[idx][i] * 100:.2f}%')
 
             # saving the training and validation stats
-            msg = f'----------------------------------------------------------------------------------------\n' \
+            msg = f'\n\n----------------------------------------------------------------------------------------\n' \
                    f'epoch: {self.epoch} | epoch Time: {iteration_hours}h {iteration_mins}m {iteration_secs:.2f}s' \
                    f' | total time: {total_hours}h {total_mins}m {total_secs:.2f}s | ' \
                   f'communication overhead time so far: {overhead_hours}h {overhead_mins}m {overhead_secs:.2f}s\n' \
@@ -676,6 +679,21 @@ class Training_federated:
                    f' | Average recall (sensitivity): {valid_sensitivity[idx].mean() * 100:.2f}% | Average precision: {valid_precision[idx].mean() * 100:.2f}%\n\n'
             with open(os.path.join(self.params['target_dir'], self.params['stat_log_path']) + '/Stats_' + str(idx), 'a') as f:
                 f.write(msg)
+
+            msg = f'Individual F1 scores:\n'
+            with open(os.path.join(self.params['target_dir'], self.params['stat_log_path']) + '/Stats_' + str(idx), 'a') as f:
+                f.write(msg)
+            for i, pathology in enumerate(self.label_names_loader[idx]):
+                msg = f'{pathology}: {valid_F1[idx][i] * 100:.2f}% | '
+                with open(os.path.join(self.params['target_dir'], self.params['stat_log_path']) + '/Stats_' + str(idx), 'a') as f:
+                    f.write(msg)
+            msg = f'\n\nIndividual AUROC:\n'
+            with open(os.path.join(self.params['target_dir'], self.params['stat_log_path']) + '/Stats_' + str(idx), 'a') as f:
+                f.write(msg)
+            for i, pathology in enumerate(self.label_names_loader[idx]):
+                msg = f'{pathology}: {valid_AUC[idx][i] * 100:.2f}% | '
+                with open(os.path.join(self.params['target_dir'], self.params['stat_log_path']) + '/Stats_' + str(idx), 'a') as f:
+                    f.write(msg)
 
 
 
@@ -689,8 +707,8 @@ class Training_federated:
             self.writer.add_scalar('valid_avg_F1_model_' + str(idx), valid_F1[idx].mean(), self.epoch)
             self.writer.add_scalar('Valid_avg_AUROC_model_' + str(idx), valid_AUC[idx].mean(), self.epoch)
 
-            for i, pathology in enumerate(self.label_names_loader[idx]):
-                self.writer.add_scalar('valid_F1_' + pathology, valid_F1[idx][i], self.epoch)
+            # for i, pathology in enumerate(self.label_names_loader[idx]):
+            #     self.writer.add_scalar('valid_F1_' + pathology, valid_F1[idx][i], self.epoch)
 
             self.writer.add_scalar('Valid_avg_accuracy_model_' + str(idx), valid_accuracy[idx].mean(), self.epoch)
             self.writer.add_scalar('Valid_avg_specifity_model_' + str(idx), valid_specifity[idx].mean(), self.epoch)

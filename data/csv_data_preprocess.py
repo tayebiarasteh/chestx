@@ -1188,6 +1188,7 @@ class csv_reducer():
         output_df_path = '/home/soroosh/Documents/datasets/XRay/CheXpert-v1.0/reduced_nothree_master_list.csv'
 
         org_df = pd.read_csv(org_df_path, sep=',')
+        org_df = org_df[org_df['view'] == 'Frontal']
 
         train_df = org_df[org_df['split'] == 'train']
         valid_df = org_df[org_df['split'] == 'valid']
@@ -1218,6 +1219,9 @@ class csv_reducer():
         output_df_path = '/home/soroosh/Documents/datasets/XRay/MIMIC/reduced_nothree_master_list.csv'
 
         org_df = pd.read_csv(org_df_path, sep=',')
+        PAview = org_df[org_df['view'] == 'PA']
+        APview = org_df[org_df['view'] == 'AP']
+        org_df = PAview.append(APview)
 
         train_df = org_df[org_df['split'] == 'train']
         valid_df = org_df[org_df['split'] == 'valid']
@@ -1458,5 +1462,5 @@ if __name__ == '__main__':
 
     handler5 = csv_reducer()
     # handler5.vindr(num_images=5000)
-    handler5.UKA(num_images=5000)
+    handler5.mimic(num_images=5000)
     # handler5.cxr14_validmaker(num_images=15000)
