@@ -65,23 +65,6 @@ class vindr_data_loader_2D(Dataset):
 
         self.file_path_list = list(self.subset_df['image_id'])
         self.chosen_labels = ['No finding', 'Aortic enlargement', 'Pleural thickening', 'Cardiomegaly', 'Pleural effusion']
-        # img = cv2.imread(os.path.join(self.file_base_dir, self.file_path_list[10] + '.jpg')) # (h, w, d)
-        #
-        # trans = transforms.Compose([transforms.ToPILImage(), transforms.RandomHorizontalFlip(p=0.5), transforms.RandomRotation(degrees=10),
-        #                              transforms.ToTensor()])
-        # cv2.imwrite('org.jpg', img)
-        # print(img.sum())
-        #
-        # img_transformed = trans(img)
-        # img_transformed = cv2.cvtColor(img_transformed.numpy().transpose(1, 2, 0), cv2.COLOR_BGR2GRAY)
-        # img_transformed = img_as_ubyte(img_transformed)
-        #
-        # cv2.imwrite('tem.jpg', img_transformed)
-        # print(img_transformed.sum())
-        # pdb.set_trace()
-        # # img = img.transpose(2, 0, 1)
-        # # img = torch.from_numpy(img)  # (d, h, w)
-        # img_transformed = img_transformed.float() # float32
 
 
 
@@ -118,7 +101,7 @@ class vindr_data_loader_2D(Dataset):
         label = np.array([int(label_df[self.chosen_labels[0]].values[0]), label_df[self.chosen_labels[1]].values[0], int(label_df[self.chosen_labels[2]].values[0]),
                           int(label_df[self.chosen_labels[3]].values[0]), int(label_df[self.chosen_labels[4]].values[0])]) # (h,)
         label = torch.from_numpy(label)  # (h,)
-        label = label.int()
+        label = label.float()
 
         return img, label
 
@@ -222,7 +205,7 @@ class coronahack_data_loader_2D(Dataset):
                 label = np.array([0, 0, 1])  # (h,)
 
         label = torch.from_numpy(label)  # (h,)
-        label = label.int()
+        label = label.float()
 
         return img, label
 
@@ -326,7 +309,7 @@ class chexpert_data_loader_2D(Dataset):
         label[label != 1] = 0 # (h,)
 
         label = torch.from_numpy(label)  # (h,)
-        label = label.int()
+        label = label.float()
 
         return img, label
 
@@ -430,7 +413,7 @@ class mimic_data_loader_2D(Dataset):
         label[label != 1] = 0 # (h,)
 
         label = torch.from_numpy(label)  # (h,)
-        label = label.int()
+        label = label.float()
 
         return img, label
 
@@ -549,7 +532,7 @@ class UKA_data_loader_2D(Dataset):
             sixth_label = 1
         label = np.array([first_label, sec_label, third_label, fourth_label, fifth_label, sixth_label]) # (h,)
         label = torch.from_numpy(label)  # (h,)
-        label = label.int()
+        label = label.float()
 
         return img, label
 
