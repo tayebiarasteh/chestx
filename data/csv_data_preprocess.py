@@ -1245,7 +1245,7 @@ class csv_reducer():
     def cxr14(self, num_images):
 
         # initiating the df
-        final_df = pd.DataFrame(columns=['image_id', 'patient_id', 'split', 'atelectasis', 'cardiomegaly', 'effusion',
+        final_df = pd.DataFrame(columns=['image_id', 'img_rel_path', 'patient_id', 'split', 'atelectasis', 'cardiomegaly', 'effusion',
                                             'infiltration', 'mass', 'nodule', 'pneumonia', 'pneumothorax', 'consolidation',
                      'edema', 'emphysema', 'fibrosis',	'pleural_thickening', 'hernia', 'no_finding',
                                          'followup_num', 'age', 'gender', 'view_position', 'n_x_pixels',
@@ -1393,18 +1393,18 @@ class csv_reducer():
 
     def cxr14_validmaker(self, num_images):
 
-        final_train_df = pd.DataFrame(columns=['image_id', 'patient_id', 'split', 'atelectasis', 'cardiomegaly', 'effusion',
+        final_train_df = pd.DataFrame(columns=['image_id', 'img_rel_path', 'patient_id', 'split', 'atelectasis', 'cardiomegaly', 'effusion',
                                             'infiltration', 'mass', 'nodule', 'pneumonia', 'pneumothorax', 'consolidation',
                      'edema', 'emphysema', 'fibrosis',	'pleural_thickening', 'hernia', 'no_finding',
                                          'followup_num', 'age', 'gender', 'view_position', 'n_x_pixels',
                                          'n_y_pixels', 'x_spacing', 'y_spacing'])
-        final_valid_df = pd.DataFrame(columns=['image_id', 'patient_id', 'split', 'atelectasis', 'cardiomegaly', 'effusion',
+        final_valid_df = pd.DataFrame(columns=['image_id', 'img_rel_path', 'patient_id', 'split', 'atelectasis', 'cardiomegaly', 'effusion',
                                             'infiltration', 'mass', 'nodule', 'pneumonia', 'pneumothorax', 'consolidation',
                      'edema', 'emphysema', 'fibrosis',	'pleural_thickening', 'hernia', 'no_finding',
                                          'followup_num', 'age', 'gender', 'view_position', 'n_x_pixels',
                                          'n_y_pixels', 'x_spacing', 'y_spacing'])
 
-        org_df_path = '/home/soroosh/Documents/datasets/XRay/NIH_ChestX-ray14/cxr14_master_list.csv'
+        org_df_path = '/home/soroosh/Documents/datasets/XRay/NIH_ChestX-ray14/final_cxr14_master_list.csv'
         output_df_path = '/home/soroosh/Documents/datasets/XRay/NIH_ChestX-ray14/officialsoroosh_cxr14_master_list.csv'
 
         org_df = pd.read_csv(org_df_path, sep=',')
@@ -1461,6 +1461,6 @@ if __name__ == '__main__':
     # handler4.threetwo_remover()
 
     handler5 = csv_reducer()
-    # handler5.vindr(num_images=5000)
-    handler5.mimic(num_images=5000)
-    # handler5.cxr14_validmaker(num_images=15000)
+    # handler5.mimic(num_images=5000)
+    handler5.cxr14_validmaker(num_images=10000)
+    handler5.cxr14(num_images=5000)

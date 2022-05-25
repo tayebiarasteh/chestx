@@ -146,7 +146,7 @@ class Training_federated:
         write_config(self.params, self.cfg_path, sort_keys=True)
 
 
-    def load_checkpoint(self, model, optimiser, loss_function, weight, label_names_loader):
+    def load_checkpoint(self, model_loader, optimizer_loader, loss_function_loader, label_names_loader, weight_loader=None):
         """In case of resuming training from a checkpoint,
         loads the weights for all the models, optimizers, and
         loss functions, and device, tensorboard events, number
@@ -163,22 +163,23 @@ class Training_federated:
         loss_function: loss file
             The loss function
         """
-        checkpoint = torch.load(os.path.join(self.params['target_dir'], self.params['network_output_path'],
-                                self.params['checkpoint_name']))
         self.device = None
-        self.model_info = checkpoint['model_info']
         self.setup_cuda()
-        self.model = model.to(self.device)
-        self.loss_weight = weight
-        self.loss_weight = self.loss_weight.to(self.device)
-        self.loss_function = loss_function(weight=self.loss_weight)
-        self.optimiser = optimiser
-        self.label_names_loader = label_names_loader
 
-        self.model.load_state_dict(checkpoint['model_state_dict'])
-        self.optimiser.load_state_dict(checkpoint['optimizer_state_dict'])
+        self.model_loader = []
+        self.optimizer_loader = []
+        self.loss_function_loader = []
+        for index in range(len(model_loader)):
+            checkpoint = torch.load(os.path.join(self.params['target_dir'], self.params['network_output_path'],
+                                                 'model' + str(index) + '_' + self.params['checkpoint_name']))
+            self.model_info = checkpoint['model_info']
+            self.model_loader.append(model_loader[index].to(self.device))
+            self.model_loader[index].load_state_dict(checkpoint['model_state_dict'])
+            self.loss_function_loader.append(loss_function_loader[index](pos_weight=weight_loader[index].to(self.device)))
+            self.optimizer_loader.append(optimizer_loader[index])
+
+        self.label_names_loader = label_names_loader
         self.epoch = checkpoint['epoch']
-        self.best_loss = checkpoint['best_loss']
         self.writer = SummaryWriter(log_dir=os.path.join(os.path.join(
             self.params['target_dir'], self.params['tb_logs_path'])), purge_step=self.epoch + 1)
 
@@ -711,6 +712,6 @@ class Training_federated:
             #     self.writer.add_scalar('valid_F1_' + pathology, valid_F1[idx][i], self.epoch)
 
             self.writer.add_scalar('Valid_avg_accuracy_model_' + str(idx), valid_accuracy[idx].mean(), self.epoch)
-            self.writer.add_scalar('Valid_avg_specifity_model_' + str(idx), valid_specifity[idx].mean(), self.epoch)
-            self.writer.add_scalar('Valid_avg_precision_model_' + str(idx), valid_precision[idx].mean(), self.epoch)
-            self.writer.add_scalar('Valid_avg_recall_sensitivity_model_' + str(idx), valid_sensitivity[idx].mean(), self.epoch)
+            # self.writer.add_scalar('Valid_avg_specifity_model_' + str(idx), valid_specifity[idx].mean(), self.epoch)
+            # self.writer.add_scalar('Valid_avg_precision_model_' + str(idx), valid_precision[idx].mean(), self.epoch)
+            # self.writer.add_scalar('Valid_avg_recall_sensitivity_model_' + str(idx), valid_sensitivity[idx].mean(), self.epoch)
