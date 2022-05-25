@@ -18,6 +18,7 @@ from models.Xception_model import Xception
 from models.resnet_18 import ResNet18
 from Train_Valid_chestx import Training
 from Train_Valid_chestx_federated import Training_federated
+from single_head_Train_Valid_chestx import Training_single_head
 from Prediction_chestx import Prediction
 from data.data_provider import vindr_data_loader_2D, coronahack_data_loader_2D, chexpert_data_loader_2D, mimic_data_loader_2D, UKA_data_loader_2D, cxr14_data_loader_2D
 
@@ -104,7 +105,7 @@ def main_train_central_2D(global_config_path="/home/soroosh/Documents/Repositori
 
 
 
-def main_train_2D_federated(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
+def main_backbone_train_2D_federated(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
                   resume=False, augment=False, experiment_name='name', dataset_names_list='vindr', HE=False, precision_fractional=15):
     """Main function for training + validation centrally
 
@@ -189,7 +190,7 @@ def main_train_2D_federated(global_config_path="/home/soroosh/Documents/Reposito
 
 
 
-def main_test_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml", experiment_name='name',
+def main_test_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml", experiment_name='central_exp_for_test',
                  dataset_name='vindr'):
     """Main function for multi label prediction
 
@@ -217,10 +218,7 @@ def main_test_central_2D(global_config_path="/home/soroosh/Documents/Repositorie
     label_names = test_dataset.chosen_labels
 
     # Changeable network parameters
-    # not pretrained resnet
     model = load_pretrained_model(num_classes=len(weight), resnet_num=50)
-    # model = Xception(num_classes=len(weight))
-    # model = ResNet18(n_out_classes=len(weight))
 
     test_loader = torch.utils.data.DataLoader(dataset=test_dataset, batch_size=params['Network']['batch_size'],
                                                pin_memory=True, drop_last=False, shuffle=False, num_workers=16)
@@ -260,6 +258,86 @@ def main_test_central_2D(global_config_path="/home/soroosh/Documents/Repositorie
 
     with open(os.path.join(params['target_dir'], params['stat_log_path']) + '/test_Stats', 'a') as f:
         f.write(msg)
+
+    msg = f'Individual F1 scores:\n'
+    with open(os.path.join(params['target_dir'], params['stat_log_path']) + '/test_Stats', 'a') as f:
+        f.write(msg)
+    for idx, pathology in enumerate(label_names):
+        msg = f'{pathology}: {average_f1_score[idx] * 100:.2f}% | '
+        with open(os.path.join(params['target_dir'], params['stat_log_path']) + '/test_Stats', 'a') as f:
+            f.write(msg)
+    msg = f'\n\nIndividual AUROC:\n'
+    with open(os.path.join(params['target_dir'], params['stat_log_path']) + '/test_Stats', 'a') as f:
+        f.write(msg)
+    for idx, pathology in enumerate(label_names):
+        msg = f'{pathology}: {average_AUROC[idx] * 100:.2f}% | '
+        with open(os.path.join(params['target_dir'], params['stat_log_path']) + '/test_Stats', 'a') as f:
+            f.write(msg)
+
+
+
+def main_single_head_train_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml", valid=False,
+                  augment=False, experiment_name='name', dataset_name='vindr'):
+    """
+
+        Parameters
+        ----------
+        global_config_path: str
+            always global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml"
+
+        valid: bool
+            if we want to do validation
+
+        augment: bool
+            if we want to have data augmentation during training
+
+        experiment_name: str
+            name of the experiment, in case of resuming training.
+            name of new experiment, in case of new training.
+    """
+    params = open_experiment(experiment_name, global_config_path)
+    cfg_path = params["cfg_path"]
+
+    if dataset_name == 'vindr':
+        train_dataset = vindr_data_loader_2D(cfg_path=cfg_path, mode='train', augment=augment)
+        valid_dataset = vindr_data_loader_2D(cfg_path=cfg_path, mode='valid', augment=False)
+    elif dataset_name == 'coronahack':
+        train_dataset = coronahack_data_loader_2D(cfg_path=cfg_path, mode='train', augment=augment)
+        valid_dataset = coronahack_data_loader_2D(cfg_path=cfg_path, mode='valid', augment=False)
+    elif dataset_name == 'chexpert':
+        train_dataset = chexpert_data_loader_2D(cfg_path=cfg_path, mode='train', augment=augment)
+        valid_dataset = chexpert_data_loader_2D(cfg_path=cfg_path, mode='valid', augment=False)
+    elif dataset_name == 'mimic':
+        train_dataset = mimic_data_loader_2D(cfg_path=cfg_path, mode='train', augment=augment)
+        valid_dataset = mimic_data_loader_2D(cfg_path=cfg_path, mode='valid', augment=False)
+    elif dataset_name == 'UKA':
+        train_dataset = UKA_data_loader_2D(cfg_path=cfg_path, mode='train', augment=augment)
+        valid_dataset = UKA_data_loader_2D(cfg_path=cfg_path, mode='valid', augment=False)
+    elif dataset_name == 'cxr14':
+        train_dataset = cxr14_data_loader_2D(cfg_path=cfg_path, mode='train', augment=augment)
+        valid_dataset = cxr14_data_loader_2D(cfg_path=cfg_path, mode='valid', augment=False)
+
+    train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=params['Network_single_head']['batch_size'],
+                                               pin_memory=True, drop_last=True, shuffle=True, num_workers=10)
+    weight = train_dataset.pos_weight()
+    label_names = train_dataset.chosen_labels
+
+    if valid:
+        valid_loader = torch.utils.data.DataLoader(dataset=valid_dataset, batch_size=params['Network_single_head']['batch_size'],
+                                                   pin_memory=True, drop_last=False, shuffle=False, num_workers=5)
+    else:
+        valid_loader = None
+
+    # Changeable network parameters
+    model = load_resnet50(num_classes=len(weight))
+    loss_function = BCEWithLogitsLoss
+    optimizer = torch.optim.Adam(model.parameters(), lr=float(params['Network_single_head']['lr']),
+                                 weight_decay=float(params['Network_single_head']['weight_decay']), amsgrad=params['Network_single_head']['amsgrad'])
+
+    trainer = Training_single_head(cfg_path, num_epochs_single_head=params['num_epochs_single_head'], label_names=label_names)
+
+    trainer.setup_model(model=model, optimiser=optimizer, loss_function=loss_function, model_file_name='epoch30_model0_trained_model.pth', weight=weight)
+    trainer.train_epoch(train_loader=train_loader, valid_loader=valid_loader)
 
 
 
@@ -321,9 +399,11 @@ def load_pretrained_model(num_classes=2, resnet_num=34):
 
 
 if __name__ == '__main__':
-    delete_experiment(experiment_name='temp', global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml")
-    main_train_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
-                  valid=True, resume=False, augment=True, experiment_name='temp', dataset_name='coronahack')
-    # main_train_2D_federated(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
+    # delete_experiment(experiment_name='temp', global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml")
+    # main_train_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
+    #               valid=True, resume=False, augment=True, experiment_name='temp', dataset_name='coronahack')
+    # main_backbone_train_2D_federated(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
     #               resume=False, augment=True, experiment_name='tempp', dataset_names_list=['vindr', 'chexpert'], HE=False, precision_fractional=15)
-    # main_test_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml", experiment_name='tempp', dataset_name='chexpert')
+    # main_test_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml", dataset_name='cxr14')
+    main_single_head_train_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
+                  valid=True, augment=True, experiment_name='multitask_vindr_coronahack_2000_batch16_resnet50_lr5e5', dataset_name='vindr')

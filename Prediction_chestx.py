@@ -2,7 +2,7 @@
 Created on Feb 1, 2022.
 Prediction_chestx.py
 
-@author: Soroosh Tayebi Arasteh <sarasteh@ukaachen.de>
+@author: Soroosh Tayebi Arasteh <soroosh.arasteh@rwth-aachen.de>
 https://github.com/tayebiarasteh/
 """
 

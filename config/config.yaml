@@ -16,3 +16,17 @@ target_dir: /home/soroosh/Documents/Repositories_target_files/chestx/
 network_save_freq: 10 # number of epochs to save
 display_stats_freq: 1 # valid freq is equal to this
 num_epochs: 1000
+num_epochs_single_head: 50
+
+Network_single_head:
+  batch_size: 5
+  lr: 9e-5
+  weight_decay: 0
+  amsgrad: False
+  tb_logs_path: single_head/tensor_board_logs/
+  display_stats_freq: 1 # valid freq is equal to this
+  network_output_path: single_head/network_data/
+  output_data_path: single_head/output_data/
+  stat_log_path: single_head/stat_logs
+  network_save_freq: 5 # number of epochs to save
+  trained_model_name: trained_model.pth

@@ -1,6 +1,6 @@
 """
-Created on Feb 1, 2022.
-Training_Valid_chestx.py
+Created on May 25, 2022.
+single_head_Train_Valid_chestx.py
 
 @author: Soroosh Tayebi Arasteh <soroosh.arasteh@rwth-aachen.de>
 https://github.com/tayebiarasteh/
@@ -24,32 +24,29 @@ epsilon = 1e-15
 
 
 
-class Training:
-    def __init__(self, cfg_path, num_epochs=10, resume=False, label_names=None):
+class Training_single_head:
+    def __init__(self, cfg_path, num_epochs_single_head=10, label_names=None):
         """This class represents training and validation processes.
-
-        Parameters
-        ----------
-        cfg_path: str
-            Config file path of the experiment
-
-        num_epochs: int
-            Total number of epochs for training
-
-        resume: bool
-            if we are resuming training from a checkpoint
         """
         self.params = read_config(cfg_path)
         self.cfg_path = cfg_path
-        self.num_epochs = num_epochs
+        self.num_epochs_single_head = num_epochs_single_head
         self.label_names = label_names
 
-        if resume == False:
-            self.model_info = self.params['Network']
-            self.epoch = 0
-            self.best_loss = float('inf')
-            self.setup_cuda()
-            self.writer = SummaryWriter(log_dir=os.path.join(self.params['target_dir'], self.params['tb_logs_path']))
+        self.model_info = self.params['Network_single_head']
+
+        self.model_info['tb_logs_path'] = os.path.join(self.params['experiment_name'], self.model_info['tb_logs_path'])
+        self.model_info['network_output_path'] = os.path.join(self.params['experiment_name'], self.model_info['network_output_path'])
+        self.model_info['output_data_path'] = os.path.join(self.params['experiment_name'], self.model_info['output_data_path'])
+        self.model_info['stat_log_path'] = os.path.join(self.params['experiment_name'], self.model_info['stat_log_path'])
+        self.params['Network_single_head'] = self.model_info
+        write_config(self.params, self.cfg_path, sort_keys=True)
+
+        self.epoch = 0
+        self.best_loss = float('inf')
+        self.setup_cuda()
+        os.makedirs(os.path.join(self.params['target_dir'], self.params['Network_single_head']['tb_logs_path']), exist_ok=True)
+        self.writer = SummaryWriter(log_dir=os.path.join(self.params['target_dir'], self.params['Network_single_head']['tb_logs_path']))
 
 
     def setup_cuda(self, cuda_device_id=0):
@@ -102,7 +99,7 @@ class Training:
         return elapsed_hours, elapsed_mins, elapsed_secs
 
 
-    def setup_model(self, model, optimiser, loss_function, weight=None):
+    def setup_model(self, model, optimiser, loss_function, model_file_name, weight=None):
         """Setting up all the models, optimizers, and loss functions.
 
         Parameters
@@ -119,6 +116,12 @@ class Training:
         weight: 1D tensor of float
             class weights
         """
+        model.load_state_dict(torch.load(os.path.join(self.params['target_dir'], self.params['network_output_path'], model_file_name)))
+
+        for param in model.parameters():
+            param.requires_grad = False
+        for param in model.fc.parameters():
+            param.requires_grad = True
 
         # prints the network's total number of trainable parameters and
         # stores it to the experiment config
@@ -138,46 +141,9 @@ class Training:
         # self.model_info['optimiser'] = optimiser.__name__
         self.model_info['total_param_num'] = total_param_num
         self.model_info['loss_function'] = loss_function.__name__
-        self.model_info['num_epochs'] = self.num_epochs
-        self.params['Network'] = self.model_info
+        self.model_info['num_epochs_single_head'] = self.num_epochs_single_head
+        self.params['Network_single_head'] = self.model_info
         write_config(self.params, self.cfg_path, sort_keys=True)
-
-
-    def load_checkpoint(self, model, optimiser, loss_function, weight, label_names):
-        """In case of resuming training from a checkpoint,
-        loads the weights for all the models, optimizers, and
-        loss functions, and device, tensorboard events, number
-        of iterations (epochs), and every info from checkpoint.
-
-        Parameters
-        ----------
-        model: model file
-            The network
-
-        optimiser: optimizer file
-            The optimizer
-
-        loss_function: loss file
-            The loss function
-        """
-        checkpoint = torch.load(os.path.join(self.params['target_dir'], self.params['network_output_path'],
-                                self.params['checkpoint_name']))
-        self.device = None
-        self.model_info = checkpoint['model_info']
-        self.setup_cuda()
-        self.model = model.to(self.device)
-        self.loss_weight = weight
-        self.loss_weight = self.loss_weight.to(self.device)
-        self.loss_function = loss_function(weight=self.loss_weight)
-        self.optimiser = optimiser
-        self.label_names = label_names
-
-        self.model.load_state_dict(checkpoint['model_state_dict'])
-        self.optimiser.load_state_dict(checkpoint['optimizer_state_dict'])
-        self.epoch = checkpoint['epoch']
-        self.best_loss = checkpoint['best_loss']
-        self.writer = SummaryWriter(log_dir=os.path.join(os.path.join(
-            self.params['target_dir'], self.params['tb_logs_path'])), purge_step=self.epoch + 1)
 
 
 
@@ -187,7 +153,7 @@ class Training:
         self.params = read_config(self.cfg_path)
         total_start_time = time.time()
 
-        for epoch in range(self.num_epochs - self.epoch):
+        for epoch in range(self.num_epochs_single_head - self.epoch):
             self.epoch += 1
 
             # initializing the loss list
@@ -216,7 +182,7 @@ class Training:
             self.writer.add_scalar('Train_loss_avg', train_loss, self.epoch)
 
             # Validation iteration & calculate metrics
-            if (self.epoch) % (self.params['display_stats_freq']) == 0:
+            if (self.epoch) % (self.params['Network_single_head']['display_stats_freq']) == 0:
 
                 # saving the model, checkpoint, TensorBoard, etc.
                 if not valid_loader == None:
@@ -262,8 +228,6 @@ class Training:
         logits_no_sigmoid_cache = torch.Tensor([]).to(self.device)
         labels_cache = torch.Tensor([]).to(self.device)
 
-
-
         for idx, (image, label) in enumerate(valid_loader):
 
             image = image.to(self.device)
@@ -272,7 +236,6 @@ class Training:
 
             with torch.no_grad():
                 output = self.model(image)
-                # loss = self.loss_function(output, label.float())  # for multilabel
 
                 output_sigmoided = F.sigmoid(output)
                 output_sigmoided = (output_sigmoided > 0.5).float()
@@ -281,8 +244,6 @@ class Training:
                 logits_with_sigmoid_cache = torch.cat((logits_with_sigmoid_cache, output_sigmoided))
                 logits_no_sigmoid_cache = torch.cat((logits_no_sigmoid_cache, output))
                 labels_cache = torch.cat((labels_cache, label))
-
-            # total_loss += loss.item()
 
         ############ Evaluation metric calculation ########
 
@@ -324,7 +285,6 @@ class Training:
         total_sensitivity_score.append(np.stack(sensitivity_disease))
         total_precision_score.append(np.stack(precision_disease))
 
-        # average_loss = total_loss / len(valid_loader)
         average_f1_score = np.stack(total_f1_score).mean(0)
         average_AUROC = np.stack(total_AUROC).mean(0)
         average_accuracy = np.stack(total_accuracy).mean(0)
@@ -379,45 +339,34 @@ class Training:
         """
 
         # Saves information about training to config file
-        self.params['Network']['num_epoch'] = self.epoch
+        self.params['Network_single_head']['num_epoch'] = self.epoch
         write_config(self.params, self.cfg_path, sort_keys=True)
 
-        overhead_hours, overhead_mins, overhead_secs = self.time_duration(0, total_overhead_time)
-        noncopy_time = total_time - total_datacopy_time
-        netto_time = total_time - total_overhead_time - total_datacopy_time
-        noncopy_hours, noncopy_mins, noncopy_secs = self.time_duration(0, noncopy_time)
-        netto_hours, netto_mins, netto_secs = self.time_duration(0, netto_time)
+        os.makedirs(os.path.join(self.params['target_dir'], self.params['Network_single_head']['network_output_path']), exist_ok=True)
+        os.makedirs(os.path.join(self.params['target_dir'], self.params['Network_single_head']['stat_log_path']), exist_ok=True)
 
         # Saving the model based on the best loss
         if valid_loss:
             if valid_loss < self.best_loss:
                 self.best_loss = valid_loss
                 torch.save(self.model.state_dict(), os.path.join(self.params['target_dir'],
-                                                                 self.params['network_output_path'], self.params['trained_model_name']))
+                                                                 self.params['Network_single_head']['network_output_path'], self.params['Network_single_head']['trained_model_name']))
         else:
             if train_loss < self.best_loss:
                 self.best_loss = train_loss
                 torch.save(self.model.state_dict(), os.path.join(self.params['target_dir'],
-                                                                 self.params['network_output_path'], self.params['trained_model_name']))
+                                                                 self.params['Network_single_head']['network_output_path'], self.params['Network_single_head']['trained_model_name']))
 
         # Saving every couple of epochs
-        if (self.epoch) % self.params['network_save_freq'] == 0:
-            torch.save(self.model.state_dict(), os.path.join(self.params['target_dir'], self.params['network_output_path'],
-                       'epoch{}_'.format(self.epoch) + self.params['trained_model_name']))
-
-        # Save a checkpoint every epoch
-        torch.save({'epoch': self.epoch,
-                    'model_state_dict': self.model.state_dict(),
-                    'optimizer_state_dict': self.optimiser.state_dict(),
-                    'loss_state_dict': self.loss_function.state_dict(), 'num_epochs': self.num_epochs,
-                    'model_info': self.model_info, 'best_loss': self.best_loss},
-                   os.path.join(self.params['target_dir'], self.params['network_output_path'], self.params['checkpoint_name']))
+        if (self.epoch) % self.params['Network_single_head']['network_save_freq'] == 0:
+            torch.save(self.model.state_dict(), os.path.join(self.params['target_dir'], self.params['Network_single_head']['network_output_path'],
+                       'epoch{}_'.format(self.epoch) + self.params['Network_single_head']['trained_model_name']))
 
         print('------------------------------------------------------'
               '----------------------------------')
         print(f'epoch: {self.epoch} | '
               f'epoch time: {iteration_hours}h {iteration_mins}m {iteration_secs:.2f}s | '
-              f'total time: {total_hours}h {total_mins}m {total_secs:.2f}s | communication overhead time so far: {overhead_hours}h {overhead_mins}m {overhead_secs:.2f}s')
+              f'total time: {total_hours}h {total_mins}m {total_secs:.2f}s')
         print(f'\n\tTrain loss: {train_loss:.4f}')
 
         if valid_loss:
@@ -437,9 +386,6 @@ class Training:
             msg = f'\n\n----------------------------------------------------------------------------------------\n' \
                    f'epoch: {self.epoch} | epoch Time: {iteration_hours}h {iteration_mins}m {iteration_secs:.2f}s' \
                    f' | total time: {total_hours}h {total_mins}m {total_secs:.2f}s | ' \
-                  f'communication overhead time so far: {overhead_hours}h {overhead_mins}m {overhead_secs:.2f}s\n' \
-                  f' | total time - copy time: {noncopy_hours}h {noncopy_mins}m {noncopy_secs:.2f}s' \
-                  f' | total time - copy time - overhead time: {netto_hours}h {netto_mins}m {netto_secs:.2f}s' \
                   f'\n\n\tTrain loss: {train_loss:.4f} | ' \
                    f'Val. loss: {valid_loss:.4f} | Average F1: {valid_F1.mean() * 100:.2f}% | Average AUROC: {valid_AUC.mean() * 100:.2f}% | Average accuracy: {valid_accuracy.mean() * 100:.2f}% ' \
                    f' | Average specifity: {valid_specifity.mean() * 100:.2f}%' \
@@ -447,27 +393,24 @@ class Training:
         else:
             msg = f'----------------------------------------------------------------------------------------\n' \
                    f'epoch: {self.epoch} | epoch time: {iteration_hours}h {iteration_mins}m {iteration_secs:.2f}s' \
-                   f' | total time: {total_hours}h {total_mins}m {total_secs:.2f}s\n\n\ttrain loss: {train_loss:.4f}' \
-                  f' | communication overhead time so far: {overhead_hours}h {overhead_mins}m {overhead_secs:.2f}s\n' \
-                  f' | total time - copy time: {noncopy_hours}h {noncopy_mins}m {noncopy_secs:.2f}s' \
-                  f' | total time - copy time - overhead time: {netto_hours}h {netto_mins}m {netto_secs:.2f}s\n\n'
-        with open(os.path.join(self.params['target_dir'], self.params['stat_log_path']) + '/Stats', 'a') as f:
+                   f' | total time: {total_hours}h {total_mins}m {total_secs:.2f}s\n\n\ttrain loss: {train_loss:.4f}\n\n'
+        with open(os.path.join(self.params['target_dir'], self.params['Network_single_head']['stat_log_path']) + '/Stats', 'a') as f:
             f.write(msg)
 
         if valid_loss:
             msg = f'Individual F1 scores:\n'
-            with open(os.path.join(self.params['target_dir'], self.params['stat_log_path']) + '/Stats', 'a') as f:
+            with open(os.path.join(self.params['target_dir'], self.params['Network_single_head']['stat_log_path']) + '/Stats', 'a') as f:
                 f.write(msg)
             for idx, pathology in enumerate(self.label_names):
                 msg = f'{pathology}: {valid_F1[idx] * 100:.2f}% | '
-                with open(os.path.join(self.params['target_dir'], self.params['stat_log_path']) + '/Stats', 'a') as f:
+                with open(os.path.join(self.params['target_dir'], self.params['Network_single_head']['stat_log_path']) + '/Stats', 'a') as f:
                     f.write(msg)
             msg = f'\n\nIndividual AUROC:\n'
-            with open(os.path.join(self.params['target_dir'], self.params['stat_log_path']) + '/Stats', 'a') as f:
+            with open(os.path.join(self.params['target_dir'], self.params['Network_single_head']['stat_log_path']) + '/Stats', 'a') as f:
                 f.write(msg)
             for idx, pathology in enumerate(self.label_names):
                 msg = f'{pathology}: {valid_AUC[idx] * 100:.2f}% | '
-                with open(os.path.join(self.params['target_dir'], self.params['stat_log_path']) + '/Stats', 'a') as f:
+                with open(os.path.join(self.params['target_dir'], self.params['Network_single_head']['stat_log_path']) + '/Stats', 'a') as f:
                     f.write(msg)
 
 

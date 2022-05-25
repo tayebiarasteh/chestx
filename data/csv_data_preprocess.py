@@ -1252,7 +1252,7 @@ class csv_reducer():
                                          'n_y_pixels', 'x_spacing', 'y_spacing'])
 
         org_df_path = '/home/soroosh/Documents/datasets/XRay/NIH_ChestX-ray14/officialsoroosh_cxr14_master_list.csv'
-        output_df_path = '/home/soroosh/Documents/datasets/XRay/NIH_ChestX-ray14/5000_officialsoroosh_cxr14_master_list.csv'
+        output_df_path = '/home/soroosh/Documents/datasets/XRay/NIH_ChestX-ray14/2000_officialsoroosh_cxr14_master_list.csv'
 
         org_df = pd.read_csv(org_df_path, sep=',')
 
@@ -1283,7 +1283,7 @@ class csv_reducer():
                      'pneumonic_infiltrates_right', 'pneumonic_infiltrates_left', 'disturbances_right',	'disturbances_left', 'pneumothorax_right', 'pneumothorax_left'])
 
         org_df_path = '/home/soroosh/Documents/datasets/XRay/UKA/chest_radiograph/final_UKA_master_list.csv'
-        output_df_path = '/home/soroosh/Documents/datasets/XRay/UKA/chest_radiograph/5000_final_UKA_master_list.csv'
+        output_df_path = '/home/soroosh/Documents/datasets/XRay/UKA/chest_radiograph/2000_final_UKA_master_list.csv'
 
         org_df = pd.read_csv(org_df_path, sep=',')
 
@@ -1301,6 +1301,35 @@ class csv_reducer():
             final_df = final_df.append(selected_patient_df)
 
         final_df = final_df.sort_values(['patient_id'])
+        final_df = final_df.append(valid_df)
+        final_df = final_df.append(test_df)
+        final_df.to_csv(output_df_path, sep=',', index=False)
+
+
+    def coronahack(self, num_images):
+
+        # initiating the df
+        final_df = pd.DataFrame(columns=['X_ray_image_name', 'Label', 'Dataset_type', 'Label_2_Virus_category', 'Label_1_Virus_category'])
+
+        org_df_path = '/home/soroosh/Documents/datasets/XRay/Coronahack_Chest_XRay/officialsoroosh_coronahack_master_list.csv'
+        output_df_path = '/home/soroosh/Documents/datasets/XRay/Coronahack_Chest_XRay/reduced_officialsoroosh_coronahack_master_list.csv'
+
+        org_df = pd.read_csv(org_df_path, sep=',')
+
+        train_df = org_df[org_df['Dataset_type'] == 'TRAIN']
+        valid_df = org_df[org_df['Dataset_type'] == 'VALID']
+        test_df = org_df[org_df['Dataset_type'] == 'TEST']
+
+        train_list = train_df['X_ray_image_name'].unique().tolist()
+        random.shuffle(train_list)
+
+        chosen_list = train_list[:num_images]
+
+        for patient in tqdm(chosen_list):
+            selected_patient_df = train_df[train_df['X_ray_image_name'] == patient]
+            final_df = final_df.append(selected_patient_df)
+
+        final_df = final_df.sort_values(['X_ray_image_name'])
         final_df = final_df.append(valid_df)
         final_df = final_df.append(test_df)
         final_df.to_csv(output_df_path, sep=',', index=False)
@@ -1461,6 +1490,10 @@ if __name__ == '__main__':
     # handler4.threetwo_remover()
 
     handler5 = csv_reducer()
-    # handler5.mimic(num_images=5000)
-    handler5.cxr14_validmaker(num_images=10000)
-    handler5.cxr14(num_images=5000)
+    # handler5.coronahack(num_images=2000)
+    handler5.mimic(num_images=2000)
+    # handler5.cxr14_validmaker(num_images=3000)
+    # handler5.vindr(num_images=2000)
+    # handler5.cxr14(num_images=2000)
+    # handler5.chexpert(num_images=2000)
+    # handler5.UKA(num_images=2000)

@@ -1,8 +1,8 @@
 """
 Created on May 24, 2022.
-Training_Valid_chestx.py
+Training_Valid_chestx_federated.py
 
-@author: Soroosh Tayebi Arasteh <sarasteh@ukaachen.de>
+@author: Soroosh Tayebi Arasteh <soroosh.arasteh@rwth-aachen.de>
 https://github.com/tayebiarasteh/
 """
 
