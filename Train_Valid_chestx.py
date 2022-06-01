@@ -497,6 +497,6 @@ class Training:
             #     self.writer.add_scalar('valid_F1_' + pathology, valid_F1[idx], self.epoch)
 
             self.writer.add_scalar('Valid_avg_accuracy', valid_accuracy.mean(), self.epoch)
-            self.writer.add_scalar('Valid_avg_specifity', valid_specifity.mean(), self.epoch)
-            self.writer.add_scalar('Valid_avg_precision', valid_precision.mean(), self.epoch)
-            self.writer.add_scalar('Valid_avg_recall_sensitivity', valid_sensitivity.mean(), self.epoch)
+            # self.writer.add_scalar('Valid_avg_specifity', valid_specifity.mean(), self.epoch)
+            # self.writer.add_scalar('Valid_avg_precision', valid_precision.mean(), self.epoch)
+            # self.writer.add_scalar('Valid_avg_recall_sensitivity', valid_sensitivity.mean(), self.epoch)

@@ -185,7 +185,7 @@ class Training_federated:
 
 
 
-    def training_setup_federated(self, train_loader, valid_loader=None, HE=False, precision_fractional=15):
+    def training_setup_federated(self, train_loader, valid_loader=None, aggregationweight=[1, 1, 1], HE=False, precision_fractional=15):
         """
 
         Parameters
@@ -384,8 +384,9 @@ class Training_federated:
                 for weightbias in self.backbone_state_dict_list:
                     temp_weight_list = []
                     for idx in range(len(train_loader)):
-                        temp_weight_list.append(new_model_client_list[idx].state_dict()[weightbias])
-                    temp_dict[weightbias] = (sum(temp_weight_list) / len(temp_weight_list)).clone().get()
+                        temp_weight_list.append(new_model_client_list[idx].state_dict()[weightbias] * aggregationweight[idx])
+                    # temp_dict[weightbias] = (sum(temp_weight_list) / len(temp_weight_list)).clone().get()
+                    temp_dict[weightbias] = (sum(temp_weight_list) / sum(aggregationweight)).clone().get()
 
             ############# [done] copying backbone state dict weights and biases
 

@@ -106,7 +106,7 @@ def main_train_central_2D(global_config_path="/home/soroosh/Documents/Repositori
 
 
 def main_backbone_train_2D_federated(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
-                  resume=False, augment=False, experiment_name='name', dataset_names_list='vindr', HE=False, precision_fractional=15):
+                  resume=False, augment=False, experiment_name='name', dataset_names_list='vindr', aggregationweight=[1, 1, 1], HE=False, precision_fractional=15):
     """Main function for training + validation centrally
 
         Parameters
@@ -185,7 +185,7 @@ def main_backbone_train_2D_federated(global_config_path="/home/soroosh/Documents
         trainer.load_checkpoint(model_loader=model_loader, optimizer_loader=optimizer_loader, loss_function_loader=loss_function_loader, label_names_loader=label_names_loader, weight_loader=weight_loader)
     else:
         trainer.setup_models(model_loader=model_loader, optimizer_loader=optimizer_loader, loss_function_loader=loss_function_loader, weight_loader=weight_loader)
-    trainer.training_setup_federated(train_loader=train_loader, valid_loader=valid_loader, HE=HE, precision_fractional=precision_fractional)
+    trainer.training_setup_federated(train_loader=train_loader, valid_loader=valid_loader, aggregationweight=aggregationweight, HE=HE, precision_fractional=precision_fractional)
 
 
 
@@ -399,11 +399,11 @@ def load_pretrained_model(num_classes=2, resnet_num=34):
 
 
 if __name__ == '__main__':
-    # delete_experiment(experiment_name='temp', global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml")
+    delete_experiment(experiment_name='temp', global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml")
     # main_train_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
     #               valid=True, resume=False, augment=True, experiment_name='temp', dataset_name='coronahack')
-    # main_backbone_train_2D_federated(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
-    #               resume=False, augment=True, experiment_name='tempp', dataset_names_list=['vindr', 'chexpert'], HE=False, precision_fractional=15)
+    main_backbone_train_2D_federated(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
+                  resume=False, augment=True, experiment_name='tempp', dataset_names_list=['chexpert', 'chexpert'], aggregationweight=[1, 1], HE=False, precision_fractional=15)
     # main_test_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml", dataset_name='cxr14')
-    main_single_head_train_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
-                  valid=True, augment=True, experiment_name='multitask_vindr_coronahack_2000_batch16_resnet50_lr5e5', dataset_name='vindr', model_file_name='epoch170_model0_trained_model.pth')
+    # main_single_head_train_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
+    #               valid=True, augment=True, experiment_name='multitask_vindr_coronahack_2000_batch16_resnet50_lr5e5', dataset_name='vindr', model_file_name='epoch170_model0_trained_model.pth')

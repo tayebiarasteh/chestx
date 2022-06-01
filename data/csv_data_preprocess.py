@@ -1252,7 +1252,7 @@ class csv_reducer():
                                          'n_y_pixels', 'x_spacing', 'y_spacing'])
 
         org_df_path = '/home/soroosh/Documents/datasets/XRay/NIH_ChestX-ray14/officialsoroosh_cxr14_master_list.csv'
-        output_df_path = '/home/soroosh/Documents/datasets/XRay/NIH_ChestX-ray14/2000_officialsoroosh_cxr14_master_list.csv'
+        output_df_path = '/home/soroosh/Documents/datasets/XRay/NIH_ChestX-ray14/reduced_officialsoroosh_cxr14_master_list.csv'
 
         org_df = pd.read_csv(org_df_path, sep=',')
 
@@ -1491,9 +1491,9 @@ if __name__ == '__main__':
 
     handler5 = csv_reducer()
     # handler5.coronahack(num_images=2000)
-    handler5.mimic(num_images=2000)
+    # handler5.mimic(num_images=2000)
     # handler5.cxr14_validmaker(num_images=3000)
     # handler5.vindr(num_images=2000)
-    # handler5.cxr14(num_images=2000)
+    handler5.cxr14(num_images=40000)
     # handler5.chexpert(num_images=2000)
     # handler5.UKA(num_images=2000)
