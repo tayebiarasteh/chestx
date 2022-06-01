@@ -25,21 +25,24 @@ epsilon = 1e-15
 
 
 class Training_single_head:
-    def __init__(self, cfg_path, num_epochs_single_head=10, label_names=None):
+    def __init__(self, cfg_path, dataset_name, num_epochs_single_head=10, label_names=None):
         """This class represents training and validation processes.
         """
         self.params = read_config(cfg_path)
-        self.cfg_path = cfg_path
         self.num_epochs_single_head = num_epochs_single_head
         self.label_names = label_names
 
         self.model_info = self.params['Network_single_head']
 
-        self.model_info['tb_logs_path'] = os.path.join(self.params['experiment_name'], self.model_info['tb_logs_path'])
-        self.model_info['network_output_path'] = os.path.join(self.params['experiment_name'], self.model_info['network_output_path'])
-        self.model_info['output_data_path'] = os.path.join(self.params['experiment_name'], self.model_info['output_data_path'])
-        self.model_info['stat_log_path'] = os.path.join(self.params['experiment_name'], self.model_info['stat_log_path'])
+        self.model_info['tb_logs_path'] = os.path.join(self.params['experiment_name'], dataset_name, self.model_info['tb_logs_path'])
+        self.model_info['network_output_path'] = os.path.join(self.params['experiment_name'], dataset_name, self.model_info['network_output_path'])
+        self.model_info['output_data_path'] = os.path.join(self.params['experiment_name'], dataset_name, self.model_info['output_data_path'])
+        self.model_info['stat_log_path'] = os.path.join(self.params['experiment_name'], dataset_name, self.model_info['stat_log_path'])
+
         self.params['Network_single_head'] = self.model_info
+        self.cfg_path = os.path.join(self.params['target_dir'], self.params['Network_single_head']['network_output_path'], dataset_name + '_config.yaml')
+
+        os.makedirs(os.path.join(self.params['target_dir'], self.params['Network_single_head']['network_output_path']), exist_ok=True)
         write_config(self.params, self.cfg_path, sort_keys=True)
 
         self.epoch = 0

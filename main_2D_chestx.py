@@ -277,7 +277,7 @@ def main_test_central_2D(global_config_path="/home/soroosh/Documents/Repositorie
 
 
 def main_single_head_train_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml", valid=False,
-                  augment=False, experiment_name='name', dataset_name='vindr'):
+                  augment=False, experiment_name='name', dataset_name='vindr', model_file_name='epoch170_model0_trained_model.pth'):
     """
 
         Parameters
@@ -334,7 +334,7 @@ def main_single_head_train_central_2D(global_config_path="/home/soroosh/Document
     optimizer = torch.optim.Adam(model.parameters(), lr=float(params['Network_single_head']['lr']),
                                  weight_decay=float(params['Network_single_head']['weight_decay']), amsgrad=params['Network_single_head']['amsgrad'])
 
-    trainer = Training_single_head(cfg_path, num_epochs_single_head=params['num_epochs_single_head'], label_names=label_names)
+    trainer = Training_single_head(cfg_path, dataset_name, num_epochs_single_head=params['num_epochs_single_head'], label_names=label_names)
 
     trainer.setup_model(model=model, optimiser=optimizer, loss_function=loss_function, model_file_name='epoch30_model0_trained_model.pth', weight=weight)
     trainer.train_epoch(train_loader=train_loader, valid_loader=valid_loader)
@@ -406,4 +406,4 @@ if __name__ == '__main__':
     #               resume=False, augment=True, experiment_name='tempp', dataset_names_list=['vindr', 'chexpert'], HE=False, precision_fractional=15)
     # main_test_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml", dataset_name='cxr14')
     main_single_head_train_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
-                  valid=True, augment=True, experiment_name='multitask_vindr_coronahack_2000_batch16_resnet50_lr5e5', dataset_name='vindr')
+                  valid=True, augment=True, experiment_name='multitask_vindr_coronahack_2000_batch16_resnet50_lr5e5', dataset_name='vindr', model_file_name='epoch170_model0_trained_model.pth')
