@@ -185,7 +185,7 @@ class Training_federated:
 
 
 
-    def training_setup_federated(self, train_loader, valid_loader=None, aggregationweight=[1, 1, 1], HE=False, precision_fractional=15):
+    def training_setup_federated(self, train_loader, valid_loader=None, only_one_batch=False, aggregationweight=[1, 1, 1], HE=False, precision_fractional=15):
         """
 
         Parameters
@@ -284,7 +284,10 @@ class Training_federated:
                                                    weight_decay=float(self.params['Network']['weight_decay']),
                                                    amsgrad=self.params['Network']['amsgrad'])
 
-                new_model_client, loss_client, overhead = self.train_epoch_federated(train_loader[idx], optimizer_model, model, self.loss_function_loader[idx])
+                if only_one_batch:
+                    new_model_client, loss_client, overhead = self.train_batch_federated(train_loader[idx], optimizer_model, model, self.loss_function_loader[idx])
+                else:
+                    new_model_client, loss_client, overhead = self.train_epoch_federated(train_loader[idx], optimizer_model, model, self.loss_function_loader[idx])
                 total_datacopy_time += overhead
                 epoch_datacopy_time += overhead
                 new_model_client_list.append(new_model_client)
@@ -498,6 +501,35 @@ class Training_federated:
 
         return model, avg_loss.item(), epoch_datacopy
 
+
+
+    def train_batch_federated(self, train_loader, optimizer, model, loss_function):
+        """Training iteration for only one batch
+        """
+
+        model.train()
+        image, label = train_loader.provide_mixed()
+
+        communication_start_time = time.time()
+        loc = model.location
+        image = image.send(loc)
+        label = label.send(loc)
+        epoch_datacopy = (time.time() - communication_start_time)
+        image = image.to(self.device)
+        label = label.to(self.device)
+
+        optimizer.zero_grad()
+
+        with torch.set_grad_enabled(True):
+
+            output = model(image)
+            loss_client = loss_function(output, label)
+            loss_client.backward()
+            optimizer.step()
+
+        loss_client = loss_client.get().data
+
+        return model, loss_client.item(), epoch_datacopy
 
 
 

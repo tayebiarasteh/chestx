@@ -21,6 +21,7 @@ from Train_Valid_chestx_federated import Training_federated
 from single_head_Train_Valid_chestx import Training_single_head
 from Prediction_chestx import Prediction
 from data.data_provider import vindr_data_loader_2D, coronahack_data_loader_2D, chexpert_data_loader_2D, mimic_data_loader_2D, UKA_data_loader_2D, cxr14_data_loader_2D
+from data.data_provider_manual import vindr_data_loader_2D_manual, coronahack_data_loader_2D_manual, cxr14_data_loader_2D_manual, chexpert_data_loader_2D_manual, mimic_data_loader_2D_manual, UKA_data_loader_2D_manual
 
 import warnings
 warnings.filterwarnings('ignore')
@@ -186,6 +187,86 @@ def main_backbone_train_2D_federated(global_config_path="/home/soroosh/Documents
     else:
         trainer.setup_models(model_loader=model_loader, optimizer_loader=optimizer_loader, loss_function_loader=loss_function_loader, weight_loader=weight_loader)
     trainer.training_setup_federated(train_loader=train_loader, valid_loader=valid_loader, aggregationweight=aggregationweight, HE=HE, precision_fractional=precision_fractional)
+
+
+def main_backbone_train_2D_federated_manual_batch(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
+                  resume=False, augment=False, experiment_name='name', dataset_names_list='vindr', aggregationweight=[1, 1, 1], HE=False, precision_fractional=15):
+    """Main function for training + validation centrally
+
+        Parameters
+        ----------
+        global_config_path: str
+            always global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml"
+
+        resume: bool
+            if we are resuming training on a model
+
+        augment: bool
+            if we want to have data augmentation during training
+
+        experiment_name: str
+            name of the experiment, in case of resuming training.
+            name of new experiment, in case of new training.
+    """
+    if resume == True:
+        params = open_experiment(experiment_name, global_config_path)
+    else:
+        params = create_experiment(experiment_name, global_config_path)
+    cfg_path = params["cfg_path"]
+
+    train_loader = []
+    valid_loader = []
+    model_loader = []
+    weight_loader = []
+    loss_function_loader = []
+    optimizer_loader = []
+    label_names_loader = []
+
+    for dataset in dataset_names_list:
+        if dataset == 'vindr':
+            train_dataset_model = vindr_data_loader_2D_manual(cfg_path=cfg_path, mode='train', augment=augment, batch_size=params['Network']['batch_size'])
+            valid_dataset_model = vindr_data_loader_2D(cfg_path=cfg_path, mode='valid', augment=False)
+        elif dataset == 'coronahack':
+            train_dataset_model = coronahack_data_loader_2D_manual(cfg_path=cfg_path, mode='train', augment=augment, batch_size=params['Network']['batch_size'])
+            valid_dataset_model = coronahack_data_loader_2D(cfg_path=cfg_path, mode='valid', augment=False)
+        elif dataset == 'chexpert':
+            train_dataset_model = chexpert_data_loader_2D_manual(cfg_path=cfg_path, mode='train', augment=augment, batch_size=params['Network']['batch_size'])
+            valid_dataset_model = chexpert_data_loader_2D(cfg_path=cfg_path, mode='valid', augment=False)
+        elif dataset == 'mimic':
+            train_dataset_model = mimic_data_loader_2D_manual(cfg_path=cfg_path, mode='train', augment=augment, batch_size=params['Network']['batch_size'])
+            valid_dataset_model = mimic_data_loader_2D(cfg_path=cfg_path, mode='valid', augment=False)
+        elif dataset == 'UKA':
+            train_dataset_model = UKA_data_loader_2D_manual(cfg_path=cfg_path, mode='train', augment=augment, batch_size=params['Network']['batch_size'])
+            valid_dataset_model = UKA_data_loader_2D(cfg_path=cfg_path, mode='valid', augment=False)
+        elif dataset == 'cxr14':
+            train_dataset_model = cxr14_data_loader_2D_manual(cfg_path=cfg_path, mode='train', augment=augment, batch_size=params['Network']['batch_size'])
+            valid_dataset_model = cxr14_data_loader_2D(cfg_path=cfg_path, mode='valid', augment=False)
+
+        weight_model = train_dataset_model.pos_weight()
+        label_names_model = train_dataset_model.chosen_labels
+        valid_loader_model = torch.utils.data.DataLoader(dataset=valid_dataset_model,
+                                                         batch_size=params['Network']['batch_size'],
+                                                         pin_memory=True, drop_last=False, shuffle=False, num_workers=4)
+        model_model = load_resnet50(num_classes=len(weight_model))
+        # model_model = ResNet18(n_out_classes=len(weight_model))
+        loss_function_model = BCEWithLogitsLoss
+        optimizer_model = torch.optim.Adam(model_model.parameters(), lr=float(params['Network']['lr']),
+                                           weight_decay=float(params['Network']['weight_decay']),
+                                           amsgrad=params['Network']['amsgrad'])
+        train_loader.append(train_dataset_model)
+        valid_loader.append(valid_loader_model)
+        model_loader.append(model_model)
+        weight_loader.append(weight_model)
+        loss_function_loader.append(loss_function_model)
+        optimizer_loader.append(optimizer_model)
+        label_names_loader.append(label_names_model)
+
+    trainer = Training_federated(cfg_path, num_epochs=params['num_epochs'], resume=resume, label_names_loader=label_names_loader)
+    if resume == True:
+        trainer.load_checkpoint(model_loader=model_loader, optimizer_loader=optimizer_loader, loss_function_loader=loss_function_loader, label_names_loader=label_names_loader, weight_loader=weight_loader)
+    else:
+        trainer.setup_models(model_loader=model_loader, optimizer_loader=optimizer_loader, loss_function_loader=loss_function_loader, weight_loader=weight_loader)
+    trainer.training_setup_federated(train_loader=train_loader, valid_loader=valid_loader, only_one_batch=True, aggregationweight=aggregationweight, HE=HE, precision_fractional=precision_fractional)
 
 
 
@@ -399,11 +480,13 @@ def load_pretrained_model(num_classes=2, resnet_num=34):
 
 
 if __name__ == '__main__':
-    delete_experiment(experiment_name='temp', global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml")
+    delete_experiment(experiment_name='tempp', global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml")
     # main_train_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
     #               valid=True, resume=False, augment=True, experiment_name='temp', dataset_name='coronahack')
-    main_backbone_train_2D_federated(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
-                  resume=False, augment=True, experiment_name='tempp', dataset_names_list=['chexpert', 'chexpert'], aggregationweight=[1, 1], HE=False, precision_fractional=15)
+    # main_backbone_train_2D_federated(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
+    #               resume=False, augment=True, experiment_name='tempp', dataset_names_list=['chexpert', 'chexpert'], aggregationweight=[1, 1], HE=False, precision_fractional=15)
+    main_backbone_train_2D_federated_manual_batch(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
+                  resume=False, augment=True, experiment_name='tempp', dataset_names_list=['vindr', 'coronahack', 'cxr14'], aggregationweight=[1, 1, 1], HE=False, precision_fractional=15)
     # main_test_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml", dataset_name='cxr14')
     # main_single_head_train_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
     #               valid=True, augment=True, experiment_name='multitask_vindr_coronahack_2000_batch16_resnet50_lr5e5', dataset_name='vindr', model_file_name='epoch170_model0_trained_model.pth')
