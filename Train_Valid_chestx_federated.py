@@ -582,24 +582,38 @@ class Training_federated:
         logits_with_sigmoid_cache = logits_with_sigmoid_cache.int().cpu().numpy()
         labels_cache = labels_cache.int().cpu().numpy()
 
-        confusion = metrics.multilabel_confusion_matrix(labels_cache, logits_with_sigmoid_cache)
-
         F1_disease = []
         accuracy_disease = []
         specifity_disease = []
         sensitivity_disease = []
         precision_disease = []
 
-        for idx, disease in enumerate(confusion):
-            TN = disease[0, 0]
-            FP = disease[0, 1]
-            FN = disease[1, 0]
-            TP = disease[1, 1]
+        if labels_cache.shape[-1] == 1:
+            confusion = metrics.confusion_matrix(labels_cache, logits_with_sigmoid_cache)
+
+            TN = confusion[0, 0]
+            FP = confusion[0, 1]
+            FN = confusion[1, 0]
+            TP = confusion[1, 1]
             F1_disease.append(2 * TP / (2 * TP + FN + FP + epsilon))
             accuracy_disease.append((TP + TN) / (TP + TN + FP + FN + epsilon))
             specifity_disease.append(TN / (TN + FP + epsilon))
             sensitivity_disease.append(TP / (TP + FN + epsilon))
             precision_disease.append(TP / (TP + FP + epsilon))
+
+        else:
+            confusion = metrics.multilabel_confusion_matrix(labels_cache, logits_with_sigmoid_cache)
+
+            for idx, disease in enumerate(confusion):
+                TN = disease[0, 0]
+                FP = disease[0, 1]
+                FN = disease[1, 0]
+                TP = disease[1, 1]
+                F1_disease.append(2 * TP / (2 * TP + FN + FP + epsilon))
+                accuracy_disease.append((TP + TN) / (TP + TN + FP + FN + epsilon))
+                specifity_disease.append(TN / (TN + FP + epsilon))
+                sensitivity_disease.append(TP / (TP + FN + epsilon))
+                precision_disease.append(TP / (TP + FP + epsilon))
 
         # Macro averaging
         total_f1_score.append(np.stack(F1_disease))
@@ -698,7 +712,10 @@ class Training_federated:
 
             print('\nIndividual AUROC:')
             for i, pathology in enumerate(self.label_names_loader[idx]):
-                print(f'\t{pathology}: {valid_AUC[idx][i] * 100:.2f}%')
+                try:
+                    print(f'\t{pathology}: {valid_AUC[idx][i] * 100:.2f}%')
+                except:
+                    print(f'\t{pathology}: {valid_AUC[idx] * 100:.2f}%')
 
             # saving the training and validation stats
             msg = f'\n\n----------------------------------------------------------------------------------------\n' \
@@ -725,7 +742,10 @@ class Training_federated:
             with open(os.path.join(self.params['target_dir'], self.params['stat_log_path']) + '/Stats_' + str(idx), 'a') as f:
                 f.write(msg)
             for i, pathology in enumerate(self.label_names_loader[idx]):
-                msg = f'{pathology}: {valid_AUC[idx][i] * 100:.2f}% | '
+                try:
+                    msg = f'{pathology}: {valid_AUC[idx][i] * 100:.2f}% | '
+                except:
+                    msg = f'{pathology}: {valid_AUC[idx] * 100:.2f}% | '
                 with open(os.path.join(self.params['target_dir'], self.params['stat_log_path']) + '/Stats_' + str(idx), 'a') as f:
                     f.write(msg)
 

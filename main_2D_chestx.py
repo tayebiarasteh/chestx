@@ -244,9 +244,6 @@ def main_backbone_train_2D_federated_manual_batch(global_config_path="/home/soro
 
         weight_model = train_dataset_model.pos_weight()
         label_names_model = train_dataset_model.chosen_labels
-        valid_loader_model = torch.utils.data.DataLoader(dataset=valid_dataset_model,
-                                                         batch_size=params['Network']['batch_size'],
-                                                         pin_memory=True, drop_last=False, shuffle=False, num_workers=4)
         model_model = load_resnet50(num_classes=len(weight_model))
         # model_model = ResNet18(n_out_classes=len(weight_model))
         loss_function_model = BCEWithLogitsLoss
@@ -254,12 +251,17 @@ def main_backbone_train_2D_federated_manual_batch(global_config_path="/home/soro
                                            weight_decay=float(params['Network']['weight_decay']),
                                            amsgrad=params['Network']['amsgrad'])
         train_loader.append(train_dataset_model)
-        valid_loader.append(valid_loader_model)
         model_loader.append(model_model)
         weight_loader.append(weight_model)
         loss_function_loader.append(loss_function_model)
         optimizer_loader.append(optimizer_model)
+        if dataset == 'cxr14':
+            continue
         label_names_loader.append(label_names_model)
+        valid_loader_model = torch.utils.data.DataLoader(dataset=valid_dataset_model,
+                                                         batch_size=params['Network']['batch_size'],
+                                                         pin_memory=True, drop_last=False, shuffle=False, num_workers=4)
+        valid_loader.append(valid_loader_model)
 
     trainer = Training_federated(cfg_path, num_epochs=params['num_epochs'], resume=resume, label_names_loader=label_names_loader)
     if resume == True:

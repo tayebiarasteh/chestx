@@ -14,12 +14,12 @@ trained_model_name: trained_model.pth
 file_path: /home/soroosh/Documents/datasets/XRay/
 target_dir: /home/soroosh/Documents/Repositories_target_files/chestx/
 #network_save_freq: 25 # number of epochs to save
-network_save_freq: 20000 # number of epochs to save
+network_save_freq: 500 # number of epochs to save
 #display_stats_freq: 5 # valid freq is equal to this
-display_stats_freq: 10000 # valid freq is equal to this
+display_stats_freq: 100 # valid freq is equal to this
 
 #num_epochs: 1000
-num_epochs: 1000000
+num_epochs: 50000
 num_epochs_single_head: 1000
 
 Network_single_head:
