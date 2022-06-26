@@ -28,8 +28,8 @@ Network_single_head:
   weight_decay: 0
   amsgrad: False
   tb_logs_path: tensor_board_logs/
-  display_stats_freq: 1 # valid freq is equal to this
-  network_save_freq: 5 # number of epochs to save
+  display_stats_freq: 5 # valid freq is equal to this
+  network_save_freq: 25 # number of epochs to save
   network_output_path: network_data/
   output_data_path: output_data/
   stat_log_path: stat_logs
