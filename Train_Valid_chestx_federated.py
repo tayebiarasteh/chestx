@@ -679,7 +679,7 @@ class Training_federated:
         noncopy_hours, noncopy_mins, noncopy_secs = self.time_duration(0, noncopy_time)
         netto_hours, netto_mins, netto_secs = self.time_duration(0, netto_time)
 
-        for idx in range(len(valid_loss)):
+        for idx in range(len(self.model_loader)):
 
             # Saving every couple of epochs
             if (self.epoch) % self.params['network_save_freq'] == 0:
@@ -694,60 +694,63 @@ class Training_federated:
                         'model_info': self.model_info},
                        os.path.join(self.params['target_dir'], self.params['network_output_path'], 'model' + str(idx) + '_' + self.params['checkpoint_name']))
 
-            print('------------------------------------------------------'
-                  '----------------------------------')
-            print('\t model number:', str(idx))
-            print(f'epoch: {self.epoch} | '
-                  f'epoch time: {iteration_hours}h {iteration_mins}m {iteration_secs:.2f}s | '
-                  f'total time: {total_hours}h {total_mins}m {total_secs:.2f}s | communication overhead time so far: {overhead_hours}h {overhead_mins}m {overhead_secs:.2f}s')
-            print(f'\n\tTrain loss: {train_loss:.4f}')
+            try:
+                print('------------------------------------------------------'
+                      '----------------------------------')
+                print('\t model number:', str(idx))
+                print(f'epoch: {self.epoch} | '
+                      f'epoch time: {iteration_hours}h {iteration_mins}m {iteration_secs:.2f}s | '
+                      f'total time: {total_hours}h {total_mins}m {total_secs:.2f}s | communication overhead time so far: {overhead_hours}h {overhead_mins}m {overhead_secs:.2f}s')
+                print(f'\n\tTrain loss: {train_loss:.4f}')
 
-            print(f'\t Val. loss: {valid_loss[idx]:.4f} | Average F1: {valid_F1[idx].mean() * 100:.2f}% | Average AUROC: {valid_AUC[idx].mean() * 100:.2f}% | Average accuracy: {valid_accuracy[idx].mean() * 100:.2f}%'
-            f' | Average specifity: {valid_specifity[idx].mean() * 100:.2f}%'
-            f' | Average recall (sensitivity): {valid_sensitivity[idx].mean() * 100:.2f}% | Average precision: {valid_precision[idx].mean() * 100:.2f}%\n')
+                print(f'\t Val. loss: {valid_loss[idx]:.4f} | Average F1: {valid_F1[idx].mean() * 100:.2f}% | Average AUROC: {valid_AUC[idx].mean() * 100:.2f}% | Average accuracy: {valid_accuracy[idx].mean() * 100:.2f}%'
+                f' | Average specifity: {valid_specifity[idx].mean() * 100:.2f}%'
+                f' | Average recall (sensitivity): {valid_sensitivity[idx].mean() * 100:.2f}% | Average precision: {valid_precision[idx].mean() * 100:.2f}%\n')
 
-            print('Individual F1 scores:')
-            for i, pathology in enumerate(self.label_names_loader[idx]):
-                print(f'\t{pathology}: {valid_F1[idx][i] * 100:.2f}%')
+                print('Individual F1 scores:')
+                for i, pathology in enumerate(self.label_names_loader[idx]):
+                    print(f'\t{pathology}: {valid_F1[idx][i] * 100:.2f}%')
 
-            print('\nIndividual AUROC:')
-            for i, pathology in enumerate(self.label_names_loader[idx]):
-                try:
-                    print(f'\t{pathology}: {valid_AUC[idx][i] * 100:.2f}%')
-                except:
-                    print(f'\t{pathology}: {valid_AUC[idx] * 100:.2f}%')
+                print('\nIndividual AUROC:')
+                for i, pathology in enumerate(self.label_names_loader[idx]):
+                    try:
+                        print(f'\t{pathology}: {valid_AUC[idx][i] * 100:.2f}%')
+                    except:
+                        print(f'\t{pathology}: {valid_AUC[idx] * 100:.2f}%')
 
-            # saving the training and validation stats
-            msg = f'\n\n----------------------------------------------------------------------------------------\n' \
-                   f'epoch: {self.epoch} | epoch Time: {iteration_hours}h {iteration_mins}m {iteration_secs:.2f}s' \
-                   f' | total time: {total_hours}h {total_mins}m {total_secs:.2f}s | ' \
-                  f'communication overhead time so far: {overhead_hours}h {overhead_mins}m {overhead_secs:.2f}s\n' \
-                  f' | total time - copy time: {noncopy_hours}h {noncopy_mins}m {noncopy_secs:.2f}s' \
-                  f' | total time - copy time - overhead time: {netto_hours}h {netto_mins}m {netto_secs:.2f}s' \
-                  f'\n\n\tTrain loss: {train_loss:.4f} | ' \
-                   f'Val. loss: {valid_loss[idx]:.4f} | Average F1: {valid_F1[idx].mean() * 100:.2f}% | Average AUROC: {valid_AUC[idx].mean() * 100:.2f}% | Average accuracy: {valid_accuracy[idx].mean() * 100:.2f}% ' \
-                   f' | Average specifity: {valid_specifity[idx].mean() * 100:.2f}%' \
-                   f' | Average recall (sensitivity): {valid_sensitivity[idx].mean() * 100:.2f}% | Average precision: {valid_precision[idx].mean() * 100:.2f}%\n\n'
-            with open(os.path.join(self.params['target_dir'], self.params['stat_log_path']) + '/Stats_' + str(idx), 'a') as f:
-                f.write(msg)
-
-            msg = f'Individual F1 scores:\n'
-            with open(os.path.join(self.params['target_dir'], self.params['stat_log_path']) + '/Stats_' + str(idx), 'a') as f:
-                f.write(msg)
-            for i, pathology in enumerate(self.label_names_loader[idx]):
-                msg = f'{pathology}: {valid_F1[idx][i] * 100:.2f}% | '
+                # saving the training and validation stats
+                msg = f'\n\n----------------------------------------------------------------------------------------\n' \
+                       f'epoch: {self.epoch} | epoch Time: {iteration_hours}h {iteration_mins}m {iteration_secs:.2f}s' \
+                       f' | total time: {total_hours}h {total_mins}m {total_secs:.2f}s | ' \
+                      f'communication overhead time so far: {overhead_hours}h {overhead_mins}m {overhead_secs:.2f}s\n' \
+                      f' | total time - copy time: {noncopy_hours}h {noncopy_mins}m {noncopy_secs:.2f}s' \
+                      f' | total time - copy time - overhead time: {netto_hours}h {netto_mins}m {netto_secs:.2f}s' \
+                      f'\n\n\tTrain loss: {train_loss:.4f} | ' \
+                       f'Val. loss: {valid_loss[idx]:.4f} | Average F1: {valid_F1[idx].mean() * 100:.2f}% | Average AUROC: {valid_AUC[idx].mean() * 100:.2f}% | Average accuracy: {valid_accuracy[idx].mean() * 100:.2f}% ' \
+                       f' | Average specifity: {valid_specifity[idx].mean() * 100:.2f}%' \
+                       f' | Average recall (sensitivity): {valid_sensitivity[idx].mean() * 100:.2f}% | Average precision: {valid_precision[idx].mean() * 100:.2f}%\n\n'
                 with open(os.path.join(self.params['target_dir'], self.params['stat_log_path']) + '/Stats_' + str(idx), 'a') as f:
                     f.write(msg)
-            msg = f'\n\nIndividual AUROC:\n'
-            with open(os.path.join(self.params['target_dir'], self.params['stat_log_path']) + '/Stats_' + str(idx), 'a') as f:
-                f.write(msg)
-            for i, pathology in enumerate(self.label_names_loader[idx]):
-                try:
-                    msg = f'{pathology}: {valid_AUC[idx][i] * 100:.2f}% | '
-                except:
-                    msg = f'{pathology}: {valid_AUC[idx] * 100:.2f}% | '
+
+                msg = f'Individual F1 scores:\n'
                 with open(os.path.join(self.params['target_dir'], self.params['stat_log_path']) + '/Stats_' + str(idx), 'a') as f:
                     f.write(msg)
+                for i, pathology in enumerate(self.label_names_loader[idx]):
+                    msg = f'{pathology}: {valid_F1[idx][i] * 100:.2f}% | '
+                    with open(os.path.join(self.params['target_dir'], self.params['stat_log_path']) + '/Stats_' + str(idx), 'a') as f:
+                        f.write(msg)
+                msg = f'\n\nIndividual AUROC:\n'
+                with open(os.path.join(self.params['target_dir'], self.params['stat_log_path']) + '/Stats_' + str(idx), 'a') as f:
+                    f.write(msg)
+                for i, pathology in enumerate(self.label_names_loader[idx]):
+                    try:
+                        msg = f'{pathology}: {valid_AUC[idx][i] * 100:.2f}% | '
+                    except:
+                        msg = f'{pathology}: {valid_AUC[idx] * 100:.2f}% | '
+                    with open(os.path.join(self.params['target_dir'], self.params['stat_log_path']) + '/Stats_' + str(idx), 'a') as f:
+                        f.write(msg)
+            except:
+                continue
 
 
 
