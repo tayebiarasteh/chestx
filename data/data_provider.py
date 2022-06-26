@@ -162,9 +162,9 @@ class coronahack_data_loader_2D(Dataset):
             self.file_base_dir = os.path.join(self.file_base_dir, 'test')
 
         self.file_path_list = list(self.subset_df['X_ray_image_name'])
-        # self.chosen_labels = ['Normal', 'bacteria', 'Virus']
+        self.chosen_labels = ['Normal', 'bacteria', 'Virus']
         # self.chosen_labels = ['Normal', 'Pnemonia']
-        self.chosen_labels = ['Pnemonia']
+        # self.chosen_labels = ['Pnemonia']
 
 
     def __len__(self):

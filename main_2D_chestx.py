@@ -419,7 +419,7 @@ def main_single_head_train_central_2D(global_config_path="/home/soroosh/Document
 
     trainer = Training_single_head(cfg_path, dataset_name, num_epochs_single_head=params['num_epochs_single_head'], label_names=label_names)
 
-    trainer.setup_model(model=model, optimiser=optimizer, loss_function=loss_function, model_file_name='epoch30_model0_trained_model.pth', weight=weight)
+    trainer.setup_model(model=model, optimiser=optimizer, loss_function=loss_function, model_file_name=model_file_name, weight=weight)
     trainer.train_epoch(train_loader=train_loader, valid_loader=valid_loader)
 
 
@@ -482,13 +482,13 @@ def load_pretrained_model(num_classes=2, resnet_num=34):
 
 
 if __name__ == '__main__':
-    delete_experiment(experiment_name='tempp', global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml")
+    # delete_experiment(experiment_name='tempp', global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml")
     # main_train_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
     #               valid=True, resume=False, augment=True, experiment_name='temp', dataset_name='coronahack')
     # main_backbone_train_2D_federated(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
     #               resume=False, augment=True, experiment_name='tempp', dataset_names_list=['chexpert', 'chexpert'], aggregationweight=[1, 1], HE=False, precision_fractional=15)
-    main_backbone_train_2D_federated_manual_batch(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
-                  resume=False, augment=True, experiment_name='tempp', dataset_names_list=['vindr', 'coronahack', 'cxr14'], aggregationweight=[1, 1, 1], HE=False, precision_fractional=15)
+    # main_backbone_train_2D_federated_manual_batch(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
+    #               resume=False, augment=True, experiment_name='tempp', dataset_names_list=['vindr', 'coronahack', 'cxr14'], aggregationweight=[1, 1, 1], HE=False, precision_fractional=15)
     # main_test_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml", dataset_name='cxr14')
-    # main_single_head_train_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
-    #               valid=True, augment=True, experiment_name='multitask_vindr_coronahack_2000_batch16_resnet50_lr5e5', dataset_name='vindr', model_file_name='epoch170_model0_trained_model.pth')
+    main_single_head_train_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
+                  valid=True, augment=True, experiment_name='batchaggreg_onlypnemonia_coronahack5k_cxrfull_batch16_resnet50_lr5e5', dataset_name='coronahack', model_file_name='epoch3000_model0_trained_model.pth')

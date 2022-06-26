@@ -119,7 +119,21 @@ class Training_single_head:
         weight: 1D tensor of float
             class weights
         """
-        model.load_state_dict(torch.load(os.path.join(self.params['target_dir'], self.params['network_output_path'], model_file_name)))
+
+        model_state_dict_list = []
+        for name in model.state_dict():
+            model_state_dict_list.append(name)
+
+        pretrained_state_dict = torch.load(os.path.join(self.params['target_dir'], self.params['network_output_path'], model_file_name))
+
+        temp_dict_model = {}
+        for weightbias in model_state_dict_list:
+            if 'fc.' in weightbias:
+                temp_dict_model[weightbias] = model.state_dict()[weightbias]
+            else:
+                temp_dict_model[weightbias] = pretrained_state_dict[weightbias]
+
+        model.load_state_dict(temp_dict_model)
 
         for param in model.parameters():
             param.requires_grad = False
