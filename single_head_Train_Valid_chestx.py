@@ -397,7 +397,10 @@ class Training_single_head:
 
             print('\nIndividual AUROC:')
             for idx, pathology in enumerate(self.label_names):
-                print(f'\t{pathology}: {valid_AUC[idx] * 100:.2f}%')
+                try:
+                    print(f'\t{pathology}: {valid_AUC[idx] * 100:.2f}%')
+                except:
+                    print(f'\t{pathology}: {valid_AUC * 100:.2f}%')
 
             # saving the training and validation stats
             msg = f'\n\n----------------------------------------------------------------------------------------\n' \
@@ -426,7 +429,11 @@ class Training_single_head:
             with open(os.path.join(self.params['target_dir'], self.params['Network_single_head']['stat_log_path']) + '/Stats', 'a') as f:
                 f.write(msg)
             for idx, pathology in enumerate(self.label_names):
-                msg = f'{pathology}: {valid_AUC[idx] * 100:.2f}% | '
+                try:
+                    msg = f'{pathology}: {valid_AUC[idx] * 100:.2f}% | '
+                except:
+                    msg = f'{pathology}: {valid_AUC * 100:.2f}% | '
+
                 with open(os.path.join(self.params['target_dir'], self.params['Network_single_head']['stat_log_path']) + '/Stats', 'a') as f:
                     f.write(msg)
 
