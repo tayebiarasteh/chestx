@@ -66,8 +66,8 @@ class vindr_data_loader_2D(Dataset):
 
         self.file_path_list = list(self.subset_df['image_id'])
         # self.chosen_labels = ['No finding', 'Aortic enlargement', 'Pleural thickening', 'Cardiomegaly', 'Pleural effusion']
-        # self.chosen_labels = ['Cardiomegaly', 'Pleural effusion']
-        self.chosen_labels = ['Pleural effusion']
+        self.chosen_labels = ['Cardiomegaly', 'Pleural effusion']
+        # self.chosen_labels = ['Pleural effusion']
 
 
 

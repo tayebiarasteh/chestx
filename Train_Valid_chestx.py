@@ -143,7 +143,7 @@ class Training:
         write_config(self.params, self.cfg_path, sort_keys=True)
 
 
-    def load_checkpoint(self, model, optimiser, loss_function, weight, label_names):
+    def load_checkpoint(self, model, optimiser, loss_function, weight, label_names, singlehead=False):
         """In case of resuming training from a checkpoint,
         loads the weights for all the models, optimizers, and
         loss functions, and device, tensorboard events, number
@@ -179,6 +179,11 @@ class Training:
         self.writer = SummaryWriter(log_dir=os.path.join(os.path.join(
             self.params['target_dir'], self.params['tb_logs_path'])), purge_step=self.epoch + 1)
 
+        if singlehead:
+            for param in self.model.parameters():
+                param.requires_grad = False
+            for param in self.model.fc.parameters():
+                param.requires_grad = True
 
 
     def train_epoch(self, train_loader, valid_loader=None):

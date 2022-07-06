@@ -12,6 +12,7 @@ import os
 from torch.utils.data import Dataset
 from torch.nn import BCEWithLogitsLoss
 from torchvision import transforms, models
+from vit_pytorch import ViT
 
 from config.serde import open_experiment, create_experiment, delete_experiment, write_config
 from models.Xception_model import Xception
@@ -30,7 +31,7 @@ warnings.filterwarnings('ignore')
 
 
 def main_train_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml", valid=False,
-                  resume=False, augment=False, experiment_name='name', dataset_name='vindr'):
+                  resume=False, augment=False, experiment_name='name', dataset_name='vindr', singlehead=False):
     """Main function for training + validation centrally
 
         Parameters
@@ -59,22 +60,22 @@ def main_train_central_2D(global_config_path="/home/soroosh/Documents/Repositori
 
     if dataset_name == 'vindr':
         train_dataset = vindr_data_loader_2D(cfg_path=cfg_path, mode='train', augment=augment)
-        valid_dataset = vindr_data_loader_2D(cfg_path=cfg_path, mode='valid', augment=False)
+        valid_dataset = vindr_data_loader_2D(cfg_path=cfg_path, mode='test', augment=False)
     elif dataset_name == 'coronahack':
         train_dataset = coronahack_data_loader_2D(cfg_path=cfg_path, mode='train', augment=augment)
-        valid_dataset = coronahack_data_loader_2D(cfg_path=cfg_path, mode='valid', augment=False)
+        valid_dataset = coronahack_data_loader_2D(cfg_path=cfg_path, mode='test', augment=False)
     elif dataset_name == 'chexpert':
         train_dataset = chexpert_data_loader_2D(cfg_path=cfg_path, mode='train', augment=augment)
         valid_dataset = chexpert_data_loader_2D(cfg_path=cfg_path, mode='valid', augment=False)
     elif dataset_name == 'mimic':
         train_dataset = mimic_data_loader_2D(cfg_path=cfg_path, mode='train', augment=augment)
-        valid_dataset = mimic_data_loader_2D(cfg_path=cfg_path, mode='valid', augment=False)
+        valid_dataset = mimic_data_loader_2D(cfg_path=cfg_path, mode='test', augment=False)
     elif dataset_name == 'UKA':
         train_dataset = UKA_data_loader_2D(cfg_path=cfg_path, mode='train', augment=augment)
-        valid_dataset = UKA_data_loader_2D(cfg_path=cfg_path, mode='valid', augment=False)
+        valid_dataset = UKA_data_loader_2D(cfg_path=cfg_path, mode='test', augment=False)
     elif dataset_name == 'cxr14':
         train_dataset = cxr14_data_loader_2D(cfg_path=cfg_path, mode='train', augment=augment)
-        valid_dataset = cxr14_data_loader_2D(cfg_path=cfg_path, mode='valid', augment=False)
+        valid_dataset = cxr14_data_loader_2D(cfg_path=cfg_path, mode='test', augment=False)
 
     train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=params['Network']['batch_size'],
                                                pin_memory=True, drop_last=True, shuffle=True, num_workers=10)
@@ -89,7 +90,8 @@ def main_train_central_2D(global_config_path="/home/soroosh/Documents/Repositori
 
     # Changeable network parameters
     # not pretrained resnet
-    model = load_pretrained_model(num_classes=len(weight), resnet_num=50)
+    model = load_resnet50(num_classes=len(weight))
+    # model = load_pretrained_model(num_classes=len(weight), resnet_num=50)
     # model = Xception(num_classes=len(weight))
     # model = ResNet18(n_out_classes=len(weight))
     loss_function = BCEWithLogitsLoss
@@ -98,7 +100,7 @@ def main_train_central_2D(global_config_path="/home/soroosh/Documents/Repositori
 
     trainer = Training(cfg_path, num_epochs=params['num_epochs'], resume=resume, label_names=label_names)
     if resume == True:
-        trainer.load_checkpoint(model=model, optimiser=optimizer, loss_function=loss_function, weight=weight, label_names=label_names)
+        trainer.load_checkpoint(model=model, optimiser=optimizer, loss_function=loss_function, weight=weight, label_names=label_names, singlehead=singlehead)
     else:
         trainer.setup_model(model=model, optimiser=optimizer, loss_function=loss_function, weight=weight)
     trainer.train_epoch(train_loader=train_loader, valid_loader=valid_loader)
@@ -244,7 +246,8 @@ def main_backbone_train_2D_federated_manual_batch(global_config_path="/home/soro
 
         weight_model = train_dataset_model.pos_weight()
         label_names_model = train_dataset_model.chosen_labels
-        model_model = load_resnet50(num_classes=len(weight_model))
+        model_model = load_vit(num_classes=len(weight_model))
+        # model_model = load_resnet50(num_classes=len(weight_model))
         # model_model = ResNet18(n_out_classes=len(weight_model))
         loss_function_model = BCEWithLogitsLoss
         optimizer_model = torch.optim.Adam(model_model.parameters(), lr=float(params['Network']['lr']),
@@ -445,6 +448,38 @@ def load_resnet50(num_classes=2):
 
 
 
+def load_vit(num_classes=2):
+    # Load a pre-trained model from config file
+    # self.model.load_state_dict(torch.load(self.model_info['pretrain_model_path']))
+
+    model = ViT(
+        image_size=256,
+        patch_size=32,
+        num_classes=1000,
+        dim=1024,
+        depth=6,
+        heads=16,
+        mlp_dim=2048,
+        dropout=0.1,
+        emb_dropout=0.1
+    )
+    pdb.set_trace()
+
+    for param in model.parameters():
+        param.requires_grad = True
+    model.fc = torch.nn.Sequential(
+        torch.nn.Linear(2048, 1028), torch.nn.ReLU(), torch.nn.Dropout(p=0.2),
+        torch.nn.Linear(1028, 1028), torch.nn.ReLU(), torch.nn.Dropout(p=0.2),
+        torch.nn.Linear(1028, 512), torch.nn.ReLU(), torch.nn.Dropout(p=0.2),
+    torch.nn.Linear(512, 256), torch.nn.ReLU(), torch.nn.Dropout(p=0.2),
+    torch.nn.Linear(256, 256), torch.nn.ReLU(), torch.nn.Dropout(p=0.2),
+    torch.nn.Linear(256, 128), torch.nn.ReLU(), torch.nn.Dropout(p=0.2),
+    torch.nn.Linear(128, num_classes)) # for resnet 50
+
+    return model
+
+
+
 
 def load_pretrained_model(num_classes=2, resnet_num=34):
     # Load a pre-trained model from config file
@@ -482,13 +517,13 @@ def load_pretrained_model(num_classes=2, resnet_num=34):
 
 
 if __name__ == '__main__':
-    # delete_experiment(experiment_name='tempp', global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml")
+    delete_experiment(experiment_name='tempp', global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml")
     # main_train_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
-    #               valid=True, resume=False, augment=True, experiment_name='temp', dataset_name='coronahack')
+    #               valid=True, resume=False, augment=True, experiment_name='temp', dataset_name='coronahack', singlehead=False)
     # main_backbone_train_2D_federated(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
     #               resume=False, augment=True, experiment_name='tempp', dataset_names_list=['chexpert', 'chexpert'], aggregationweight=[1, 1], HE=False, precision_fractional=15)
-    # main_backbone_train_2D_federated_manual_batch(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
-    #               resume=False, augment=True, experiment_name='tempp', dataset_names_list=['vindr', 'coronahack', 'cxr14'], aggregationweight=[1, 1, 1], HE=False, precision_fractional=15)
+    main_backbone_train_2D_federated_manual_batch(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
+                  resume=False, augment=True, experiment_name='tempp', dataset_names_list=['vindr', 'coronahack', 'cxr14'], aggregationweight=[1, 1, 1], HE=False, precision_fractional=15)
     # main_test_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml", dataset_name='cxr14')
-    main_single_head_train_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
-                  valid=True, augment=True, experiment_name='batchaggreg_onlypnemonia_coronahack5k_cxrfull_batch16_resnet50_lr5e5', dataset_name='coronahack', model_file_name='epoch3000_model0_trained_model.pth')
+    # main_single_head_train_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
+    #               valid=True, augment=True, experiment_name='batchaggreg_onlypnemonia_coronahack5k_cxrfull_batch16_resnet50_lr5e5', dataset_name='coronahack', model_file_name='epoch3000_model0_trained_model.pth')

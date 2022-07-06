@@ -379,6 +379,14 @@ class Training_single_head:
             torch.save(self.model.state_dict(), os.path.join(self.params['target_dir'], self.params['Network_single_head']['network_output_path'],
                        'epoch{}_'.format(self.epoch) + self.params['Network_single_head']['trained_model_name']))
 
+        # Save a checkpoint every epoch
+        torch.save({'epoch': self.epoch,
+                    'model_state_dict': self.model.state_dict(),
+                    'optimizer_state_dict': self.optimiser.state_dict(),
+                    'loss_state_dict': self.loss_function.state_dict(), 'num_epochs': self.num_epochs_single_head,
+                    'model_info': self.model_info, 'best_loss': self.best_loss},
+                   os.path.join(self.params['target_dir'], self.params['Network_single_head']['network_output_path'], self.params['checkpoint_name']))
+
         print('------------------------------------------------------'
               '----------------------------------')
         print(f'epoch: {self.epoch} | '
