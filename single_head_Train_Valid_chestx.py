@@ -128,16 +128,19 @@ class Training_single_head:
 
         temp_dict_model = {}
         for weightbias in model_state_dict_list:
-            if 'fc.' in weightbias:
+            if 'fc.18' in weightbias:
                 temp_dict_model[weightbias] = model.state_dict()[weightbias]
             else:
                 temp_dict_model[weightbias] = pretrained_state_dict[weightbias]
-
         model.load_state_dict(temp_dict_model)
+
+        # model.load_state_dict(pretrained_state_dict)
 
         for param in model.parameters():
             param.requires_grad = False
-        for param in model.fc.parameters():
+        # for param in model.fc.parameters():
+        #     param.requires_grad = True
+        for param in model.fc[18].parameters():
             param.requires_grad = True
 
         # prints the network's total number of trainable parameters and
