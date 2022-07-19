@@ -56,8 +56,8 @@ class Prediction:
 
         # self.model.load_state_dict(torch.load(os.path.join(self.params['target_dir'], self.params['network_output_path'], model_file_name)))
         # self.model.load_state_dict(torch.load(os.path.join(self.params['target_dir'], self.params['network_output_path']) + "step300_" + model_file_name))
-        # self.model.load_state_dict(torch.load(os.path.join(self.params['target_dir'], self.params['network_output_path']) + "epoch1075_" + model_file_name))
-        self.model.load_state_dict(torch.load(os.path.join(self.params['target_dir'], self.params['network_output_path']) + "epoch575_" + model_file_name))
+        self.model.load_state_dict(torch.load(os.path.join(self.params['target_dir'], self.params['network_output_path']) + "epoch1075_" + model_file_name))
+        # self.model.load_state_dict(torch.load(os.path.join(self.params['target_dir'], self.params['network_output_path']) + "epoch575_" + model_file_name))
 
 
 
@@ -137,7 +137,7 @@ class Prediction:
         # Macro averaging
         total_f1_score.append(np.stack(F1_disease))
         try:
-            total_AUROC.append(metrics.roc_auc_score(labels_cache, logits_with_sigmoid_cache, average=None))
+            total_AUROC.append(metrics.roc_auc_score(labels_cache, logits_no_sigmoid_cache, average=None))
         except:
             print('hi')
             pass

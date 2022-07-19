@@ -126,22 +126,22 @@ class Training_single_head:
 
         pretrained_state_dict = torch.load(os.path.join(self.params['target_dir'], self.params['network_output_path'], model_file_name))
 
-        temp_dict_model = {}
-        for weightbias in model_state_dict_list:
-            if 'fc.18' in weightbias:
-                temp_dict_model[weightbias] = model.state_dict()[weightbias]
-            else:
-                temp_dict_model[weightbias] = pretrained_state_dict[weightbias]
-        model.load_state_dict(temp_dict_model)
+        # temp_dict_model = {}
+        # for weightbias in model_state_dict_list:
+        #     if 'fc.18' in weightbias:
+        #         temp_dict_model[weightbias] = model.state_dict()[weightbias]
+        #     else:
+        #         temp_dict_model[weightbias] = pretrained_state_dict[weightbias]
+        # model.load_state_dict(temp_dict_model)
 
-        # model.load_state_dict(pretrained_state_dict)
+        model.load_state_dict(pretrained_state_dict)
 
         for param in model.parameters():
             param.requires_grad = False
-        # for param in model.fc.parameters():
-        #     param.requires_grad = True
-        for param in model.fc[18].parameters():
+        for param in model.fc.parameters():
             param.requires_grad = True
+        # for param in model.fc[18].parameters():
+        #     param.requires_grad = True
 
         # prints the network's total number of trainable parameters and
         # stores it to the experiment config
@@ -272,6 +272,7 @@ class Training_single_head:
 
         # Metrics calculation (macro) over the whole set
         logits_with_sigmoid_cache = logits_with_sigmoid_cache.int().cpu().numpy()
+        logits_no_sigmoid_cache = logits_no_sigmoid_cache.int().cpu().numpy()
         labels_cache = labels_cache.int().cpu().numpy()
 
         confusion = metrics.multilabel_confusion_matrix(labels_cache, logits_with_sigmoid_cache)
@@ -296,7 +297,7 @@ class Training_single_head:
         # Macro averaging
         total_f1_score.append(np.stack(F1_disease))
         try:
-            total_AUROC.append(metrics.roc_auc_score(labels_cache, logits_with_sigmoid_cache, average=None))
+            total_AUROC.append(metrics.roc_auc_score(labels_cache, logits_no_sigmoid_cache, average=None))
         except:
             print('hi')
             pass

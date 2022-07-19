@@ -296,6 +296,7 @@ class Training:
 
         # Metrics calculation (macro) over the whole set
         logits_with_sigmoid_cache = logits_with_sigmoid_cache.int().cpu().numpy()
+        logits_no_sigmoid_cache = logits_no_sigmoid_cache.int().cpu().numpy()
         labels_cache = labels_cache.int().cpu().numpy()
 
         confusion = metrics.multilabel_confusion_matrix(labels_cache, logits_with_sigmoid_cache)
@@ -320,7 +321,7 @@ class Training:
         # Macro averaging
         total_f1_score.append(np.stack(F1_disease))
         try:
-            total_AUROC.append(metrics.roc_auc_score(labels_cache, logits_with_sigmoid_cache, average=None))
+            total_AUROC.append(metrics.roc_auc_score(labels_cache, logits_no_sigmoid_cache, average=None))
         except:
             print('hi')
             pass
