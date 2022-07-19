@@ -104,13 +104,15 @@ class Prediction:
 
         # Metrics calculation (macro) over the whole set
         logits_with_sigmoid_cache = logits_with_sigmoid_cache.int().cpu().numpy()
+        logits_no_sigmoid_cache = logits_no_sigmoid_cache.int().cpu().numpy()
         labels_cache = labels_cache.int().cpu().numpy()
 
         confusion = metrics.multilabel_confusion_matrix(labels_cache, logits_with_sigmoid_cache)
 
         # plotting the ROC curve
         for idx in range(len(confusion)):
-            metrics.RocCurveDisplay.from_predictions(labels_cache[:,idx], logits_with_sigmoid_cache[:,idx])
+            fpr, tpr, _ = metrics.roc_curve(labels_cache[:, idx], logits_no_sigmoid_cache[:, idx], pos_label=1)
+            metrics.RocCurveDisplay(fpr=fpr, tpr=tpr).plot()
             plt.grid()
             plt.title('label number: ' + str(idx))
             plt.show()
