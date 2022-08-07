@@ -15,7 +15,7 @@ import torch
 import torch.nn.functional as F
 from tqdm import tqdm
 import torchmetrics
-import syft as sy
+# import syft as sy
 from sklearn import metrics
 
 from config.serde import read_config, write_config

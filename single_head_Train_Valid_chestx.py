@@ -136,10 +136,10 @@ class Training_single_head:
 
         model.load_state_dict(pretrained_state_dict)
 
-        for param in model.parameters():
-            param.requires_grad = False
-        for param in model.fc.parameters():
-            param.requires_grad = True
+        # for param in model.parameters():
+        #     param.requires_grad = False
+        # for param in model.fc.parameters():
+        #     param.requires_grad = True
         # for param in model.fc[18].parameters():
         #     param.requires_grad = True
 

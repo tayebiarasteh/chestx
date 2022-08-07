@@ -561,9 +561,9 @@ class normalizer_resizer():
 
         base_path = "/data/chest_radiograph/dicom_files"
         flag = 0
-        final_df = pd.DataFrame(columns=['patient_id', 'split', 'subset', 'birth_date', 'examination_date', 'study_time',
+        final_df = pd.DataFrame(columns=['image_id', 'split', 'subset', 'birth_date', 'examination_date', 'study_time',
                                             'patient_sex', 'ExposureinuAs', 'cardiomegaly', 'congestion', 'pleural_effusion_right', 'pleural_effusion_left',
-                     'pneumonic_infiltrates_right', 'pneumonic_infiltrates_left', 'disturbances_right',	'disturbances_left', 'pneumothorax_right', 'pneumothorax_left'])
+                     'pneumonic_infiltrates_right', 'pneumonic_infiltrates_left', 'disturbances_right',	'disturbances_left', 'pneumothorax_right', 'pneumothorax_left', 'subject_id'])
 
         label_path = '/data/chest_radiograph/UKA_master_list.csv'
         final_df_output_path = '/data/chest_radiograph/final_UKA_master_list.csv'
@@ -607,7 +607,7 @@ class normalizer_resizer():
                 output_path = output_path.replace('/' + basename1, '')
                 output_path = output_path.replace('/' + basename2, '')
 
-                chosen_df = df[df['patient_id'] == int(patient_id)]
+                chosen_df = df[df['image_id'] == int(patient_id)]
                 try:
                     if chosen_df['split'].values[0] == 'test':
                         subset = 'test'
@@ -634,16 +634,16 @@ class normalizer_resizer():
 
                 cv2.imwrite(output_path, img)
                 tempp = pd.DataFrame(
-                    [[chosen_df['patient_id'].values[0], chosen_df['split'].values[0], subset, chosen_df['birth_date'].values[0], chosen_df['examination_date'].values[0], chosen_df['study_time'].values[0],
+                    [[chosen_df['image_id'].values[0], chosen_df['split'].values[0], subset, chosen_df['birth_date'].values[0], chosen_df['examination_date'].values[0], chosen_df['study_time'].values[0],
                       chosen_df['patient_sex'].values[0], chosen_df['ExposureinuAs'].values[0], chosen_df['cardiomegaly'].values[0], chosen_df['congestion'].values[0], chosen_df['pleural_effusion_right'].values[0],
                              chosen_df['pleural_effusion_left'].values[0],
                              chosen_df['pneumonic_infiltrates_right'].values[0], chosen_df['pneumonic_infiltrates_left'].values[0], chosen_df['disturbances_right'].values[0],
-                             chosen_df['disturbances_left'].values[0], chosen_df['pneumothorax_right'].values[0], chosen_df['pneumothorax_left'].values[0]]],
-                    columns=['patient_id', 'split', 'subset', 'birth_date', 'examination_date', 'study_time',
+                             chosen_df['disturbances_left'].values[0], chosen_df['pneumothorax_right'].values[0], chosen_df['pneumothorax_left'].values[0], chosen_df['subject_id'].values[0]]],
+                    columns=['image_id', 'split', 'subset', 'birth_date', 'examination_date', 'study_time',
                              'patient_sex', 'ExposureinuAs', 'cardiomegaly', 'congestion', 'pleural_effusion_right',
                              'pleural_effusion_left',
                              'pneumonic_infiltrates_right', 'pneumonic_infiltrates_left', 'disturbances_right',
-                             'disturbances_left', 'pneumothorax_right', 'pneumothorax_left'])
+                             'disturbances_left', 'pneumothorax_right', 'pneumothorax_left', 'subject_id'])
                 final_df = final_df.append(tempp)
                 final_df.to_csv(final_df_output_path, sep=',', index=False)
 
@@ -651,6 +651,51 @@ class normalizer_resizer():
                 flag += 1
                 print(flag, file_path)
 
+
+    def UKA_csvfixer(self):
+        path_org = '/home/soroosh/Documents/datasets/XRay/UKA/chest_radiograph/org_UKA_master_list.csv'
+        org_df = pd.read_csv(path_org, sep=',', low_memory=False)
+
+        path_4k = '/home/soroosh/Documents/datasets/XRay/UKA/chest_radiograph/final_UKA_master_list.csv'
+        small4k_df = pd.read_csv(path_4k, sep=',', low_memory=False)
+
+        path_deutsch = '/home/soroosh/Documents/datasets/XRay/UKA/chest_radiograph/original_labels/train_valid_test.csv'
+        deutsch_df = pd.read_csv(path_deutsch, sep=',', low_memory=False)
+
+        file_list = glob.glob('/home/soroosh/Documents/datasets/XRay/UKA/chest_radiograph/UKA_preprocessed/*/*.jpg')
+
+        final_path_org = '/home/soroosh/Documents/datasets/XRay/UKA/chest_radiograph/original_UKA_master_list.csv'
+        final_df_org = pd.DataFrame(
+            columns=['image_id', 'split', 'subset', 'birth_date', 'examination_date', 'study_time', 'patient_sex',
+                     'ExposureinuAs', 'cardiomegaly', 'congestion', 'pleural_effusion_right', 'pleural_effusion_left',
+                     'pneumonic_infiltrates_right', 'pneumonic_infiltrates_left', 'disturbances_right',
+                     'disturbances_left', 'pneumothorax_right', 'pneumothorax_left', 'subject_id'])
+
+        final_path_4K = '/home/soroosh/Documents/datasets/XRay/UKA/chest_radiograph/final_test4k_UKA_master_list.csv'
+        final_df_4K = pd.DataFrame(
+            columns=['image_id', 'split', 'subset', 'birth_date', 'examination_date', 'study_time', 'patient_sex',
+                     'ExposureinuAs', 'cardiomegaly', 'congestion', 'pleural_effusion_right', 'pleural_effusion_left',
+                     'pneumonic_infiltrates_right', 'pneumonic_infiltrates_left', 'disturbances_right',
+                     'disturbances_left', 'pneumothorax_right', 'pneumothorax_left', 'subject_id'])
+
+        file_list.sort()
+
+        for img in tqdm(file_list):
+            image_id = os.path.basename(img).replace('.jpg', '')
+            chosen_df = org_df[org_df['image_id'] == int(image_id)]
+            subject = deutsch_df[deutsch_df['Anforderungsnummer'] == int(image_id)]['Aufnahmenummer']
+            chosen_df = chosen_df.assign(subject_id=subject.values.item(0))
+            final_df_org = final_df_org.append(chosen_df[0:1])
+            final_df_org.to_csv(final_path_org, sep=',', index=False)
+
+
+        for img in tqdm(file_list):
+            image_id = os.path.basename(img).replace('.jpg', '')
+            chosen_df = small4k_df[small4k_df['image_id'] == int(image_id)]
+            subject = deutsch_df[deutsch_df['Anforderungsnummer'] == int(image_id)]['Aufnahmenummer']
+            chosen_df = chosen_df.assign(subject_id=subject.values.item(0))
+            final_df_4K = final_df_4K.append(chosen_df[0:1])
+            final_df_4K.to_csv(final_path_4K, sep=',', index=False)
 
 
     def cxr14_normalizer_resizer(self):
@@ -786,9 +831,9 @@ class csv_summarizer():
 
 
     def UKA(self):
-        final_df = pd.DataFrame(columns=['patient_id', 'split', 'birth_date', 'examination_date', 'study_time',
+        final_df = pd.DataFrame(columns=['image_id', 'split', 'birth_date', 'examination_date', 'study_time',
                                             'patient_sex', 'ExposureinuAs', 'cardiomegaly', 'congestion', 'pleural_effusion_right', 'pleural_effusion_left',
-                     'pneumonic_infiltrates_right', 'pneumonic_infiltrates_left', 'disturbances_right',	'disturbances_left', 'pneumothorax_right', 'pneumothorax_left'])
+                     'pneumonic_infiltrates_right', 'pneumonic_infiltrates_left', 'disturbances_right',	'disturbances_left', 'pneumothorax_right', 'pneumothorax_left', 'subject_id'])
 
         label_path = '/home/soroosh/Documents/datasets/XRay/UKA/chest_radiograph/onehot_UKA_master_list.csv'
         output_path = '/home/soroosh/Documents/datasets/XRay/UKA/chest_radiograph/UKA_master_list.csv'
@@ -933,12 +978,12 @@ class csv_summarizer():
             else:
                 pneumothorax_left = 0
 
-            tempp = pd.DataFrame([[row['patient_id'], row['split'], row['birth_date'], row['examination_date'], row['StudyTime'],
+            tempp = pd.DataFrame([[row['image_id'], row['split'], row['birth_date'], row['examination_date'], row['StudyTime'],
                                             row['PatientSex'], row['ExposureinuAs'], cardiomegaly, congestion, pleural_effusion_right, pleural_effusion_left,
-                                   pneumonic_infiltrates_right, pneumonic_infiltrates_left, disturbances_right, disturbances_left, pneumothorax_right, pneumothorax_left]],
-                                 columns=['patient_id', 'split', 'birth_date', 'examination_date', 'study_time',
+                                   pneumonic_infiltrates_right, pneumonic_infiltrates_left, disturbances_right, disturbances_left, pneumothorax_right, pneumothorax_left, row['subject_id']]],
+                                 columns=['image_id', 'split', 'birth_date', 'examination_date', 'study_time',
                                             'patient_sex', 'ExposureinuAs', 'cardiomegaly', 'congestion', 'pleural_effusion_right', 'pleural_effusion_left',
-                     'pneumonic_infiltrates_right', 'pneumonic_infiltrates_left',	'disturbances_right',	'disturbances_left', 'pneumothorax_right', 'pneumothorax_left'])
+                     'pneumonic_infiltrates_right', 'pneumonic_infiltrates_left',	'disturbances_right',	'disturbances_left', 'pneumothorax_right', 'pneumothorax_left', 'subject_id'])
             final_df = final_df.append(tempp)
             final_df.to_csv(output_path, sep=',', index=False)
 
@@ -1278,11 +1323,11 @@ class csv_reducer():
     def UKA(self, num_images):
 
         # initiating the df
-        final_df = pd.DataFrame(columns=['patient_id', 'split', 'subset', 'ExposureinuAs', 'cardiomegaly', 'congestion', 'pleural_effusion_right', 'pleural_effusion_left',
-                     'pneumonic_infiltrates_right', 'pneumonic_infiltrates_left', 'disturbances_right',	'disturbances_left', 'pneumothorax_right', 'pneumothorax_left'])
-        # final_df = pd.DataFrame(columns=['patient_id', 'split', 'subset', 'birth_date', 'examination_date', 'study_time',
+        final_df = pd.DataFrame(columns=['image_id', 'split', 'subset', 'ExposureinuAs', 'cardiomegaly', 'congestion', 'pleural_effusion_right', 'pleural_effusion_left',
+                     'pneumonic_infiltrates_right', 'pneumonic_infiltrates_left', 'disturbances_right',	'disturbances_left', 'pneumothorax_right', 'pneumothorax_left', 'subject_id'])
+        # final_df = pd.DataFrame(columns=['image_id', 'split', 'subset', 'birth_date', 'examination_date', 'study_time',
         #                                     'patient_sex', 'ExposureinuAs', 'cardiomegaly', 'congestion', 'pleural_effusion_right', 'pleural_effusion_left',
-        #              'pneumonic_infiltrates_right', 'pneumonic_infiltrates_left', 'disturbances_right',	'disturbances_left', 'pneumothorax_right', 'pneumothorax_left'])
+        #              'pneumonic_infiltrates_right', 'pneumonic_infiltrates_left', 'disturbances_right',	'disturbances_left', 'pneumothorax_right', 'pneumothorax_left', 'subject_id'])
 
         org_df_path = '/home/soroosh/Documents/datasets/XRay/UKA/chest_radiograph/final_UKA_master_list.csv'
         output_df_path = '/home/soroosh/Documents/datasets/XRay/UKA/chest_radiograph/5000_final_UKA_master_list.csv'
@@ -1293,16 +1338,16 @@ class csv_reducer():
         valid_df = org_df[org_df['split'] == 'valid']
         test_df = org_df[org_df['split'] == 'test']
 
-        train_list = train_df['patient_id'].unique().tolist()
+        train_list = train_df['image_id'].unique().tolist()
         random.shuffle(train_list)
 
         chosen_list = train_list[:num_images]
 
         for patient in tqdm(chosen_list):
-            selected_patient_df = train_df[train_df['patient_id'] == patient]
+            selected_patient_df = train_df[train_df['image_id'] == patient]
             final_df = final_df.append(selected_patient_df)
 
-        final_df = final_df.sort_values(['patient_id'])
+        final_df = final_df.sort_values(['image_id'])
         final_df = final_df.append(valid_df)
         final_df = final_df.append(test_df)
         final_df.to_csv(output_df_path, sep=',', index=False)
@@ -1311,8 +1356,8 @@ class csv_reducer():
     def UKA_test_reducer(self, num_images):
 
         # initiating the df
-        final_df = pd.DataFrame(columns=['patient_id', 'split', 'subset', 'ExposureinuAs', 'cardiomegaly', 'congestion', 'pleural_effusion_right', 'pleural_effusion_left',
-                     'pneumonic_infiltrates_right', 'pneumonic_infiltrates_left', 'disturbances_right',	'disturbances_left', 'pneumothorax_right', 'pneumothorax_left'])
+        final_df = pd.DataFrame(columns=['image_id', 'split', 'subset', 'ExposureinuAs', 'cardiomegaly', 'congestion', 'pleural_effusion_right', 'pleural_effusion_left',
+                     'pneumonic_infiltrates_right', 'pneumonic_infiltrates_left', 'disturbances_right',	'disturbances_left', 'pneumothorax_right', 'pneumothorax_left', 'subject_id'])
 
         org_df_path = '/home/soroosh/Documents/datasets/XRay/UKA/chest_radiograph/final_UKA_master_list.csv'
         output_df_path = '/home/soroosh/Documents/datasets/XRay/UKA/chest_radiograph/new_final_UKA_master_list.csv'
@@ -1323,22 +1368,22 @@ class csv_reducer():
         valid_df = org_df[org_df['split'] == 'valid']
         test_df = org_df[org_df['split'] == 'test']
 
-        test_list = test_df['patient_id'].unique().tolist()
+        test_list = test_df['image_id'].unique().tolist()
         random.shuffle(test_list)
 
         chosen_list = test_list[:num_images]
         rest_list = test_list[num_images:]
 
         for patient in tqdm(chosen_list):
-            selected_patient_df = test_df[test_df['patient_id'] == patient]
+            selected_patient_df = test_df[test_df['image_id'] == patient]
             final_df = final_df.append(selected_patient_df)
 
-        final_df = final_df.sort_values(['patient_id'])
+        final_df = final_df.sort_values(['image_id'])
         final_df = final_df.append(train_df)
         final_df = final_df.append(valid_df)
 
         for patient in tqdm(rest_list):
-            selected_patient_df = test_df[test_df['patient_id'] == patient]
+            selected_patient_df = test_df[test_df['image_id'] == patient]
             final_df = final_df.append(selected_patient_df)
 
         final_df.to_csv(output_df_path, sep=',', index=False)

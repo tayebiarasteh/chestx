@@ -55,9 +55,9 @@ class Prediction:
         self.model = model.to(self.device)
 
         # self.model.load_state_dict(torch.load(os.path.join(self.params['target_dir'], self.params['network_output_path'], model_file_name)))
-        # self.model.load_state_dict(torch.load(os.path.join(self.params['target_dir'], self.params['network_output_path']) + "step300_" + model_file_name))
-        self.model.load_state_dict(torch.load(os.path.join(self.params['target_dir'], self.params['network_output_path']) + "epoch1075_" + model_file_name))
-        # self.model.load_state_dict(torch.load(os.path.join(self.params['target_dir'], self.params['network_output_path']) + "epoch575_" + model_file_name))
+        # self.model.load_state_dict(torch.load(os.path.join(self.params['target_dir'], self.params['network_output_path']) + "epoch775_" + model_file_name))
+        # self.model.load_state_dict(torch.load(os.path.join(self.params['target_dir'], self.params['network_output_path']) + "epoch1075_" + model_file_name))
+        self.model.load_state_dict(torch.load(os.path.join(self.params['target_dir'], self.params['network_output_path']) + "epoch575_" + model_file_name))
 
 
 
@@ -109,13 +109,16 @@ class Prediction:
 
         confusion = metrics.multilabel_confusion_matrix(labels_cache, logits_with_sigmoid_cache)
 
-        # plotting the ROC curve
-        for idx in range(len(confusion)):
-            fpr, tpr, _ = metrics.roc_curve(labels_cache[:, idx], logits_no_sigmoid_cache[:, idx], pos_label=1)
-            metrics.RocCurveDisplay(fpr=fpr, tpr=tpr).plot()
-            plt.grid()
-            plt.title('label number: ' + str(idx))
-            plt.show()
+        try:
+            # plotting the ROC curve
+            for idx in range(len(confusion)):
+                fpr, tpr, _ = metrics.roc_curve(labels_cache[:, idx], logits_no_sigmoid_cache[:, idx], pos_label=1)
+                metrics.RocCurveDisplay(fpr=fpr, tpr=tpr).plot()
+                plt.grid()
+                plt.title('label number: ' + str(idx))
+                plt.show()
+        except:
+            print("hi")
 
         F1_disease = []
         accuracy_disease = []

@@ -67,9 +67,11 @@ class vindr_data_loader_2D_manual:
             self.file_base_dir = os.path.join(self.file_base_dir, 'preprocessed/test')
 
         self.file_path_list = list(self.subset_df['image_id'])
+        self.chosen_labels = ['No finding', 'Aortic enlargement', 'Pleural thickening', 'Cardiomegaly', 'Pleural effusion',
+                              'Pneumothorax', 'Atelectasis', 'Consolidation']
         # self.chosen_labels = ['No finding', 'Aortic enlargement', 'Pleural thickening', 'Cardiomegaly', 'Pleural effusion']
         # self.chosen_labels = ['Cardiomegaly', 'Pleural effusion']
-        self.chosen_labels = ['Pleural effusion']
+        # self.chosen_labels = ['Pleural effusion']
 
 
     def provide_mixed(self):
@@ -172,8 +174,8 @@ class coronahack_data_loader_2D_manual:
 
         self.file_path_list = list(self.subset_df['X_ray_image_name'])
         # self.chosen_labels = ['Normal', 'bacteria', 'Virus']
-        # self.chosen_labels = ['Normal', 'Pnemonia']
-        self.chosen_labels = ['Pnemonia']
+        self.chosen_labels = ['Normal', 'Pnemonia']
+        # self.chosen_labels = ['Pnemonia']
 
 
     def provide_mixed(self):
@@ -287,8 +289,8 @@ class chexpert_data_loader_2D_manual:
         self.file_base_dir = self.params['file_path']
         # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "CheXpert-v1.0", "master_list.csv"), sep=',')
         # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "CheXpert-v1.0", "nothree_master_list.csv"), sep=',')
-        # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "CheXpert-v1.0", "5000_nothree_master_list.csv"), sep=',')
-        self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "CheXpert-v1.0", "2000_nothree_master_list.csv"), sep=',')
+        self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "CheXpert-v1.0", "5000_nothree_master_list.csv"), sep=',')
+        # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "CheXpert-v1.0", "2000_nothree_master_list.csv"), sep=',')
 
         if mode == 'train':
             self.subset_df = self.org_df[self.org_df['split'] == 'train']
@@ -299,8 +301,8 @@ class chexpert_data_loader_2D_manual:
 
         self.subset_df = self.subset_df[self.subset_df['view'] == 'Frontal']
         self.file_path_list = list(self.subset_df['jpg_rel_path'])
-        # self.chosen_labels = ['cardiomegaly', 'lung_opacity', 'lung_lesion', 'pneumonia', 'edema']
-        self.chosen_labels = ['lung_opacity', 'pneumonia']
+        self.chosen_labels = ['cardiomegaly', 'lung_opacity', 'lung_lesion', 'pneumonia', 'edema']
+        # self.chosen_labels = ['lung_opacity', 'pneumonia']
 
 
     def provide_mixed(self):
@@ -396,8 +398,8 @@ class mimic_data_loader_2D_manual:
         self.file_base_dir = os.path.join(self.file_base_dir, "MIMIC")
         # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "master_list.csv"), sep=',')
         # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "nothree_master_list.csv"), sep=',')
-        # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "5000_nothree_master_list.csv"), sep=',')
-        self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "2000_nothree_master_list.csv"), sep=',')
+        self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "5000_nothree_master_list.csv"), sep=',')
+        # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "2000_nothree_master_list.csv"), sep=',')
 
         if mode == 'train':
             self.subset_df = self.org_df[self.org_df['split'] == 'train']
@@ -410,8 +412,8 @@ class mimic_data_loader_2D_manual:
         APview = self.subset_df[self.subset_df['view'] == 'AP']
         self.subset_df = PAview.append(APview)
         self.file_path_list = list(self.subset_df['jpg_rel_path'])
-        # self.chosen_labels = ['enlarged_cardiomediastinum', 'consolidation', 'pleural_effusion', 'pneumothorax', 'atelectasis']
-        self.chosen_labels = ['consolidation', 'pleural_effusion']
+        self.chosen_labels = ['enlarged_cardiomediastinum', 'consolidation', 'pleural_effusion', 'pneumothorax', 'atelectasis']
+        # self.chosen_labels = ['consolidation', 'pleural_effusion']
 
 
     def provide_mixed(self):
@@ -505,9 +507,9 @@ class UKA_data_loader_2D_manual:
         self.batch_size = batch_size
         self.file_base_dir = self.params['file_path']
         self.file_base_dir = os.path.join(self.file_base_dir, 'UKA/chest_radiograph')
-        # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "final_UKA_master_list.csv"), sep=',')
+        self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "final_UKA_master_list.csv"), sep=',')
         # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "5000_final_UKA_master_list.csv"), sep=',')
-        self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "2000_final_UKA_master_list.csv"), sep=',')
+        # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "2000_final_UKA_master_list.csv"), sep=',')
 
         if mode == 'train':
             self.subset_df = self.org_df[self.org_df['split'] == 'train']
@@ -517,9 +519,11 @@ class UKA_data_loader_2D_manual:
             self.subset_df = self.org_df[self.org_df['split'] == 'test']
 
         self.file_base_dir = os.path.join(self.file_base_dir, 'UKA_preprocessed')
-        self.file_path_list = list(self.subset_df['patient_id'])
+        self.file_path_list = list(self.subset_df['image_id'])
+        self.chosen_labels = ['cardiomegaly', 'congestion', 'pleural_effusion_right', 'pleural_effusion_left', 'pneumonic_infiltrates_right',
+                              'pneumonic_infiltrates_left', 'pneumothorax_right', 'pneumothorax_left']
         # self.chosen_labels = ['pleural_effusion_left', 'pleural_effusion_right', 'congestion', 'cardiomegaly', 'pneumonic_infiltrates_left', 'pneumonic_infiltrates_right']
-        self.chosen_labels = ['pleural_effusion_right', 'pneumonic_infiltrates_left']
+        # self.chosen_labels = ['pleural_effusion_right', 'pneumonic_infiltrates_left']
 
 
 
@@ -541,7 +545,7 @@ class UKA_data_loader_2D_manual:
         x_input = []
         y_input = []
         for idx in range(len(chosen_file_list)):
-            subset = self.subset_df[self.subset_df['patient_id'] == chosen_file_list[idx]]['subset'].values[0]
+            subset = self.subset_df[self.subset_df['image_id'] == chosen_file_list[idx]]['subset'].values[0]
             img = cv2.imread(
                 os.path.join(self.file_base_dir, subset, str(chosen_file_list[idx]) + '.jpg'))  # (h, w, d)
 
@@ -552,7 +556,7 @@ class UKA_data_loader_2D_manual:
                 trans = transforms.Compose([transforms.ToPILImage(), transforms.ToTensor()])
             img = trans(img)
 
-            label_df = self.subset_df[self.subset_df['patient_id'] == chosen_file_list[idx]]
+            label_df = self.subset_df[self.subset_df['image_id'] == chosen_file_list[idx]]
 
             label = torch.zeros((len(self.chosen_labels)))  # (h,)
 
@@ -614,8 +618,8 @@ class cxr14_data_loader_2D_manual:
         self.file_base_dir = self.params['file_path']
         self.file_base_dir = os.path.join(self.file_base_dir, 'NIH_ChestX-ray14')
         # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "final_cxr14_master_list.csv"), sep=',')
-        self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "officialsoroosh_cxr14_master_list.csv"), sep=',')
-        # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "5000_officialsoroosh_cxr14_master_list.csv"), sep=',')
+        # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "officialsoroosh_cxr14_master_list.csv"), sep=',')
+        self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "5000_officialsoroosh_cxr14_master_list.csv"), sep=',')
         # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "2000_officialsoroosh_cxr14_master_list.csv"), sep=',')
         self.file_base_dir = os.path.join(self.file_base_dir, 'CXR14', 'preprocessed')
 
@@ -627,8 +631,10 @@ class cxr14_data_loader_2D_manual:
             self.subset_df = self.org_df[self.org_df['split'] == 'test']
 
         self.file_path_list = list(self.subset_df['img_rel_path'])
+        self.chosen_labels = ['cardiomegaly', 'effusion', 'pneumonia', 'consolidation', 'no_finding']
         # self.chosen_labels = ['consolidation', 'effusion']
-        self.chosen_labels = ['consolidation']
+        # self.chosen_labels = ['consolidation']
+        # self.chosen_labels = ['pneumonia']
 
 
     def provide_mixed(self):

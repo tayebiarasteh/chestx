@@ -12,7 +12,7 @@ import os
 from torch.utils.data import Dataset
 from torch.nn import BCEWithLogitsLoss
 from torchvision import transforms, models
-from vit_pytorch import ViT
+# from vit_pytorch import ViT
 
 from config.serde import open_experiment, create_experiment, delete_experiment, write_config
 from models.Xception_model import Xception
@@ -75,7 +75,7 @@ def main_train_central_2D(global_config_path="/home/soroosh/Documents/Repositori
         valid_dataset = UKA_data_loader_2D(cfg_path=cfg_path, mode='test', augment=False)
     elif dataset_name == 'cxr14':
         train_dataset = cxr14_data_loader_2D(cfg_path=cfg_path, mode='train', augment=augment)
-        valid_dataset = cxr14_data_loader_2D(cfg_path=cfg_path, mode='test', augment=False)
+        valid_dataset = cxr14_data_loader_2D(cfg_path=cfg_path, mode='valid', augment=False)
 
     train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=params['Network']['batch_size'],
                                                pin_memory=True, drop_last=True, shuffle=True, num_workers=10)
@@ -144,19 +144,19 @@ def main_backbone_train_2D_federated(global_config_path="/home/soroosh/Documents
     for dataset in dataset_names_list:
         if dataset == 'vindr':
             train_dataset_model = vindr_data_loader_2D(cfg_path=cfg_path, mode='train', augment=augment)
-            valid_dataset_model = vindr_data_loader_2D(cfg_path=cfg_path, mode='valid', augment=False)
+            valid_dataset_model = vindr_data_loader_2D(cfg_path=cfg_path, mode='test', augment=False)
         elif dataset == 'coronahack':
             train_dataset_model = coronahack_data_loader_2D(cfg_path=cfg_path, mode='train', augment=augment)
-            valid_dataset_model = coronahack_data_loader_2D(cfg_path=cfg_path, mode='valid', augment=False)
+            valid_dataset_model = coronahack_data_loader_2D(cfg_path=cfg_path, mode='test', augment=False)
         elif dataset == 'chexpert':
             train_dataset_model = chexpert_data_loader_2D(cfg_path=cfg_path, mode='train', augment=augment)
             valid_dataset_model = chexpert_data_loader_2D(cfg_path=cfg_path, mode='valid', augment=False)
         elif dataset == 'mimic':
             train_dataset_model = mimic_data_loader_2D(cfg_path=cfg_path, mode='train', augment=augment)
-            valid_dataset_model = mimic_data_loader_2D(cfg_path=cfg_path, mode='valid', augment=False)
+            valid_dataset_model = mimic_data_loader_2D(cfg_path=cfg_path, mode='test', augment=False)
         elif dataset == 'UKA':
             train_dataset_model = UKA_data_loader_2D(cfg_path=cfg_path, mode='train', augment=augment)
-            valid_dataset_model = UKA_data_loader_2D(cfg_path=cfg_path, mode='valid', augment=False)
+            valid_dataset_model = UKA_data_loader_2D(cfg_path=cfg_path, mode='test', augment=False)
         elif dataset == 'cxr14':
             train_dataset_model = cxr14_data_loader_2D(cfg_path=cfg_path, mode='train', augment=augment)
             valid_dataset_model = cxr14_data_loader_2D(cfg_path=cfg_path, mode='valid', augment=False)
@@ -227,28 +227,30 @@ def main_backbone_train_2D_federated_manual_batch(global_config_path="/home/soro
     for dataset in dataset_names_list:
         if dataset == 'vindr':
             train_dataset_model = vindr_data_loader_2D_manual(cfg_path=cfg_path, mode='train', augment=augment, batch_size=params['Network']['batch_size'])
-            valid_dataset_model = vindr_data_loader_2D(cfg_path=cfg_path, mode='valid', augment=False)
+            valid_dataset_model = vindr_data_loader_2D(cfg_path=cfg_path, mode='test', augment=False)
         elif dataset == 'coronahack':
             train_dataset_model = coronahack_data_loader_2D_manual(cfg_path=cfg_path, mode='train', augment=augment, batch_size=params['Network']['batch_size'])
-            valid_dataset_model = coronahack_data_loader_2D(cfg_path=cfg_path, mode='valid', augment=False)
+            valid_dataset_model = coronahack_data_loader_2D(cfg_path=cfg_path, mode='test', augment=False)
         elif dataset == 'chexpert':
             train_dataset_model = chexpert_data_loader_2D_manual(cfg_path=cfg_path, mode='train', augment=augment, batch_size=params['Network']['batch_size'])
             valid_dataset_model = chexpert_data_loader_2D(cfg_path=cfg_path, mode='valid', augment=False)
         elif dataset == 'mimic':
             train_dataset_model = mimic_data_loader_2D_manual(cfg_path=cfg_path, mode='train', augment=augment, batch_size=params['Network']['batch_size'])
-            valid_dataset_model = mimic_data_loader_2D(cfg_path=cfg_path, mode='valid', augment=False)
+            valid_dataset_model = mimic_data_loader_2D(cfg_path=cfg_path, mode='test', augment=False)
         elif dataset == 'UKA':
             train_dataset_model = UKA_data_loader_2D_manual(cfg_path=cfg_path, mode='train', augment=augment, batch_size=params['Network']['batch_size'])
-            valid_dataset_model = UKA_data_loader_2D(cfg_path=cfg_path, mode='valid', augment=False)
+            valid_dataset_model = UKA_data_loader_2D(cfg_path=cfg_path, mode='test', augment=False)
         elif dataset == 'cxr14':
             train_dataset_model = cxr14_data_loader_2D_manual(cfg_path=cfg_path, mode='train', augment=augment, batch_size=params['Network']['batch_size'])
             valid_dataset_model = cxr14_data_loader_2D(cfg_path=cfg_path, mode='valid', augment=False)
 
         weight_model = train_dataset_model.pos_weight()
         label_names_model = train_dataset_model.chosen_labels
-        model_model = load_vit(num_classes=len(weight_model))
+
+        # model_model = load_vit(num_classes=len(weight_model))
         # model_model = load_resnet50(num_classes=len(weight_model))
-        # model_model = ResNet18(n_out_classes=len(weight_model))
+        model_model = load_pretrained_model(num_classes=len(weight_model), resnet_num=50)
+
         loss_function_model = BCEWithLogitsLoss
         optimizer_model = torch.optim.Adam(model_model.parameters(), lr=float(params['Network']['lr']),
                                            weight_decay=float(params['Network']['weight_decay']),
@@ -258,8 +260,8 @@ def main_backbone_train_2D_federated_manual_batch(global_config_path="/home/soro
         weight_loader.append(weight_model)
         loss_function_loader.append(loss_function_model)
         optimizer_loader.append(optimizer_model)
-        if dataset == 'cxr14':
-            continue
+        # if dataset == 'cxr14':
+        #     continue
         label_names_loader.append(label_names_model)
         valid_loader_model = torch.utils.data.DataLoader(dataset=valid_dataset_model,
                                                          batch_size=params['Network']['batch_size'],
@@ -267,6 +269,7 @@ def main_backbone_train_2D_federated_manual_batch(global_config_path="/home/soro
         valid_loader.append(valid_loader_model)
 
     trainer = Training_federated(cfg_path, num_epochs=params['num_epochs'], resume=resume, label_names_loader=label_names_loader)
+
     if resume == True:
         trainer.load_checkpoint(model_loader=model_loader, optimizer_loader=optimizer_loader, loss_function_loader=loss_function_loader, label_names_loader=label_names_loader, weight_loader=weight_loader)
     else:
@@ -293,7 +296,7 @@ def main_test_central_2D(global_config_path="/home/soroosh/Documents/Repositorie
     elif dataset_name == 'coronahack':
         test_dataset = coronahack_data_loader_2D(cfg_path=cfg_path, mode='test', augment=False)
     elif dataset_name == 'chexpert':
-        test_dataset = chexpert_data_loader_2D(cfg_path=cfg_path, mode='test', augment=False)
+        test_dataset = chexpert_data_loader_2D(cfg_path=cfg_path, mode='valid', augment=False)
     elif dataset_name == 'mimic':
         test_dataset = mimic_data_loader_2D(cfg_path=cfg_path, mode='test', augment=False)
     elif dataset_name == 'UKA':
@@ -305,6 +308,7 @@ def main_test_central_2D(global_config_path="/home/soroosh/Documents/Repositorie
 
     # Changeable network parameters
     model = load_pretrained_model(num_classes=len(weight), resnet_num=50)
+    # model = load_resnet50(num_classes=len(weight))
 
     test_loader = torch.utils.data.DataLoader(dataset=test_dataset, batch_size=params['Network']['batch_size'],
                                                pin_memory=True, drop_last=False, shuffle=False, num_workers=16)
@@ -362,6 +366,7 @@ def main_test_central_2D(global_config_path="/home/soroosh/Documents/Repositorie
 
 
 
+
 def main_single_head_train_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml", valid=False,
                   augment=False, experiment_name='name', dataset_name='vindr', model_file_name='epoch170_model0_trained_model.pth'):
     """
@@ -386,19 +391,19 @@ def main_single_head_train_central_2D(global_config_path="/home/soroosh/Document
 
     if dataset_name == 'vindr':
         train_dataset = vindr_data_loader_2D(cfg_path=cfg_path, mode='train', augment=augment)
-        valid_dataset = vindr_data_loader_2D(cfg_path=cfg_path, mode='valid', augment=False)
+        valid_dataset = vindr_data_loader_2D(cfg_path=cfg_path, mode='test', augment=False)
     elif dataset_name == 'coronahack':
         train_dataset = coronahack_data_loader_2D(cfg_path=cfg_path, mode='train', augment=augment)
-        valid_dataset = coronahack_data_loader_2D(cfg_path=cfg_path, mode='valid', augment=False)
+        valid_dataset = coronahack_data_loader_2D(cfg_path=cfg_path, mode='test', augment=False)
     elif dataset_name == 'chexpert':
         train_dataset = chexpert_data_loader_2D(cfg_path=cfg_path, mode='train', augment=augment)
         valid_dataset = chexpert_data_loader_2D(cfg_path=cfg_path, mode='valid', augment=False)
     elif dataset_name == 'mimic':
         train_dataset = mimic_data_loader_2D(cfg_path=cfg_path, mode='train', augment=augment)
-        valid_dataset = mimic_data_loader_2D(cfg_path=cfg_path, mode='valid', augment=False)
+        valid_dataset = mimic_data_loader_2D(cfg_path=cfg_path, mode='test', augment=False)
     elif dataset_name == 'UKA':
         train_dataset = UKA_data_loader_2D(cfg_path=cfg_path, mode='train', augment=augment)
-        valid_dataset = UKA_data_loader_2D(cfg_path=cfg_path, mode='valid', augment=False)
+        valid_dataset = UKA_data_loader_2D(cfg_path=cfg_path, mode='test', augment=False)
     elif dataset_name == 'cxr14':
         train_dataset = cxr14_data_loader_2D(cfg_path=cfg_path, mode='train', augment=augment)
         valid_dataset = cxr14_data_loader_2D(cfg_path=cfg_path, mode='valid', augment=False)
@@ -480,7 +485,6 @@ def load_vit(num_classes=2):
 
 
 
-
 def load_pretrained_model(num_classes=2, resnet_num=34):
     # Load a pre-trained model from config file
     # self.model.load_state_dict(torch.load(self.model_info['pretrain_model_path']))
@@ -517,13 +521,15 @@ def load_pretrained_model(num_classes=2, resnet_num=34):
 
 
 if __name__ == '__main__':
-    delete_experiment(experiment_name='tempp', global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml")
+    # delete_experiment(experiment_name='batchaggreg_vindr5k_UKAfull_resnet50_1fc_10labelseach_lr5e5', global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml")
     # main_train_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
     #               valid=True, resume=False, augment=True, experiment_name='temp', dataset_name='coronahack', singlehead=False)
     # main_backbone_train_2D_federated(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
     #               resume=False, augment=True, experiment_name='tempp', dataset_names_list=['chexpert', 'chexpert'], aggregationweight=[1, 1], HE=False, precision_fractional=15)
-    main_backbone_train_2D_federated_manual_batch(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
-                  resume=False, augment=True, experiment_name='tempp', dataset_names_list=['vindr', 'coronahack', 'cxr14'], aggregationweight=[1, 1, 1], HE=False, precision_fractional=15)
-    # main_test_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml", dataset_name='cxr14')
+    # main_backbone_train_2D_federated_manual_batch(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
+    #               resume=False, augment=True, experiment_name='batchaggreg_vindr5k_UKAfull_resnet50_1fc_10labelseach_lr5e5', dataset_names_list=['vindr', 'UKA'], aggregationweight=[1, 1], HE=False, precision_fractional=15)
+    main_test_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml", experiment_name='cxr5k_lr9e5_1fc_from5.5K_ofvindr5k_mimic5k_chexpert5k_UKAfull_5labelseach', dataset_name='cxr14')
+    # main_test_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml", experiment_name='vindr_lr5e5_1fc_from15.5K_ofUKAfull_2labelseach', dataset_name='vindr')
+    # main_test_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml", experiment_name='vindr5k_lr9e5_1fc_from15.5K_ofUKAfull_2labelseach', dataset_name='vindr')
     # main_single_head_train_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
-    #               valid=True, augment=True, experiment_name='batchaggreg_onlypnemonia_coronahack5k_cxrfull_batch16_resnet50_lr5e5', dataset_name='coronahack', model_file_name='epoch3000_model0_trained_model.pth')
+    #               valid=True, augment=True, experiment_name='batchaggreg_multitask_vindr5k_UKAfull_batch16_resnet50_lr5e5', dataset_name='vindr', model_file_name='epoch9000_model0_trained_model.pth')
