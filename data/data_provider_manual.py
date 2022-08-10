@@ -521,7 +521,7 @@ class UKA_data_loader_2D_manual:
         self.file_base_dir = os.path.join(self.file_base_dir, 'UKA_preprocessed')
         self.file_path_list = list(self.subset_df['image_id'])
         self.chosen_labels = ['cardiomegaly', 'congestion', 'pleural_effusion_right', 'pleural_effusion_left', 'pneumonic_infiltrates_right',
-                              'pneumonic_infiltrates_left', 'pneumothorax_right', 'pneumothorax_left']
+                              'pneumonic_infiltrates_left', 'disturbances_right', 'disturbances_left']
         # self.chosen_labels = ['pleural_effusion_left', 'pleural_effusion_right', 'congestion', 'cardiomegaly', 'pneumonic_infiltrates_left', 'pneumonic_infiltrates_right']
         # self.chosen_labels = ['pleural_effusion_right', 'pneumonic_infiltrates_left']
 

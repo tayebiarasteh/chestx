@@ -284,6 +284,7 @@ class chexpert_data_loader_2D(Dataset):
         self.subset_df = self.subset_df[self.subset_df['view'] == 'Frontal']
         self.file_path_list = list(self.subset_df['jpg_rel_path'])
         self.chosen_labels = ['cardiomegaly', 'lung_opacity', 'lung_lesion', 'pneumonia', 'edema']
+        # self.chosen_labels = ['no_finding', 'lung_opacity', 'lung_lesion', 'cardiomegaly', 'pleural_effusion'] # domain transfer for vindr
         # self.chosen_labels = ['lung_opacity', 'pneumonia']
 
 
@@ -389,6 +390,7 @@ class mimic_data_loader_2D(Dataset):
         self.subset_df = PAview.append(APview)
         self.file_path_list = list(self.subset_df['jpg_rel_path'])
         self.chosen_labels = ['enlarged_cardiomediastinum', 'consolidation', 'pleural_effusion', 'pneumothorax', 'atelectasis']
+        # self.chosen_labels = ['no_finding', 'lung_opacity', 'lung_lesion', 'cardiomegaly', 'pleural_effusion'] # domain transfer for vind
         # self.chosen_labels = ['consolidation', 'pleural_effusion']
 
 
@@ -476,8 +478,8 @@ class UKA_data_loader_2D(Dataset):
         self.augment = augment
         self.file_base_dir = self.params['file_path']
         self.file_base_dir = os.path.join(self.file_base_dir, 'UKA/chest_radiograph')
-        self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "final_UKA_master_list.csv"), sep=',')
-        # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "5000_final_UKA_master_list.csv"), sep=',')
+        # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "final_UKA_master_list.csv"), sep=',')
+        self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "5000_final_UKA_master_list.csv"), sep=',')
         # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "2000_final_UKA_master_list.csv"), sep=',')
 
         if mode == 'train':
@@ -490,9 +492,10 @@ class UKA_data_loader_2D(Dataset):
         self.file_base_dir = os.path.join(self.file_base_dir, 'UKA_preprocessed')
         self.file_path_list = list(self.subset_df['image_id'])
         # self.chosen_labels = ['disturbances_right', 'disturbances_left', 'cardiomegaly']
-        self.chosen_labels = ['cardiomegaly', 'congestion', 'pleural_effusion_right', 'pleural_effusion_left', 'pneumonic_infiltrates_right',
-                              'pneumonic_infiltrates_left', 'pneumothorax_right', 'pneumothorax_left']
-        # self.chosen_labels = ['pleural_effusion_left', 'pleural_effusion_right', 'congestion', 'cardiomegaly', 'pneumonic_infiltrates_left', 'pneumonic_infiltrates_right']
+        # self.chosen_labels = ['cardiomegaly', 'congestion', 'pleural_effusion_right', 'pleural_effusion_left', 'pneumonic_infiltrates_right',
+        #                       'pneumonic_infiltrates_left', 'disturbances_right', 'disturbances_left']
+        # self.chosen_labels = ['pneumonic_infiltrates_left', 'pneumothorax_left', 'congestion', 'cardiomegaly', 'pleural_effusion_right'] # domain transfer for vindr
+        self.chosen_labels = ['pleural_effusion_left', 'pleural_effusion_right', 'congestion', 'cardiomegaly', 'pneumonic_infiltrates_left', 'pneumonic_infiltrates_right']
         # self.chosen_labels = ['pleural_effusion_right', 'pneumonic_infiltrates_left']
 
 
@@ -594,6 +597,7 @@ class cxr14_data_loader_2D(Dataset):
 
         self.file_path_list = list(self.subset_df['img_rel_path'])
         self.chosen_labels = ['cardiomegaly', 'effusion', 'pneumonia', 'consolidation', 'no_finding']
+        # self.chosen_labels = ['no_finding', 'mass', 'pleural_thickening', 'cardiomegaly', 'effusion'] # domain transfer for vindr
         # self.chosen_labels = ['consolidation', 'effusion']
         # self.chosen_labels = ['consolidation']
         # self.chosen_labels = ['pneumonia']

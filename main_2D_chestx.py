@@ -12,11 +12,8 @@ import os
 from torch.utils.data import Dataset
 from torch.nn import BCEWithLogitsLoss
 from torchvision import transforms, models
-# from vit_pytorch import ViT
 
 from config.serde import open_experiment, create_experiment, delete_experiment, write_config
-from models.Xception_model import Xception
-from models.resnet_18 import ResNet18
 from Train_Valid_chestx import Training
 from Train_Valid_chestx_federated import Training_federated
 from single_head_Train_Valid_chestx import Training_single_head
@@ -31,7 +28,7 @@ warnings.filterwarnings('ignore')
 
 
 def main_train_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml", valid=False,
-                  resume=False, augment=False, experiment_name='name', dataset_name='vindr', singlehead=False):
+                  resume=False, augment=False, experiment_name='name', dataset_name='vindr', singlehead=False, pretrained=False):
     """Main function for training + validation centrally
 
         Parameters
@@ -89,11 +86,9 @@ def main_train_central_2D(global_config_path="/home/soroosh/Documents/Repositori
         valid_loader = None
 
     # Changeable network parameters
-    # not pretrained resnet
-    model = load_resnet50(num_classes=len(weight))
-    # model = load_pretrained_model(num_classes=len(weight), resnet_num=50)
-    # model = Xception(num_classes=len(weight))
-    # model = ResNet18(n_out_classes=len(weight))
+    # model = load_resnet50_5FC(num_classes=len(weight), pretrained=False)
+    model = load_pretrained_model_1FC(num_classes=len(weight), resnet_num=50, pretrained=pretrained)
+
     loss_function = BCEWithLogitsLoss
     optimizer = torch.optim.Adam(model.parameters(), lr=float(params['Network']['lr']),
                                  weight_decay=float(params['Network']['weight_decay']), amsgrad=params['Network']['amsgrad'])
@@ -109,7 +104,7 @@ def main_train_central_2D(global_config_path="/home/soroosh/Documents/Repositori
 
 
 def main_backbone_train_2D_federated(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
-                  resume=False, augment=False, experiment_name='name', dataset_names_list='vindr', aggregationweight=[1, 1, 1], HE=False, precision_fractional=15):
+                  resume=False, augment=False, experiment_name='name', dataset_names_list='vindr', aggregationweight=[1, 1, 1], HE=False, precision_fractional=15, pretrained=False):
     """Main function for training + validation centrally
 
         Parameters
@@ -169,8 +164,10 @@ def main_backbone_train_2D_federated(global_config_path="/home/soroosh/Documents
         valid_loader_model = torch.utils.data.DataLoader(dataset=valid_dataset_model,
                                                          batch_size=params['Network']['batch_size'],
                                                          pin_memory=True, drop_last=False, shuffle=False, num_workers=4)
-        model_model = load_resnet50(num_classes=len(weight_model))
-        # model_model = ResNet18(n_out_classes=len(weight_model))
+
+        # model_model = load_resnet50_5FC(num_classes=len(weight_model), pretrained=pretrained)
+        model_model = load_pretrained_model_1FC(num_classes=len(weight_model), resnet_num=50, pretrained=pretrained)
+
         loss_function_model = BCEWithLogitsLoss
         optimizer_model = torch.optim.Adam(model_model.parameters(), lr=float(params['Network']['lr']),
                                            weight_decay=float(params['Network']['weight_decay']),
@@ -192,7 +189,7 @@ def main_backbone_train_2D_federated(global_config_path="/home/soroosh/Documents
 
 
 def main_backbone_train_2D_federated_manual_batch(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
-                  resume=False, augment=False, experiment_name='name', dataset_names_list='vindr', aggregationweight=[1, 1, 1], HE=False, precision_fractional=15):
+                  resume=False, augment=False, experiment_name='name', dataset_names_list='vindr', aggregationweight=[1, 1, 1], HE=False, precision_fractional=15, pretrained=False):
     """Main function for training + validation centrally
 
         Parameters
@@ -247,9 +244,8 @@ def main_backbone_train_2D_federated_manual_batch(global_config_path="/home/soro
         weight_model = train_dataset_model.pos_weight()
         label_names_model = train_dataset_model.chosen_labels
 
-        # model_model = load_vit(num_classes=len(weight_model))
-        # model_model = load_resnet50(num_classes=len(weight_model))
-        model_model = load_pretrained_model(num_classes=len(weight_model), resnet_num=50)
+        # model_model = load_resnet50_5FC(num_classes=len(weight_model), pretrained=pretrained)
+        model_model = load_pretrained_model_1FC(num_classes=len(weight_model), resnet_num=50, pretrained=pretrained)
 
         loss_function_model = BCEWithLogitsLoss
         optimizer_model = torch.optim.Adam(model_model.parameters(), lr=float(params['Network']['lr']),
@@ -300,15 +296,15 @@ def main_test_central_2D(global_config_path="/home/soroosh/Documents/Repositorie
     elif dataset_name == 'mimic':
         test_dataset = mimic_data_loader_2D(cfg_path=cfg_path, mode='test', augment=False)
     elif dataset_name == 'UKA':
-        test_dataset = UKA_data_loader_2D(cfg_path=cfg_path, mode='test', augment=False)
+        test_dataset = UKA_data_loader_2D(cfg_path=cfg_path, mode='valid', augment=False)
     elif dataset_name == 'cxr14':
         test_dataset = cxr14_data_loader_2D(cfg_path=cfg_path, mode='test', augment=False)
     weight = test_dataset.pos_weight()
     label_names = test_dataset.chosen_labels
 
     # Changeable network parameters
-    model = load_pretrained_model(num_classes=len(weight), resnet_num=50)
-    # model = load_resnet50(num_classes=len(weight))
+    # model = load_resnet50_5FC(num_classes=len(weight))
+    model = load_pretrained_model_1FC(num_classes=len(weight), resnet_num=50)
 
     test_loader = torch.utils.data.DataLoader(dataset=test_dataset, batch_size=params['Network']['batch_size'],
                                                pin_memory=True, drop_last=False, shuffle=False, num_workers=16)
@@ -368,9 +364,8 @@ def main_test_central_2D(global_config_path="/home/soroosh/Documents/Repositorie
 
 
 def main_single_head_train_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml", valid=False,
-                  augment=False, experiment_name='name', dataset_name='vindr', model_file_name='epoch170_model0_trained_model.pth'):
+                  augment=False, experiment_name='name', dataset_name='vindr', model_file_name='epoch170_model0_trained_model.pth', pretrained=False):
     """
-
         Parameters
         ----------
         global_config_path: str
@@ -420,7 +415,9 @@ def main_single_head_train_central_2D(global_config_path="/home/soroosh/Document
         valid_loader = None
 
     # Changeable network parameters
-    model = load_resnet50(num_classes=len(weight))
+    # model = load_resnet50_5FC(num_classes=len(weight), pretrained=pretrained)
+    model = load_pretrained_model_1FC(num_classes=len(weight), resnet_num=50, pretrained=pretrained)
+
     loss_function = BCEWithLogitsLoss
     optimizer = torch.optim.Adam(model.parameters(), lr=float(params['Network_single_head']['lr']),
                                  weight_decay=float(params['Network_single_head']['weight_decay']), amsgrad=params['Network_single_head']['amsgrad'])
@@ -432,88 +429,45 @@ def main_single_head_train_central_2D(global_config_path="/home/soroosh/Document
 
 
 
-
-def load_resnet50(num_classes=2):
+def load_resnet50_5FC(num_classes=2, pretrained=False):
     # Load a pre-trained model from config file
-    # self.model.load_state_dict(torch.load(self.model_info['pretrain_model_path']))
 
-    model = models.resnet50(pretrained=False)
+    model = models.resnet50(pretrained=pretrained)
     for param in model.parameters():
         param.requires_grad = True
     model.fc = torch.nn.Sequential(
         torch.nn.Linear(2048, 1028), torch.nn.ReLU(), torch.nn.Dropout(p=0.2),
         torch.nn.Linear(1028, 1028), torch.nn.ReLU(), torch.nn.Dropout(p=0.2),
         torch.nn.Linear(1028, 512), torch.nn.ReLU(), torch.nn.Dropout(p=0.2),
-    torch.nn.Linear(512, 256), torch.nn.ReLU(), torch.nn.Dropout(p=0.2),
-    torch.nn.Linear(256, 256), torch.nn.ReLU(), torch.nn.Dropout(p=0.2),
-    torch.nn.Linear(256, 128), torch.nn.ReLU(), torch.nn.Dropout(p=0.2),
-    torch.nn.Linear(128, num_classes)) # for resnet 50
+        torch.nn.Linear(512, 256), torch.nn.ReLU(), torch.nn.Dropout(p=0.2),
+        torch.nn.Linear(256, 256), torch.nn.ReLU(), torch.nn.Dropout(p=0.2),
+        torch.nn.Linear(256, 128), torch.nn.ReLU(), torch.nn.Dropout(p=0.2),
+        torch.nn.Linear(128, num_classes)) # for resnet 50
 
     return model
 
 
 
-def load_vit(num_classes=2):
+def load_pretrained_model_1FC(num_classes=2, resnet_num=34, pretrained=False):
     # Load a pre-trained model from config file
-    # self.model.load_state_dict(torch.load(self.model_info['pretrain_model_path']))
-
-    model = ViT(
-        image_size=256,
-        patch_size=32,
-        num_classes=1000,
-        dim=1024,
-        depth=6,
-        heads=16,
-        mlp_dim=2048,
-        dropout=0.1,
-        emb_dropout=0.1
-    )
-    pdb.set_trace()
-
-    for param in model.parameters():
-        param.requires_grad = True
-    model.fc = torch.nn.Sequential(
-        torch.nn.Linear(2048, 1028), torch.nn.ReLU(), torch.nn.Dropout(p=0.2),
-        torch.nn.Linear(1028, 1028), torch.nn.ReLU(), torch.nn.Dropout(p=0.2),
-        torch.nn.Linear(1028, 512), torch.nn.ReLU(), torch.nn.Dropout(p=0.2),
-    torch.nn.Linear(512, 256), torch.nn.ReLU(), torch.nn.Dropout(p=0.2),
-    torch.nn.Linear(256, 256), torch.nn.ReLU(), torch.nn.Dropout(p=0.2),
-    torch.nn.Linear(256, 128), torch.nn.ReLU(), torch.nn.Dropout(p=0.2),
-    torch.nn.Linear(128, num_classes)) # for resnet 50
-
-    return model
-
-
-
-def load_pretrained_model(num_classes=2, resnet_num=34):
-    # Load a pre-trained model from config file
-    # self.model.load_state_dict(torch.load(self.model_info['pretrain_model_path']))
 
     # Load a pre-trained model from Torchvision
     if resnet_num == 34:
-        model = models.resnet34(pretrained=False)
+        model = models.resnet34(pretrained=pretrained)
         for param in model.parameters():
             param.requires_grad = True
         model.fc = torch.nn.Sequential(
             torch.nn.Linear(512, num_classes))  # for resnet 34
 
     elif resnet_num == 50:
-        model = models.resnet50(pretrained=False)
+        model = models.resnet50(pretrained=pretrained)
         for param in model.parameters():
             param.requires_grad = True
         model.fc = torch.nn.Sequential(
-        #     torch.nn.Linear(2048, 1028), torch.nn.ReLU(), torch.nn.Dropout(p=0.2),
-        #     torch.nn.Linear(1028, 1028), torch.nn.ReLU(), torch.nn.Dropout(p=0.2),
-        #     torch.nn.Linear(1028, 512), torch.nn.ReLU(), torch.nn.Dropout(p=0.2),
-        # torch.nn.Linear(512, 256), torch.nn.ReLU(), torch.nn.Dropout(p=0.2),
-        # torch.nn.Linear(256, 256), torch.nn.ReLU(), torch.nn.Dropout(p=0.2),
-        # torch.nn.Linear(256, 128), torch.nn.ReLU(), torch.nn.Dropout(p=0.2),
-        # torch.nn.Linear(128, num_classes)) # for resnet 50
         torch.nn.Linear(2048, num_classes)) # for resnet 50
-    # for param in model.fc.parameters():
-    #     param.requires_grad = True
 
     return model
+
 
 
 
@@ -523,13 +477,12 @@ def load_pretrained_model(num_classes=2, resnet_num=34):
 if __name__ == '__main__':
     # delete_experiment(experiment_name='batchaggreg_vindr5k_UKAfull_resnet50_1fc_10labelseach_lr5e5', global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml")
     # main_train_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
-    #               valid=True, resume=False, augment=True, experiment_name='temp', dataset_name='coronahack', singlehead=False)
-    # main_backbone_train_2D_federated(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
-    #               resume=False, augment=True, experiment_name='tempp', dataset_names_list=['chexpert', 'chexpert'], aggregationweight=[1, 1], HE=False, precision_fractional=15)
-    # main_backbone_train_2D_federated_manual_batch(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
-    #               resume=False, augment=True, experiment_name='batchaggreg_vindr5k_UKAfull_resnet50_1fc_10labelseach_lr5e5', dataset_names_list=['vindr', 'UKA'], aggregationweight=[1, 1], HE=False, precision_fractional=15)
-    main_test_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml", experiment_name='cxr5k_lr9e5_1fc_from5.5K_ofvindr5k_mimic5k_chexpert5k_UKAfull_5labelseach', dataset_name='cxr14')
-    # main_test_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml", experiment_name='vindr_lr5e5_1fc_from15.5K_ofUKAfull_2labelseach', dataset_name='vindr')
-    # main_test_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml", experiment_name='vindr5k_lr9e5_1fc_from15.5K_ofUKAfull_2labelseach', dataset_name='vindr')
+    #               valid=True, resume=False, augment=True, experiment_name='temp', dataset_name='coronahack', pretrained=False)
+    main_backbone_train_2D_federated_manual_batch(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
+                  resume=False, augment=True, experiment_name='temp', dataset_names_list=['vindr', 'UKA'], aggregationweight=[1, 1], pretrained=False)
+    # main_test_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml", experiment_name='imagenetpretrain_vindr5k_5fc_resnet50_lr5e5_5labels', dataset_name='mimic')
+    # main_test_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml", experiment_name='imagenetpretrain_vindr5k_5fc_resnet50_lr5e5_5labels', dataset_name='chexpert')
+    # main_test_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml", experiment_name='imagenetpretrain_vindr5k_5fc_resnet50_lr5e5_5labels', dataset_name='cxr14')
+    # main_test_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml", experiment_name='UKA5k_lr9e5_1fc_from6.5K_ofchexpert5k_mimic5k_cxr5k_vindr5k_5labelseach', dataset_name='UKA')
     # main_single_head_train_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
     #               valid=True, augment=True, experiment_name='batchaggreg_multitask_vindr5k_UKAfull_batch16_resnet50_lr5e5', dataset_name='vindr', model_file_name='epoch9000_model0_trained_model.pth')
