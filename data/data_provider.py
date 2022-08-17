@@ -65,10 +65,11 @@ class vindr_data_loader_2D(Dataset):
             self.file_base_dir = os.path.join(self.file_base_dir, 'preprocessed/test')
 
         self.file_path_list = list(self.subset_df['image_id'])
-        self.chosen_labels = ['No finding', 'Aortic enlargement', 'Pleural thickening', 'Cardiomegaly', 'Pleural effusion',
-                              'Pneumothorax', 'Atelectasis', 'Consolidation']
+        # self.chosen_labels = ['No finding', 'Aortic enlargement', 'Pleural thickening', 'Cardiomegaly', 'Pleural effusion',
+        #                       'Pneumothorax', 'Atelectasis', 'Consolidation'] # 8 labels
         # self.chosen_labels = ['No finding', 'Aortic enlargement', 'Pleural thickening', 'Cardiomegaly', 'Pleural effusion']
-        # self.chosen_labels = ['Cardiomegaly', 'Pleural effusion']
+        # self.chosen_labels = ['Aortic enlargement', 'Cardiomegaly', 'Mediastinal shift', 'No finding'] # green labels
+        self.chosen_labels = ['Cardiomegaly', 'Pleural effusion'] # 2 labels
         # self.chosen_labels = ['Pleural effusion']
 
 
@@ -283,8 +284,8 @@ class chexpert_data_loader_2D(Dataset):
 
         self.subset_df = self.subset_df[self.subset_df['view'] == 'Frontal']
         self.file_path_list = list(self.subset_df['jpg_rel_path'])
-        self.chosen_labels = ['cardiomegaly', 'lung_opacity', 'lung_lesion', 'pneumonia', 'edema']
-        # self.chosen_labels = ['no_finding', 'lung_opacity', 'lung_lesion', 'cardiomegaly', 'pleural_effusion'] # domain transfer for vindr
+        self.chosen_labels = ['cardiomegaly', 'enlarged_cardiomediastinum', 'no_finding'] # green labels
+        # self.chosen_labels = ['cardiomegaly', 'lung_opacity', 'lung_lesion', 'pneumonia', 'edema']
         # self.chosen_labels = ['lung_opacity', 'pneumonia']
 
 
@@ -390,7 +391,6 @@ class mimic_data_loader_2D(Dataset):
         self.subset_df = PAview.append(APview)
         self.file_path_list = list(self.subset_df['jpg_rel_path'])
         self.chosen_labels = ['enlarged_cardiomediastinum', 'consolidation', 'pleural_effusion', 'pneumothorax', 'atelectasis']
-        # self.chosen_labels = ['no_finding', 'lung_opacity', 'lung_lesion', 'cardiomegaly', 'pleural_effusion'] # domain transfer for vind
         # self.chosen_labels = ['consolidation', 'pleural_effusion']
 
 
@@ -478,8 +478,8 @@ class UKA_data_loader_2D(Dataset):
         self.augment = augment
         self.file_base_dir = self.params['file_path']
         self.file_base_dir = os.path.join(self.file_base_dir, 'UKA/chest_radiograph')
-        # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "final_UKA_master_list.csv"), sep=',')
-        self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "5000_final_UKA_master_list.csv"), sep=',')
+        self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "final_UKA_master_list.csv"), sep=',')
+        # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "5000_final_UKA_master_list.csv"), sep=',')
         # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "2000_final_UKA_master_list.csv"), sep=',')
 
         if mode == 'train':
@@ -491,12 +491,10 @@ class UKA_data_loader_2D(Dataset):
 
         self.file_base_dir = os.path.join(self.file_base_dir, 'UKA_preprocessed')
         self.file_path_list = list(self.subset_df['image_id'])
-        # self.chosen_labels = ['disturbances_right', 'disturbances_left', 'cardiomegaly']
         # self.chosen_labels = ['cardiomegaly', 'congestion', 'pleural_effusion_right', 'pleural_effusion_left', 'pneumonic_infiltrates_right',
-        #                       'pneumonic_infiltrates_left', 'disturbances_right', 'disturbances_left']
-        # self.chosen_labels = ['pneumonic_infiltrates_left', 'pneumothorax_left', 'congestion', 'cardiomegaly', 'pleural_effusion_right'] # domain transfer for vindr
-        self.chosen_labels = ['pleural_effusion_left', 'pleural_effusion_right', 'congestion', 'cardiomegaly', 'pneumonic_infiltrates_left', 'pneumonic_infiltrates_right']
-        # self.chosen_labels = ['pleural_effusion_right', 'pneumonic_infiltrates_left']
+        #                       'pneumonic_infiltrates_left', 'disturbances_right', 'disturbances_left'] # 8 labels
+        # self.chosen_labels = ['pleural_effusion_left', 'pleural_effusion_right', 'congestion', 'cardiomegaly', 'pneumonic_infiltrates_left', 'pneumonic_infiltrates_right']
+        self.chosen_labels = ['pleural_effusion_right', 'pneumonic_infiltrates_left'] # 2 labels
 
 
 
@@ -596,8 +594,8 @@ class cxr14_data_loader_2D(Dataset):
             self.subset_df = self.org_df[self.org_df['split'] == 'test']
 
         self.file_path_list = list(self.subset_df['img_rel_path'])
-        self.chosen_labels = ['cardiomegaly', 'effusion', 'pneumonia', 'consolidation', 'no_finding']
-        # self.chosen_labels = ['no_finding', 'mass', 'pleural_thickening', 'cardiomegaly', 'effusion'] # domain transfer for vindr
+        self.chosen_labels = ['cardiomegaly', 'no_finding'] # green labels
+        # self.chosen_labels = ['cardiomegaly', 'effusion', 'pneumonia', 'consolidation', 'no_finding']
         # self.chosen_labels = ['consolidation', 'effusion']
         # self.chosen_labels = ['consolidation']
         # self.chosen_labels = ['pneumonia']
@@ -630,6 +628,304 @@ class cxr14_data_loader_2D(Dataset):
         img = trans(img)
 
         label_df = self.subset_df[self.subset_df['img_rel_path'] == self.file_path_list[idx]]
+        label = torch.zeros((len(self.chosen_labels)))  # (h,)
+
+        for idx in range(len(self.chosen_labels)):
+            label[idx] = int(label_df[self.chosen_labels[idx]].values[0])
+        label = label.float()
+
+        return img, label
+
+
+
+    def pos_weight(self):
+        """
+        Calculates a weight for positive examples for each class and returns it as a tensor
+        Only using the training set.
+        """
+
+        train_df = self.org_df[self.org_df['split'] == 'train']
+        full_length = len(train_df)
+        output_tensor = torch.zeros((len(self.chosen_labels)))
+
+        for idx, diseases in enumerate(self.chosen_labels):
+            disease_length = sum(train_df[diseases].values == 1)
+            output_tensor[idx] = (full_length - disease_length) / (disease_length + epsilon)
+
+        return output_tensor
+
+
+class vindr_data_loader_2D_site1(Dataset):
+    """
+    This is the pipeline based on Pytorch's Dataset and Dataloader
+    """
+    def __init__(self, cfg_path, mode='train', augment=False):
+        """
+        Parameters
+        ----------
+        cfg_path: str
+            Config file path of the experiment
+
+        mode: str
+            Nature of operation to be done with the data.
+                Possible inputs are train, valid, test
+                Default value: train
+        """
+
+        self.cfg_path = cfg_path
+        self.params = read_config(cfg_path)
+        self.augment = augment
+        self.file_base_dir = self.params['file_path']
+        self.file_base_dir = os.path.join(self.file_base_dir, 'vindr-cxr1')
+        # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "master_list.csv"), sep=',')
+        # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "officialsoroosh_master_list.csv"), sep=',')
+        self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "officialsoroosh_site1_master_list.csv"), sep=',')
+
+        if mode == 'train':
+            self.subset_df = self.org_df[self.org_df['split'] == 'train']
+            self.file_base_dir = os.path.join(self.file_base_dir, 'preprocessed/train')
+        elif mode == 'valid':
+            self.subset_df = self.org_df[self.org_df['split'] == 'valid']
+            self.file_base_dir = os.path.join(self.file_base_dir, 'preprocessed/train')
+        elif mode == 'test':
+            self.subset_df = self.org_df[self.org_df['split'] == 'test']
+            self.file_base_dir = os.path.join(self.file_base_dir, 'preprocessed/test')
+
+        self.file_path_list = list(self.subset_df['image_id'])
+        # self.chosen_labels = ['No finding', 'Aortic enlargement', 'Pleural thickening', 'Cardiomegaly', 'Pleural effusion',
+        #                       'Pneumothorax', 'Atelectasis', 'Consolidation'] # 8 labels
+        # self.chosen_labels = ['No finding', 'Aortic enlargement', 'Pleural thickening', 'Cardiomegaly', 'Pleural effusion']
+        # self.chosen_labels = ['Aortic enlargement', 'Cardiomegaly', 'Mediastinal shift', 'No finding'] # green labels
+        self.chosen_labels = ['Cardiomegaly', 'Pleural effusion'] # 2 labels
+        # self.chosen_labels = ['Pleural effusion']
+
+
+
+    def __len__(self):
+        """Returns the length of the dataset"""
+        return len(self.file_path_list)
+
+
+    def __getitem__(self, idx):
+        """
+        Parameters
+        ----------
+        idx: int
+
+        Returns
+        -------
+        img: torch tensor
+        label: torch tensor
+        """
+        img = cv2.imread(os.path.join(self.file_base_dir, self.file_path_list[idx] + '.jpg')) # (h, w, d)
+
+        if self.augment:
+            trans = transforms.Compose([transforms.ToPILImage(), transforms.RandomHorizontalFlip(p=0.5),
+                                        transforms.RandomRotation(degrees=10), transforms.ToTensor()])
+        else:
+            trans = transforms.Compose([transforms.ToPILImage(), transforms.ToTensor()])
+        img = trans(img)
+
+        label_df = self.subset_df[self.subset_df['image_id'] == self.file_path_list[idx]]
+        label = torch.zeros((len(self.chosen_labels)))  # (h,)
+
+        for idx in range(len(self.chosen_labels)):
+            label[idx] = int(label_df[self.chosen_labels[idx]].values[0])
+        label = label.float()
+
+        return img, label
+
+
+
+    def pos_weight(self):
+        """
+        Calculates a weight for positive examples for each class and returns it as a tensor
+        Only using the training set.
+        """
+
+        train_df = self.org_df[self.org_df['split'] == 'train']
+        full_length = len(train_df)
+        output_tensor = torch.zeros((len(self.chosen_labels)))
+
+        for idx, diseases in enumerate(self.chosen_labels):
+            disease_length = sum(train_df[diseases].values == 1)
+            output_tensor[idx] = (full_length - disease_length) / (disease_length + epsilon)
+
+        return output_tensor
+
+
+class vindr_data_loader_2D_site2(Dataset):
+    """
+    This is the pipeline based on Pytorch's Dataset and Dataloader
+    """
+    def __init__(self, cfg_path, mode='train', augment=False):
+        """
+        Parameters
+        ----------
+        cfg_path: str
+            Config file path of the experiment
+
+        mode: str
+            Nature of operation to be done with the data.
+                Possible inputs are train, valid, test
+                Default value: train
+        """
+
+        self.cfg_path = cfg_path
+        self.params = read_config(cfg_path)
+        self.augment = augment
+        self.file_base_dir = self.params['file_path']
+        self.file_base_dir = os.path.join(self.file_base_dir, 'vindr-cxr1')
+        # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "master_list.csv"), sep=',')
+        # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "officialsoroosh_master_list.csv"), sep=',')
+        self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "officialsoroosh_site2_master_list.csv"), sep=',')
+
+        if mode == 'train':
+            self.subset_df = self.org_df[self.org_df['split'] == 'train']
+            self.file_base_dir = os.path.join(self.file_base_dir, 'preprocessed/train')
+        elif mode == 'valid':
+            self.subset_df = self.org_df[self.org_df['split'] == 'valid']
+            self.file_base_dir = os.path.join(self.file_base_dir, 'preprocessed/train')
+        elif mode == 'test':
+            self.subset_df = self.org_df[self.org_df['split'] == 'test']
+            self.file_base_dir = os.path.join(self.file_base_dir, 'preprocessed/test')
+
+        self.file_path_list = list(self.subset_df['image_id'])
+        # self.chosen_labels = ['No finding', 'Aortic enlargement', 'Pleural thickening', 'Cardiomegaly', 'Pleural effusion',
+        #                       'Pneumothorax', 'Atelectasis', 'Consolidation'] # 8 labels
+        # self.chosen_labels = ['No finding', 'Aortic enlargement', 'Pleural thickening', 'Cardiomegaly', 'Pleural effusion']
+        # self.chosen_labels = ['Aortic enlargement', 'Cardiomegaly', 'Mediastinal shift', 'No finding'] # green labels
+        self.chosen_labels = ['Cardiomegaly', 'Pleural effusion'] # 2 labels
+        # self.chosen_labels = ['Pleural effusion']
+
+
+
+    def __len__(self):
+        """Returns the length of the dataset"""
+        return len(self.file_path_list)
+
+
+    def __getitem__(self, idx):
+        """
+        Parameters
+        ----------
+        idx: int
+
+        Returns
+        -------
+        img: torch tensor
+        label: torch tensor
+        """
+        img = cv2.imread(os.path.join(self.file_base_dir, self.file_path_list[idx] + '.jpg')) # (h, w, d)
+
+        if self.augment:
+            trans = transforms.Compose([transforms.ToPILImage(), transforms.RandomHorizontalFlip(p=0.5),
+                                        transforms.RandomRotation(degrees=10), transforms.ToTensor()])
+        else:
+            trans = transforms.Compose([transforms.ToPILImage(), transforms.ToTensor()])
+        img = trans(img)
+
+        label_df = self.subset_df[self.subset_df['image_id'] == self.file_path_list[idx]]
+        label = torch.zeros((len(self.chosen_labels)))  # (h,)
+
+        for idx in range(len(self.chosen_labels)):
+            label[idx] = int(label_df[self.chosen_labels[idx]].values[0])
+        label = label.float()
+
+        return img, label
+
+
+
+    def pos_weight(self):
+        """
+        Calculates a weight for positive examples for each class and returns it as a tensor
+        Only using the training set.
+        """
+
+        train_df = self.org_df[self.org_df['split'] == 'train']
+        full_length = len(train_df)
+        output_tensor = torch.zeros((len(self.chosen_labels)))
+
+        for idx, diseases in enumerate(self.chosen_labels):
+            disease_length = sum(train_df[diseases].values == 1)
+            output_tensor[idx] = (full_length - disease_length) / (disease_length + epsilon)
+
+        return output_tensor
+
+
+
+class vindr_data_loader_2D_site3(Dataset):
+    """
+    This is the pipeline based on Pytorch's Dataset and Dataloader
+    """
+    def __init__(self, cfg_path, mode='train', augment=False):
+        """
+        Parameters
+        ----------
+        cfg_path: str
+            Config file path of the experiment
+
+        mode: str
+            Nature of operation to be done with the data.
+                Possible inputs are train, valid, test
+                Default value: train
+        """
+
+        self.cfg_path = cfg_path
+        self.params = read_config(cfg_path)
+        self.augment = augment
+        self.file_base_dir = self.params['file_path']
+        self.file_base_dir = os.path.join(self.file_base_dir, 'vindr-cxr1')
+        # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "master_list.csv"), sep=',')
+        # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "officialsoroosh_master_list.csv"), sep=',')
+        self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "officialsoroosh_site3_master_list.csv"), sep=',')
+
+        if mode == 'train':
+            self.subset_df = self.org_df[self.org_df['split'] == 'train']
+            self.file_base_dir = os.path.join(self.file_base_dir, 'preprocessed/train')
+        elif mode == 'valid':
+            self.subset_df = self.org_df[self.org_df['split'] == 'valid']
+            self.file_base_dir = os.path.join(self.file_base_dir, 'preprocessed/train')
+        elif mode == 'test':
+            self.subset_df = self.org_df[self.org_df['split'] == 'test']
+            self.file_base_dir = os.path.join(self.file_base_dir, 'preprocessed/test')
+
+        self.file_path_list = list(self.subset_df['image_id'])
+        # self.chosen_labels = ['No finding', 'Aortic enlargement', 'Pleural thickening', 'Cardiomegaly', 'Pleural effusion',
+        #                       'Pneumothorax', 'Atelectasis', 'Consolidation'] # 8 labels
+        # self.chosen_labels = ['No finding', 'Aortic enlargement', 'Pleural thickening', 'Cardiomegaly', 'Pleural effusion']
+        # self.chosen_labels = ['Aortic enlargement', 'Cardiomegaly', 'Mediastinal shift', 'No finding'] # green labels
+        self.chosen_labels = ['Cardiomegaly', 'Pleural effusion'] # 2 labels
+        # self.chosen_labels = ['Pleural effusion']
+
+
+
+    def __len__(self):
+        """Returns the length of the dataset"""
+        return len(self.file_path_list)
+
+
+    def __getitem__(self, idx):
+        """
+        Parameters
+        ----------
+        idx: int
+
+        Returns
+        -------
+        img: torch tensor
+        label: torch tensor
+        """
+        img = cv2.imread(os.path.join(self.file_base_dir, self.file_path_list[idx] + '.jpg')) # (h, w, d)
+
+        if self.augment:
+            trans = transforms.Compose([transforms.ToPILImage(), transforms.RandomHorizontalFlip(p=0.5),
+                                        transforms.RandomRotation(degrees=10), transforms.ToTensor()])
+        else:
+            trans = transforms.Compose([transforms.ToPILImage(), transforms.ToTensor()])
+        img = trans(img)
+
+        label_df = self.subset_df[self.subset_df['image_id'] == self.file_path_list[idx]]
         label = torch.zeros((len(self.chosen_labels)))  # (h,)
 
         for idx in range(len(self.chosen_labels)):

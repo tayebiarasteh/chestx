@@ -1,7 +1,8 @@
 Network:
-  batch_size: 5
-#  lr: 5e-5 # vindr
-  lr: 1e-6 # coronahack
+  batch_size: 12 # resnet
+#  batch_size: 1 # ViT
+  lr: 5e-5 # vindr
+#  lr: 1e-6 # coronahack
   weight_decay: 0
   amsgrad: False
 network_output_path: network_data/
@@ -24,7 +25,7 @@ num_epochs: 50000
 num_epochs_single_head: 10000
 
 Network_single_head:
-  batch_size: 5
+  batch_size: 12
   lr: 9e-5 # vindr
 #  lr: 5e-6 # coronahack
   weight_decay: 0
