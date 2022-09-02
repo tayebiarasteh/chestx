@@ -563,7 +563,7 @@ class normalizer_resizer():
         flag = 0
         final_df = pd.DataFrame(columns=['image_id', 'split', 'subset', 'birth_date', 'examination_date', 'study_time',
                                             'patient_sex', 'ExposureinuAs', 'cardiomegaly', 'congestion', 'pleural_effusion_right', 'pleural_effusion_left',
-                     'pneumonic_infiltrates_right', 'pneumonic_infiltrates_left', 'disturbances_right',	'disturbances_left', 'pneumothorax_right', 'pneumothorax_left', 'subject_id'])
+                     'pneumonic_infiltrates_right', 'pneumonic_infiltrates_left', 'atelectasis_right',	'atelectasis_left', 'pneumothorax_right', 'pneumothorax_left', 'subject_id'])
 
         label_path = '/data/chest_radiograph/UKA_master_list.csv'
         final_df_output_path = '/data/chest_radiograph/final_UKA_master_list.csv'
@@ -637,13 +637,13 @@ class normalizer_resizer():
                     [[chosen_df['image_id'].values[0], chosen_df['split'].values[0], subset, chosen_df['birth_date'].values[0], chosen_df['examination_date'].values[0], chosen_df['study_time'].values[0],
                       chosen_df['patient_sex'].values[0], chosen_df['ExposureinuAs'].values[0], chosen_df['cardiomegaly'].values[0], chosen_df['congestion'].values[0], chosen_df['pleural_effusion_right'].values[0],
                              chosen_df['pleural_effusion_left'].values[0],
-                             chosen_df['pneumonic_infiltrates_right'].values[0], chosen_df['pneumonic_infiltrates_left'].values[0], chosen_df['disturbances_right'].values[0],
-                             chosen_df['disturbances_left'].values[0], chosen_df['pneumothorax_right'].values[0], chosen_df['pneumothorax_left'].values[0], chosen_df['subject_id'].values[0]]],
+                             chosen_df['pneumonic_infiltrates_right'].values[0], chosen_df['pneumonic_infiltrates_left'].values[0], chosen_df['atelectasis_right'].values[0],
+                             chosen_df['atelectasis_left'].values[0], chosen_df['pneumothorax_right'].values[0], chosen_df['pneumothorax_left'].values[0], chosen_df['subject_id'].values[0]]],
                     columns=['image_id', 'split', 'subset', 'birth_date', 'examination_date', 'study_time',
                              'patient_sex', 'ExposureinuAs', 'cardiomegaly', 'congestion', 'pleural_effusion_right',
                              'pleural_effusion_left',
-                             'pneumonic_infiltrates_right', 'pneumonic_infiltrates_left', 'disturbances_right',
-                             'disturbances_left', 'pneumothorax_right', 'pneumothorax_left', 'subject_id'])
+                             'pneumonic_infiltrates_right', 'pneumonic_infiltrates_left', 'atelectasis_right',
+                             'atelectasis_left', 'pneumothorax_right', 'pneumothorax_left', 'subject_id'])
                 final_df = final_df.append(tempp)
                 final_df.to_csv(final_df_output_path, sep=',', index=False)
 
@@ -668,15 +668,15 @@ class normalizer_resizer():
         final_df_org = pd.DataFrame(
             columns=['image_id', 'split', 'subset', 'birth_date', 'examination_date', 'study_time', 'patient_sex',
                      'ExposureinuAs', 'cardiomegaly', 'congestion', 'pleural_effusion_right', 'pleural_effusion_left',
-                     'pneumonic_infiltrates_right', 'pneumonic_infiltrates_left', 'disturbances_right',
-                     'disturbances_left', 'pneumothorax_right', 'pneumothorax_left', 'subject_id'])
+                     'pneumonic_infiltrates_right', 'pneumonic_infiltrates_left', 'atelectasis_right',
+                     'atelectasis_left', 'pneumothorax_right', 'pneumothorax_left', 'subject_id'])
 
         final_path_4K = '/home/soroosh/Documents/datasets/XRay/UKA/chest_radiograph/final_test4k_UKA_master_list.csv'
         final_df_4K = pd.DataFrame(
             columns=['image_id', 'split', 'subset', 'birth_date', 'examination_date', 'study_time', 'patient_sex',
                      'ExposureinuAs', 'cardiomegaly', 'congestion', 'pleural_effusion_right', 'pleural_effusion_left',
-                     'pneumonic_infiltrates_right', 'pneumonic_infiltrates_left', 'disturbances_right',
-                     'disturbances_left', 'pneumothorax_right', 'pneumothorax_left', 'subject_id'])
+                     'pneumonic_infiltrates_right', 'pneumonic_infiltrates_left', 'atelectasis_right',
+                     'atelectasis_left', 'pneumothorax_right', 'pneumothorax_left', 'subject_id'])
 
         file_list.sort()
 
@@ -833,7 +833,7 @@ class csv_summarizer():
     def UKA(self):
         final_df = pd.DataFrame(columns=['image_id', 'split', 'birth_date', 'examination_date', 'study_time',
                                             'patient_sex', 'ExposureinuAs', 'cardiomegaly', 'congestion', 'pleural_effusion_right', 'pleural_effusion_left',
-                     'pneumonic_infiltrates_right', 'pneumonic_infiltrates_left', 'disturbances_right',	'disturbances_left', 'pneumothorax_right', 'pneumothorax_left', 'subject_id'])
+                     'pneumonic_infiltrates_right', 'pneumonic_infiltrates_left', 'atelectasis_right',	'atelectasis_left', 'pneumothorax_right', 'pneumothorax_left', 'subject_id'])
 
         label_path = '/home/soroosh/Documents/datasets/XRay/UKA/chest_radiograph/onehot_UKA_master_list.csv'
         output_path = '/home/soroosh/Documents/datasets/XRay/UKA/chest_radiograph/UKA_master_list.csv'
@@ -919,30 +919,30 @@ class csv_summarizer():
                 pneumonic_infiltrates_left = 0
 
             if row['Belstörungen_re_1.0'] == 1:
-                disturbances_right = 1
+                atelectasis_right = 1
             elif row['Belstörungen_re_2.0'] == 1:
-                disturbances_right = 2
+                atelectasis_right = 2
             elif row['Belstörungen_re_3.0'] == 1:
-                disturbances_right = 3
+                atelectasis_right = 3
             elif row['Belstörungen_re_4.0'] == 1:
-                disturbances_right = 4
+                atelectasis_right = 4
             elif row['Belstörungen_re_5.0'] == 1:
-                disturbances_right = 5
+                atelectasis_right = 5
             else:
-                disturbances_right = 0
+                atelectasis_right = 0
 
             if row['Belstörungen_li_1.0'] == 1:
-                disturbances_left = 1
+                atelectasis_left = 1
             elif row['Belstörungen_li_2.0'] == 1:
-                disturbances_left = 2
+                atelectasis_left = 2
             elif row['Belstörungen_li_3.0'] == 1:
-                disturbances_left = 3
+                atelectasis_left = 3
             elif row['Belstörungen_li_4.0'] == 1:
-                disturbances_left = 4
+                atelectasis_left = 4
             elif row['Belstörungen_li_5.0'] == 1:
-                disturbances_left = 5
+                atelectasis_left = 5
             else:
-                disturbances_left = 0
+                atelectasis_left = 0
 
             if row['Pneumothorax_re_1.0'] == 1:
                 pneumothorax_right = 1
@@ -980,10 +980,10 @@ class csv_summarizer():
 
             tempp = pd.DataFrame([[row['image_id'], row['split'], row['birth_date'], row['examination_date'], row['StudyTime'],
                                             row['PatientSex'], row['ExposureinuAs'], cardiomegaly, congestion, pleural_effusion_right, pleural_effusion_left,
-                                   pneumonic_infiltrates_right, pneumonic_infiltrates_left, disturbances_right, disturbances_left, pneumothorax_right, pneumothorax_left, row['subject_id']]],
+                                   pneumonic_infiltrates_right, pneumonic_infiltrates_left, atelectasis_right, atelectasis_left, pneumothorax_right, pneumothorax_left, row['subject_id']]],
                                  columns=['image_id', 'split', 'birth_date', 'examination_date', 'study_time',
                                             'patient_sex', 'ExposureinuAs', 'cardiomegaly', 'congestion', 'pleural_effusion_right', 'pleural_effusion_left',
-                     'pneumonic_infiltrates_right', 'pneumonic_infiltrates_left',	'disturbances_right',	'disturbances_left', 'pneumothorax_right', 'pneumothorax_left', 'subject_id'])
+                     'pneumonic_infiltrates_right', 'pneumonic_infiltrates_left',	'atelectasis_right',	'atelectasis_left', 'pneumothorax_right', 'pneumothorax_left', 'subject_id'])
             final_df = final_df.append(tempp)
             final_df.to_csv(output_path, sep=',', index=False)
 
@@ -1324,10 +1324,10 @@ class csv_reducer():
 
         # initiating the df
         final_df = pd.DataFrame(columns=['image_id', 'split', 'subset', 'ExposureinuAs', 'cardiomegaly', 'congestion', 'pleural_effusion_right', 'pleural_effusion_left',
-                     'pneumonic_infiltrates_right', 'pneumonic_infiltrates_left', 'disturbances_right',	'disturbances_left', 'pneumothorax_right', 'pneumothorax_left', 'subject_id'])
+                     'pneumonic_infiltrates_right', 'pneumonic_infiltrates_left', 'atelectasis_right',	'atelectasis_left', 'pneumothorax_right', 'pneumothorax_left', 'subject_id'])
         # final_df = pd.DataFrame(columns=['image_id', 'split', 'subset', 'birth_date', 'examination_date', 'study_time',
         #                                     'patient_sex', 'ExposureinuAs', 'cardiomegaly', 'congestion', 'pleural_effusion_right', 'pleural_effusion_left',
-        #              'pneumonic_infiltrates_right', 'pneumonic_infiltrates_left', 'disturbances_right',	'disturbances_left', 'pneumothorax_right', 'pneumothorax_left', 'subject_id'])
+        #              'pneumonic_infiltrates_right', 'pneumonic_infiltrates_left', 'atelectasis_right',	'atelectasis_left', 'pneumothorax_right', 'pneumothorax_left', 'subject_id'])
 
         org_df_path = '/home/soroosh/Documents/datasets/XRay/UKA/chest_radiograph/final_UKA_master_list.csv'
         output_df_path = '/home/soroosh/Documents/datasets/XRay/UKA/chest_radiograph/5000_final_UKA_master_list.csv'
@@ -1357,7 +1357,7 @@ class csv_reducer():
 
         # initiating the df
         final_df = pd.DataFrame(columns=['image_id', 'split', 'subset', 'ExposureinuAs', 'cardiomegaly', 'congestion', 'pleural_effusion_right', 'pleural_effusion_left',
-                     'pneumonic_infiltrates_right', 'pneumonic_infiltrates_left', 'disturbances_right',	'disturbances_left', 'pneumothorax_right', 'pneumothorax_left', 'subject_id'])
+                     'pneumonic_infiltrates_right', 'pneumonic_infiltrates_left', 'atelectasis_right',	'atelectasis_left', 'pneumothorax_right', 'pneumothorax_left', 'subject_id'])
 
         org_df_path = '/home/soroosh/Documents/datasets/XRay/UKA/chest_radiograph/final_UKA_master_list.csv'
         output_df_path = '/home/soroosh/Documents/datasets/XRay/UKA/chest_radiograph/new_final_UKA_master_list.csv'
