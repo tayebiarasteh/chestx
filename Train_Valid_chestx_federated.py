@@ -17,6 +17,7 @@ from tqdm import tqdm
 import torchmetrics
 import syft as sy
 from sklearn import metrics
+import matplotlib.pyplot as plt
 
 from config.serde import read_config, write_config
 
@@ -465,7 +466,7 @@ class Training_federated:
                 self.savings_prints(iteration_hours, iteration_mins, iteration_secs, total_hours, total_mins,
                                     total_secs, train_loss, total_time, total_overhead_time, total_datacopy_time,
                                     valid_loss=valid_loss, valid_F1=valid_F1, valid_AUC=valid_AUC, valid_accuracy=valid_accuracy,
-                                    valid_specifity=valid_specifity, valid_sensitivity=valid_sensitivity, valid_precision=valid_precision, optimal_thresholds=optimal_threshold)
+                                    valid_specificity=valid_specifity, valid_sensitivity=valid_sensitivity, valid_precision=valid_precision, optimal_thresholds=optimal_threshold)
 
 
 
@@ -727,7 +728,7 @@ class Training_federated:
                 self.savings_prints(iteration_hours, iteration_mins, iteration_secs, total_hours, total_mins,
                                     total_secs, train_loss, total_time, total_overhead_time, total_datacopy_time,
                                     valid_loss=valid_loss, valid_F1=valid_F1, valid_AUC=valid_AUC, valid_accuracy=valid_accuracy,
-                                    valid_specifity=valid_specifity, valid_sensitivity=valid_sensitivity, valid_precision=valid_precision, optimal_thresholds=optimal_threshold)
+                                    valid_specificity=valid_specifity, valid_sensitivity=valid_sensitivity, valid_precision=valid_precision, optimal_thresholds=optimal_threshold)
 
 
 
@@ -822,7 +823,6 @@ class Training_federated:
 
             with torch.no_grad():
                 output = model(image)
-                # loss = self.loss_function(output, label.float())  # for multilabel
 
                 output_sigmoided = F.sigmoid(output)
 
@@ -845,6 +845,13 @@ class Training_federated:
             fpr, tpr, thresholds = metrics.roc_curve(labels_cache[:, idx], preds_with_sigmoid_cache[:, idx], pos_label=1)
             optimal_idx = np.argmax(tpr - fpr)
             optimal_threshold[idx] = thresholds[optimal_idx]
+
+            # metrics.RocCurveDisplay(fpr=fpr, tpr=tpr).plot()
+            # plt.annotate('working point', xy=(fpr[optimal_idx], tpr[optimal_idx]), xycoords='data',
+            #              arrowprops=dict(facecolor='red'))
+            # plt.grid()
+            # plt.title(self.label_names[idx] + f' | threshold: {optimal_threshold[idx]:.4f} | epoch: {self.epoch}')
+            # plt.savefig(self.label_names[idx] + '.png')
 
         predicted_labels = (preds_with_sigmoid_cache > optimal_threshold).astype(np.int32)
 
@@ -906,7 +913,7 @@ class Training_federated:
 
     def savings_prints(self, iteration_hours, iteration_mins, iteration_secs, total_hours,
                        total_mins, total_secs, train_loss, total_time, total_overhead_time=0, total_datacopy_time=0, valid_loss=None, valid_F1=None, valid_AUC=None, valid_accuracy=None,
-                       valid_specifity=None, valid_sensitivity=None, valid_precision=None, optimal_thresholds=None):
+                       valid_specificity=None, valid_sensitivity=None, valid_precision=None, optimal_thresholds=None):
         """Saving the model weights, checkpoint, information,
         and training and validation loss and evaluation statistics.
 
@@ -968,20 +975,28 @@ class Training_federated:
                       f'total time: {total_hours}h {total_mins}m {total_secs:.2f}s | communication overhead time so far: {overhead_hours}h {overhead_mins}m {overhead_secs:.2f}s')
                 print(f'\n\tTrain loss: {train_loss:.4f}')
 
-                print(f'\t Val. loss: {valid_loss[idx]:.4f} | Average F1: {valid_F1[idx].mean() * 100:.2f}% | Average AUROC: {valid_AUC[idx].mean() * 100:.2f}% | Average accuracy: {valid_accuracy[idx].mean() * 100:.2f}%'
-                f' | Average specifity: {valid_specifity[idx].mean() * 100:.2f}%'
-                f' | Average recall (sensitivity): {valid_sensitivity[idx].mean() * 100:.2f}% | Average precision: {valid_precision[idx].mean() * 100:.2f}%\n')
+                print(f'\t Val. loss: {valid_loss[idx]:.4f} | avg AUROC: {valid_AUC[idx].mean() * 100:.2f}% | avg accuracy: {valid_accuracy[idx].mean() * 100:.2f}%'
+                f' | avg specificity: {valid_specificity[idx].mean() * 100:.2f}%'
+                f' | avg recall (sensitivity): {valid_sensitivity[idx].mean() * 100:.2f}% | avg F1: {valid_F1[idx].mean() * 100:.2f}%n')
 
-                print('Individual F1 scores:')
-                for i, pathology in enumerate(self.label_names_loader[idx]):
-                    print(f'\t{pathology}: {valid_F1[idx][i] * 100:.2f}% ; threshold: {optimal_thresholds[idx]:.4f}')
-
-                print('\nIndividual AUROC:')
+                print('Individual AUROC:')
                 for i, pathology in enumerate(self.label_names_loader[idx]):
                     try:
                         print(f'\t{pathology}: {valid_AUC[idx][i] * 100:.2f}%')
                     except:
                         print(f'\t{pathology}: {valid_AUC[idx] * 100:.2f}%')
+
+                print('\nIndividual accuracy:')
+                for i, pathology in enumerate(self.label_names_loader[idx]):
+                    print(f'\t{pathology}: {valid_accuracy[idx][i] * 100:.2f}% ; threshold: {optimal_thresholds[idx]:.4f}')
+
+                print('\nIndividual sensitivity:')
+                for i, pathology in enumerate(self.label_names_loader[idx]):
+                    print(f'\t{pathology}: {valid_sensitivity[idx][i] * 100:.2f}%')
+
+                print('\nIndividual specificity:')
+                for i, pathology in enumerate(self.label_names_loader[idx]):
+                    print(f'\t{pathology}: {valid_specificity[idx][i] * 100:.2f}%')
 
                 # saving the training and validation stats
                 msg = f'\n\n----------------------------------------------------------------------------------------\n' \
@@ -991,20 +1006,13 @@ class Training_federated:
                       f' | total time - copy time: {noncopy_hours}h {noncopy_mins}m {noncopy_secs:.2f}s' \
                       f' | total time - copy time - overhead time: {netto_hours}h {netto_mins}m {netto_secs:.2f}s' \
                       f'\n\n\tTrain loss: {train_loss:.4f} | ' \
-                       f'Val. loss: {valid_loss[idx]:.4f} | Average F1: {valid_F1[idx].mean() * 100:.2f}% | Average AUROC: {valid_AUC[idx].mean() * 100:.2f}% | Average accuracy: {valid_accuracy[idx].mean() * 100:.2f}% ' \
-                       f' | Average specifity: {valid_specifity[idx].mean() * 100:.2f}%' \
-                       f' | Average recall (sensitivity): {valid_sensitivity[idx].mean() * 100:.2f}% | Average precision: {valid_precision[idx].mean() * 100:.2f}%\n\n'
+                       f'Val. loss: {valid_loss[idx]:.4f} | avg AUROC: {valid_AUC[idx].mean() * 100:.2f}% | avg accuracy: {valid_accuracy[idx].mean() * 100:.2f}% ' \
+                       f' | avg specificity: {valid_specificity[idx].mean() * 100:.2f}%' \
+                       f' | avg recall (sensitivity): {valid_sensitivity[idx].mean() * 100:.2f}% | avg precision: {valid_precision[idx].mean() * 100:.2f}% | avg F1: {valid_F1[idx].mean() * 100:.2f}%\n\n'
                 with open(os.path.join(self.params['target_dir'], self.params['stat_log_path']) + '/Stats_' + str(idx), 'a') as f:
                     f.write(msg)
 
-                msg = f'Individual F1 scores:\n'
-                with open(os.path.join(self.params['target_dir'], self.params['stat_log_path']) + '/Stats_' + str(idx), 'a') as f:
-                    f.write(msg)
-                for i, pathology in enumerate(self.label_names_loader[idx]):
-                    msg = f'{pathology}: {valid_F1[idx][i] * 100:.2f}% ; threshold: {optimal_thresholds[idx]:.4f} | '
-                    with open(os.path.join(self.params['target_dir'], self.params['stat_log_path']) + '/Stats_' + str(idx), 'a') as f:
-                        f.write(msg)
-                msg = f'\n\nIndividual AUROC:\n'
+                msg = f'\Individual AUROC:\n'
                 with open(os.path.join(self.params['target_dir'], self.params['stat_log_path']) + '/Stats_' + str(idx), 'a') as f:
                     f.write(msg)
                 for i, pathology in enumerate(self.label_names_loader[idx]):
@@ -1012,6 +1020,30 @@ class Training_federated:
                         msg = f'{pathology}: {valid_AUC[idx][i] * 100:.2f}% | '
                     except:
                         msg = f'{pathology}: {valid_AUC[idx] * 100:.2f}% | '
+                    with open(os.path.join(self.params['target_dir'], self.params['stat_log_path']) + '/Stats_' + str(idx), 'a') as f:
+                        f.write(msg)
+
+                msg = f'\n\nIndividual accuracy:\n'
+                with open(os.path.join(self.params['target_dir'], self.params['stat_log_path']) + '/Stats_' + str(idx), 'a') as f:
+                    f.write(msg)
+                for i, pathology in enumerate(self.label_names_loader[idx]):
+                    msg = f'{pathology}: {valid_accuracy[idx][i] * 100:.2f}% ; threshold: {optimal_thresholds[idx]:.4f} | '
+                    with open(os.path.join(self.params['target_dir'], self.params['stat_log_path']) + '/Stats_' + str(idx), 'a') as f:
+                        f.write(msg)
+
+                msg = f'\n\nIndividual specificity:\n'
+                with open(os.path.join(self.params['target_dir'], self.params['stat_log_path']) + '/Stats_' + str(idx), 'a') as f:
+                    f.write(msg)
+                for i, pathology in enumerate(self.label_names_loader[idx]):
+                    msg = f'{pathology}: {valid_specificity[idx][i] * 100:.2f}%'
+                    with open(os.path.join(self.params['target_dir'], self.params['stat_log_path']) + '/Stats_' + str(idx), 'a') as f:
+                        f.write(msg)
+
+                msg = f'\n\nIndividual sensitivity:\n'
+                with open(os.path.join(self.params['target_dir'], self.params['stat_log_path']) + '/Stats_' + str(idx), 'a') as f:
+                    f.write(msg)
+                for i, pathology in enumerate(self.label_names_loader[idx]):
+                    msg = f'{pathology}: {valid_sensitivity[idx][i] * 100:.2f}%'
                     with open(os.path.join(self.params['target_dir'], self.params['stat_log_path']) + '/Stats_' + str(idx), 'a') as f:
                         f.write(msg)
             except:
