@@ -445,7 +445,7 @@ class Training_federated:
                 valid_precision = []
 
                 for idx in range(len(valid_loader)):
-                    epoch_loss, average_f1_score, average_AUROC, average_accuracy, average_specifity, average_sensitivity, average_precision = self.valid_epoch(
+                    epoch_loss, average_f1_score, average_AUROC, average_accuracy, average_specifity, average_sensitivity, average_precision, optimal_threshold = self.valid_epoch(
                         valid_loader[idx], self.model_loader[idx], self.loss_function_loader[idx])
                     valid_loss.append(epoch_loss)
                     valid_F1.append(average_f1_score)
@@ -465,7 +465,7 @@ class Training_federated:
                 self.savings_prints(iteration_hours, iteration_mins, iteration_secs, total_hours, total_mins,
                                     total_secs, train_loss, total_time, total_overhead_time, total_datacopy_time,
                                     valid_loss=valid_loss, valid_F1=valid_F1, valid_AUC=valid_AUC, valid_accuracy=valid_accuracy,
-                                    valid_specifity=valid_specifity, valid_sensitivity=valid_sensitivity, valid_precision=valid_precision )
+                                    valid_specifity=valid_specifity, valid_sensitivity=valid_sensitivity, valid_precision=valid_precision, optimal_thresholds=optimal_threshold)
 
 
 
@@ -707,7 +707,7 @@ class Training_federated:
                 valid_precision = []
 
                 for idx in range(len(valid_loader)):
-                    epoch_loss, average_f1_score, average_AUROC, average_accuracy, average_specifity, average_sensitivity, average_precision = self.valid_epoch(
+                    epoch_loss, average_f1_score, average_AUROC, average_accuracy, average_specifity, average_sensitivity, average_precision, optimal_threshold = self.valid_epoch(
                         valid_loader[idx], self.model_loader[idx], self.loss_function_loader[idx])
                     valid_loss.append(epoch_loss)
                     valid_F1.append(average_f1_score)
@@ -727,7 +727,7 @@ class Training_federated:
                 self.savings_prints(iteration_hours, iteration_mins, iteration_secs, total_hours, total_mins,
                                     total_secs, train_loss, total_time, total_overhead_time, total_datacopy_time,
                                     valid_loss=valid_loss, valid_F1=valid_F1, valid_AUC=valid_AUC, valid_accuracy=valid_accuracy,
-                                    valid_specifity=valid_specifity, valid_sensitivity=valid_sensitivity, valid_precision=valid_precision )
+                                    valid_specifity=valid_specifity, valid_sensitivity=valid_sensitivity, valid_precision=valid_precision, optimal_thresholds=optimal_threshold)
 
 
 
@@ -801,7 +801,6 @@ class Training_federated:
         -------
         """
         model.eval()
-        # total_loss = 0.0
         total_f1_score = []
         total_AUROC = []
         total_accuracy = []
@@ -810,8 +809,8 @@ class Training_federated:
         total_precision_score = []
 
         # initializing the caches
-        logits_with_sigmoid_cache = torch.Tensor([]).to(self.device)
-        logits_no_sigmoid_cache = torch.Tensor([]).to(self.device)
+        preds_with_sigmoid_cache = torch.Tensor([]).to(self.device)
+        logits_for_loss_cache = torch.Tensor([]).to(self.device)
         labels_cache = torch.Tensor([]).to(self.device)
 
 
@@ -826,24 +825,28 @@ class Training_federated:
                 # loss = self.loss_function(output, label.float())  # for multilabel
 
                 output_sigmoided = F.sigmoid(output)
-                output_sigmoided = (output_sigmoided > 0.5).float()
 
                 # saving the logits and labels of this batch
-                logits_with_sigmoid_cache = torch.cat((logits_with_sigmoid_cache, output_sigmoided))
-                logits_no_sigmoid_cache = torch.cat((logits_no_sigmoid_cache, output))
+                preds_with_sigmoid_cache = torch.cat((preds_with_sigmoid_cache, output_sigmoided))
+                logits_for_loss_cache = torch.cat((logits_for_loss_cache, output))
                 labels_cache = torch.cat((labels_cache, label))
-
-            # total_loss += loss.item()
 
         ############ Evaluation metric calculation ########
 
-        loss = loss_function(logits_no_sigmoid_cache.to(self.device), labels_cache.to(self.device))
+        loss = loss_function(logits_for_loss_cache.to(self.device), labels_cache.to(self.device))
         epoch_loss = loss.item()
 
-        # Metrics calculation (macro) over the whole set
-        logits_with_sigmoid_cache = logits_with_sigmoid_cache.int().cpu().numpy()
-        logits_no_sigmoid_cache = logits_no_sigmoid_cache.int().cpu().numpy()
+        # threshold finding for metrics calculation
+        preds_with_sigmoid_cache = preds_with_sigmoid_cache.cpu().numpy()
         labels_cache = labels_cache.int().cpu().numpy()
+        optimal_threshold = np.zeros(labels_cache.shape[1])
+
+        for idx in range(labels_cache.shape[1]):
+            fpr, tpr, thresholds = metrics.roc_curve(labels_cache[:, idx], preds_with_sigmoid_cache[:, idx], pos_label=1)
+            optimal_idx = np.argmax(tpr - fpr)
+            optimal_threshold[idx] = thresholds[optimal_idx]
+
+        predicted_labels = (preds_with_sigmoid_cache > optimal_threshold).astype(np.int32)
 
         F1_disease = []
         accuracy_disease = []
@@ -852,7 +855,7 @@ class Training_federated:
         precision_disease = []
 
         if labels_cache.shape[-1] == 1:
-            confusion = metrics.confusion_matrix(labels_cache, logits_with_sigmoid_cache)
+            confusion = metrics.confusion_matrix(labels_cache, predicted_labels)
 
             TN = confusion[0, 0]
             FP = confusion[0, 1]
@@ -865,7 +868,7 @@ class Training_federated:
             precision_disease.append(TP / (TP + FP + epsilon))
 
         else:
-            confusion = metrics.multilabel_confusion_matrix(labels_cache, logits_with_sigmoid_cache)
+            confusion = metrics.multilabel_confusion_matrix(labels_cache, predicted_labels)
 
             for idx, disease in enumerate(confusion):
                 TN = disease[0, 0]
@@ -881,7 +884,7 @@ class Training_federated:
         # Macro averaging
         total_f1_score.append(np.stack(F1_disease))
         try:
-            total_AUROC.append(metrics.roc_auc_score(labels_cache, logits_no_sigmoid_cache, average=None))
+            total_AUROC.append(metrics.roc_auc_score(labels_cache, preds_with_sigmoid_cache, average=None))
         except:
             print('hi')
             pass
@@ -890,7 +893,6 @@ class Training_federated:
         total_sensitivity_score.append(np.stack(sensitivity_disease))
         total_precision_score.append(np.stack(precision_disease))
 
-        # average_loss = total_loss / len(valid_loader)
         average_f1_score = np.stack(total_f1_score).mean(0)
         average_AUROC = np.stack(total_AUROC).mean(0)
         average_accuracy = np.stack(total_accuracy).mean(0)
@@ -898,13 +900,13 @@ class Training_federated:
         average_sensitivity = np.stack(total_sensitivity_score).mean(0)
         average_precision = np.stack(total_precision_score).mean(0)
 
-        return epoch_loss, average_f1_score, average_AUROC, average_accuracy, average_specifity, average_sensitivity, average_precision
+        return epoch_loss, average_f1_score, average_AUROC, average_accuracy, average_specifity, average_sensitivity, average_precision, optimal_threshold
 
 
 
     def savings_prints(self, iteration_hours, iteration_mins, iteration_secs, total_hours,
                        total_mins, total_secs, train_loss, total_time, total_overhead_time=0, total_datacopy_time=0, valid_loss=None, valid_F1=None, valid_AUC=None, valid_accuracy=None,
-                       valid_specifity=None, valid_sensitivity=None, valid_precision=None):
+                       valid_specifity=None, valid_sensitivity=None, valid_precision=None, optimal_thresholds=None):
         """Saving the model weights, checkpoint, information,
         and training and validation loss and evaluation statistics.
 
@@ -972,7 +974,7 @@ class Training_federated:
 
                 print('Individual F1 scores:')
                 for i, pathology in enumerate(self.label_names_loader[idx]):
-                    print(f'\t{pathology}: {valid_F1[idx][i] * 100:.2f}%')
+                    print(f'\t{pathology}: {valid_F1[idx][i] * 100:.2f}% ; threshold: {optimal_thresholds[idx]:.4f}')
 
                 print('\nIndividual AUROC:')
                 for i, pathology in enumerate(self.label_names_loader[idx]):
@@ -999,7 +1001,7 @@ class Training_federated:
                 with open(os.path.join(self.params['target_dir'], self.params['stat_log_path']) + '/Stats_' + str(idx), 'a') as f:
                     f.write(msg)
                 for i, pathology in enumerate(self.label_names_loader[idx]):
-                    msg = f'{pathology}: {valid_F1[idx][i] * 100:.2f}% | '
+                    msg = f'{pathology}: {valid_F1[idx][i] * 100:.2f}% ; threshold: {optimal_thresholds[idx]:.4f} | '
                     with open(os.path.join(self.params['target_dir'], self.params['stat_log_path']) + '/Stats_' + str(idx), 'a') as f:
                         f.write(msg)
                 msg = f'\n\nIndividual AUROC:\n'
