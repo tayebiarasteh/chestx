@@ -67,7 +67,7 @@ class vindr_data_loader_2D(Dataset):
         self.file_path_list = list(self.subset_df['image_id'])
         # self.chosen_labels = ['No finding', 'Aortic enlargement', 'Pleural thickening', 'Cardiomegaly', 'Pleural effusion',
         #                       'Pneumothorax', 'Atelectasis', 'Consolidation'] # 8 labels
-        # self.chosen_labels = ['No finding', 'Aortic enlargement', 'Pleural thickening', 'Cardiomegaly', 'Pleural effusion']
+        # self.chosen_labels = ['No finding', 'Aortic enlargement', 'Pleural thickening', 'Cardiomegaly', 'Pleural effusion'] # 5 labels
         # self.chosen_labels = ['Aortic enlargement', 'Cardiomegaly', 'Mediastinal shift', 'No finding'] # green labels
         self.chosen_labels = ['Cardiomegaly', 'Pleural effusion'] # 2 labels
         # self.chosen_labels = ['Pleural effusion']
@@ -478,9 +478,9 @@ class UKA_data_loader_2D(Dataset):
         self.augment = augment
         self.file_base_dir = self.params['file_path']
         self.file_base_dir = os.path.join(self.file_base_dir, 'UKA/chest_radiograph')
-        self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "multitasking_project_less_test/final_UKA_master_list.csv"), sep=',')
-        # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "multitasking_project_less_test/5000_final_UKA_master_list.csv"), sep=',')
-        # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "multitasking_project_less_test/2000_final_UKA_master_list.csv"), sep=',')
+        # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "multitasking_project_less_test/final_multitask_UKA_master_list.csv"), sep=',')
+        self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "multitasking_project_less_test/5000_final_multitask_UKA_master_list.csv"), sep=',')
+        # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "multitasking_project_less_test/2000_final_multitask_UKA_master_list.csv"), sep=',')
 
         if mode == 'train':
             self.subset_df = self.org_df[self.org_df['split'] == 'train']

@@ -213,7 +213,7 @@ class Training_single_head:
                     iteration_hours, iteration_mins, iteration_secs = self.time_duration(start_time, end_time)
                     total_hours, total_mins, total_secs = self.time_duration(total_start_time, end_time)
 
-                    self.calculate_tb_stats(valid_loss=valid_loss, valid_F1=valid_F1, valid_AUC=valid_AUC, valid_accuracy=valid_accuracy, valid_specifity=valid_specifity,
+                    self.calculate_tb_stats(valid_loss=valid_loss, valid_F1=valid_F1, valid_AUC=valid_AUC, valid_accuracy=valid_accuracy, valid_specificity=valid_specifity,
                                             valid_sensitivity=valid_sensitivity, valid_precision=valid_precision)
                     self.savings_prints(iteration_hours, iteration_mins, iteration_secs, total_hours,
                                         total_mins, total_secs, train_loss, total_time, valid_loss=valid_loss, valid_F1=valid_F1,
@@ -490,7 +490,7 @@ class Training_single_head:
 
 
 
-    def calculate_tb_stats(self, valid_loss=None, valid_F1=None, valid_AUC=None, valid_accuracy=None, valid_specifity=None, valid_sensitivity=None, valid_precision=None):
+    def calculate_tb_stats(self, valid_loss=None, valid_F1=None, valid_AUC=None, valid_accuracy=None, valid_specificity=None, valid_sensitivity=None, valid_precision=None):
         """Adds the evaluation metrics and loss values to the tensorboard.
 
         Parameters
@@ -501,7 +501,7 @@ class Training_single_head:
         valid_sensitivity: float
             validation sensitivity of the model
 
-        valid_specifity: float
+        valid_specificity: float
             validation specifity of the model
 
         valid_loss: float
@@ -516,6 +516,6 @@ class Training_single_head:
             #     self.writer.add_scalar('valid_F1_' + pathology, valid_F1[idx], self.epoch)
 
             self.writer.add_scalar('Valid_avg_accuracy', valid_accuracy.mean(), self.epoch)
-            self.writer.add_scalar('Valid_avg_specifity', valid_specifity.mean(), self.epoch)
-            self.writer.add_scalar('Valid_avg_precision', valid_precision.mean(), self.epoch)
+            self.writer.add_scalar('Valid_avg_specificity', valid_specificity.mean(), self.epoch)
+            # self.writer.add_scalar('Valid_avg_precision', valid_precision.mean(), self.epoch)
             self.writer.add_scalar('Valid_avg_recall_sensitivity', valid_sensitivity.mean(), self.epoch)

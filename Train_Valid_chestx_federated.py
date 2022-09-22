@@ -15,16 +15,17 @@ import torch
 import torch.nn.functional as F
 from tqdm import tqdm
 import torchmetrics
-import syft as sy
+# import syft as sy
 from sklearn import metrics
 import matplotlib.pyplot as plt
+import copy
 
 from config.serde import read_config, write_config
 
 import warnings
 warnings.filterwarnings('ignore')
 epsilon = 1e-15
-hook = sy.TorchHook(torch)
+# hook = sy.TorchHook(torch)
 
 
 
@@ -185,18 +186,14 @@ class Training_federated:
             self.params['target_dir'], self.params['tb_logs_path'])), purge_step=self.epoch + 1)
 
 
-
     def training_setup_federated(self, train_loader, valid_loader=None, only_one_batch=False, aggregationweight=[1, 1, 1], HE=False, precision_fractional=15):
         """
-
         Parameters
         ----------
         train_loader
         valid_loader
-
         HE: bool
             if we want to have homomorphic encryption when aggregating the weights
-
         precision_fractional: int
             number of decimal points we want to have when encoding decimal to binary for HE
             for lossless encoding: encoded_num > 2 ** 63 (if the original number is long)
@@ -469,6 +466,148 @@ class Training_federated:
                                     valid_specificity=valid_specifity, valid_sensitivity=valid_sensitivity, valid_precision=valid_precision, optimal_thresholds=optimal_threshold)
 
 
+    def training_setup_federated_nosyft(self, train_loader, valid_loader=None, only_one_batch=False, aggregationweight=[1, 1, 1]):
+        """
+        Parameters
+        ----------
+        train_loader
+        valid_loader
+        """
+        self.params = read_config(self.cfg_path)
+
+        ############# copying model state dict names
+        self.backbone_state_dict_list = []
+        for name in self.model_loader[0].state_dict():
+            if 'fc.' or 'head.' in name:
+                continue
+            self.backbone_state_dict_list.append(name)
+
+        model_state_dict_list_loader = []
+        for idx in range(len(self.model_loader)):
+            model_state_dict_list = []
+            for name in self.model_loader[idx].state_dict():
+                model_state_dict_list.append(name)
+            model_state_dict_list_loader.append(model_state_dict_list)
+        ############# [done] copying model state dict names
+
+        total_start_time = time.time()
+        total_overhead_time = 0
+        total_datacopy_time = 0
+
+        for epoch in range(self.num_epochs - self.epoch):
+            self.epoch += 1
+
+            start_time = time.time()
+            epoch_overhead_time = 0
+            epoch_datacopy_time = 0
+
+            new_model_client_list = []
+            loss_client_list = []
+
+            for idx in range(len(train_loader)):
+                communication_start_time = time.time()
+                model = copy.deepcopy(self.model_loader[idx])
+                total_overhead_time += (time.time() - communication_start_time)
+                epoch_overhead_time += (time.time() - communication_start_time)
+                optimizer_model = torch.optim.Adam(model.parameters(), lr=float(self.params['Network']['lr']),
+                                                   weight_decay=float(self.params['Network']['weight_decay']),
+                                                   amsgrad=self.params['Network']['amsgrad'])
+
+                if only_one_batch:
+                    new_model_client, loss_client, overhead = self.train_batch_federated_nosyft(train_loader[idx], optimizer_model, model, self.loss_function_loader[idx])
+                else:
+                    new_model_client, loss_client, overhead = self.train_epoch_federated(train_loader[idx], optimizer_model, model, self.loss_function_loader[idx])
+                total_datacopy_time += overhead
+                epoch_datacopy_time += overhead
+                new_model_client_list.append(new_model_client)
+                loss_client_list.append(loss_client)
+
+            communication_start_time = time.time()
+
+            ############# copying backbone state dict weights and biases
+            temp_dict = {}
+            for weightbias in self.backbone_state_dict_list:
+                temp_weight_list = []
+                for idx in range(len(train_loader)):
+                    temp_weight_list.append(new_model_client_list[idx].state_dict()[weightbias] * aggregationweight[idx])
+                temp_dict[weightbias] = (sum(temp_weight_list) / sum(aggregationweight))
+            ############# [done] copying backbone state dict weights and biases
+
+            ############# copying model state dict weights and biases
+            for idx, model_state_dict_list in enumerate(model_state_dict_list_loader):
+
+                temp_dict_model = {}
+                for weightbias in model_state_dict_list:
+                    if 'fc.' or 'head.' in weightbias:
+                        temp_dict_model[weightbias] = new_model_client_list[idx].state_dict()[weightbias]
+                    else:
+                        temp_dict_model[weightbias] = temp_dict[weightbias]
+                self.model_loader[idx].load_state_dict(temp_dict_model)
+
+            ############# [done] copying model state dict weights and biases
+
+            total_overhead_time += (time.time() - communication_start_time)
+            epoch_overhead_time += (time.time() - communication_start_time)
+
+            epoch_overhead_hours, epoch_overhead_mins, epoch_overhead_secs = self.time_duration(0, epoch_overhead_time)
+            epoch_datacopy_hours, epoch_datacopy_mins, epoch_datacopy_secs = self.time_duration(0, epoch_datacopy_time)
+            total_datacopy_hours, total_datacopy_mins, total_datacopy_secs = self.time_duration(0, total_datacopy_time)
+
+            # train loss just as an average of client losses
+            train_loss = sum(loss_client_list) / len(loss_client_list)
+
+            # Prints train loss after number of steps specified.
+            end_time = time.time()
+            iteration_hours, iteration_mins, iteration_secs = self.time_duration(start_time, end_time)
+            total_hours, total_mins, total_secs = self.time_duration(total_start_time, end_time)
+
+            print('------------------------------------------------------'
+                  '----------------------------------')
+            print(f'train epoch {self.epoch} | time: {iteration_hours}h {iteration_mins}m {iteration_secs:.2f}s',
+                  f'| total: {total_hours}h {total_mins}m {total_secs:.2f}s | epoch communication overhead time: {epoch_overhead_hours}h {epoch_overhead_mins}m {epoch_overhead_secs:.2f}s '
+                  f'\nepoch data copying time: {epoch_datacopy_hours}h {epoch_datacopy_mins}m {epoch_datacopy_secs:.2f}s '
+                  f'| total data copying time: {total_datacopy_hours}h {total_datacopy_mins}m {total_datacopy_secs:.2f}s\n')
+
+            for idx in range(len(train_loader)):
+                print('loss client{}: {:.3f}'.format((idx + 1), loss_client_list[idx]))
+                self.writer.add_scalar('Train_loss_client' + str(idx + 1), loss_client_list[idx], self.epoch)
+
+            # Validation iteration & calculate metrics
+            if (self.epoch) % (self.params['display_stats_freq']) == 0:
+
+                # saving the model, checkpoint, TensorBoard, etc.
+                valid_loss = []
+                valid_accuracy = []
+                valid_F1 = []
+                valid_AUC = []
+                valid_specifity = []
+                valid_sensitivity = []
+                valid_precision = []
+
+                for idx in range(len(valid_loader)):
+                    epoch_loss, average_f1_score, average_AUROC, average_accuracy, average_specifity, average_sensitivity, average_precision, optimal_threshold = self.valid_epoch(
+                        valid_loader[idx], self.model_loader[idx], self.loss_function_loader[idx])
+                    valid_loss.append(epoch_loss)
+                    valid_F1.append(average_f1_score)
+                    valid_AUC.append(average_AUROC)
+                    valid_accuracy.append(average_accuracy)
+                    valid_specifity.append(average_specifity)
+                    valid_sensitivity.append(average_sensitivity)
+                    valid_precision.append(average_precision)
+
+                    end_time = time.time()
+                    total_time = end_time - total_start_time
+                    iteration_hours, iteration_mins, iteration_secs = self.time_duration(start_time, end_time)
+                    total_hours, total_mins, total_secs = self.time_duration(total_start_time, end_time)
+
+                self.calculate_tb_stats(valid_loss=valid_loss, valid_F1=valid_F1, valid_AUC=valid_AUC, valid_accuracy=valid_accuracy, valid_specificity=valid_specifity,
+                                        valid_sensitivity=valid_sensitivity, valid_precision=valid_precision)
+                self.savings_prints(iteration_hours, iteration_mins, iteration_secs, total_hours, total_mins,
+                                    total_secs, train_loss, total_time, total_overhead_time, total_datacopy_time,
+                                    valid_loss=valid_loss, valid_F1=valid_F1, valid_AUC=valid_AUC, valid_accuracy=valid_accuracy,
+                                    valid_specificity=valid_specifity, valid_sensitivity=valid_sensitivity, valid_precision=valid_precision, optimal_thresholds=optimal_threshold)
+
+
 
     def training_setup_conventional_federated(self, train_loader, valid_loader=None, only_one_batch=False, aggregationweight=[1, 1, 1], HE=False, precision_fractional=15):
         """
@@ -723,8 +862,8 @@ class Training_federated:
                     iteration_hours, iteration_mins, iteration_secs = self.time_duration(start_time, end_time)
                     total_hours, total_mins, total_secs = self.time_duration(total_start_time, end_time)
 
-                self.calculate_tb_stats(valid_loss=valid_loss, valid_F1=valid_F1, valid_AUC=valid_AUC, valid_accuracy=valid_accuracy, valid_specifity=valid_specifity,
-                                            valid_sensitivity=valid_sensitivity, valid_precision=valid_precision)
+                self.calculate_tb_stats(valid_loss=valid_loss, valid_F1=valid_F1, valid_AUC=valid_AUC, valid_accuracy=valid_accuracy, valid_specificity=valid_specifity,
+                                        valid_sensitivity=valid_sensitivity, valid_precision=valid_precision)
                 self.savings_prints(iteration_hours, iteration_mins, iteration_secs, total_hours, total_mins,
                                     total_secs, train_loss, total_time, total_overhead_time, total_datacopy_time,
                                     valid_loss=valid_loss, valid_F1=valid_F1, valid_AUC=valid_AUC, valid_accuracy=valid_accuracy,
@@ -765,7 +904,6 @@ class Training_federated:
         return model, avg_loss.item(), epoch_datacopy
 
 
-
     def train_batch_federated(self, train_loader, optimizer, model, loss_function):
         """Training iteration for only one batch
         """
@@ -791,6 +929,30 @@ class Training_federated:
             optimizer.step()
 
         loss_client = loss_client.get().data
+
+        return model, loss_client.item(), epoch_datacopy
+
+
+    def train_batch_federated_nosyft(self, train_loader, optimizer, model, loss_function):
+        """Training iteration for only one batch
+        """
+
+        model.train()
+        image, label = train_loader.provide_mixed()
+
+        communication_start_time = time.time()
+        epoch_datacopy = (time.time() - communication_start_time)
+        image = image.to(self.device)
+        label = label.to(self.device)
+
+        optimizer.zero_grad()
+
+        with torch.set_grad_enabled(True):
+
+            output = model(image)
+            loss_client = loss_function(output, label)
+            loss_client.backward()
+            optimizer.step()
 
         return model, loss_client.item(), epoch_datacopy
 
@@ -1051,20 +1213,20 @@ class Training_federated:
 
 
 
-    def calculate_tb_stats(self, valid_loss=None, valid_F1=None, valid_AUC=None, valid_accuracy=None, valid_specifity=None, valid_sensitivity=None, valid_precision=None):
+    def calculate_tb_stats(self, valid_loss=None, valid_F1=None, valid_AUC=None, valid_accuracy=None, valid_specificity=None, valid_sensitivity=None, valid_precision=None):
         """Adds the evaluation metrics and loss values to the tensorboard.
 
         """
         for idx in range(len(valid_loss)):
 
             self.writer.add_scalar('Valid_loss_model_' + str(idx), valid_loss[idx], self.epoch)
-            self.writer.add_scalar('valid_avg_F1_model_' + str(idx), valid_F1[idx].mean(), self.epoch)
+            # self.writer.add_scalar('valid_avg_F1_model_' + str(idx), valid_F1[idx].mean(), self.epoch)
             self.writer.add_scalar('Valid_avg_AUROC_model_' + str(idx), valid_AUC[idx].mean(), self.epoch)
 
             # for i, pathology in enumerate(self.label_names_loader[idx]):
             #     self.writer.add_scalar('valid_F1_' + pathology, valid_F1[idx][i], self.epoch)
 
             self.writer.add_scalar('Valid_avg_accuracy_model_' + str(idx), valid_accuracy[idx].mean(), self.epoch)
-            # self.writer.add_scalar('Valid_avg_specifity_model_' + str(idx), valid_specifity[idx].mean(), self.epoch)
+            # self.writer.add_scalar('Valid_avg_specificity_model_' + str(idx), valid_specificity[idx].mean(), self.epoch)
             # self.writer.add_scalar('Valid_avg_precision_model_' + str(idx), valid_precision[idx].mean(), self.epoch)
             # self.writer.add_scalar('Valid_avg_recall_sensitivity_model_' + str(idx), valid_sensitivity[idx].mean(), self.epoch)

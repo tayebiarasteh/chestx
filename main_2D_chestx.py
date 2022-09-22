@@ -199,7 +199,7 @@ def main_backbone_train_2D_federated_manual_batch(global_config_path="/home/soro
         trainer.load_checkpoint(model_loader=model_loader, optimizer_loader=optimizer_loader, loss_function_loader=loss_function_loader, label_names_loader=label_names_loader, weight_loader=weight_loader)
     else:
         trainer.setup_models(model_loader=model_loader, optimizer_loader=optimizer_loader, loss_function_loader=loss_function_loader, weight_loader=weight_loader)
-    trainer.training_setup_federated(train_loader=train_loader, valid_loader=valid_loader, only_one_batch=True, aggregationweight=aggregationweight, HE=HE, precision_fractional=precision_fractional)
+    trainer.training_setup_federated_nosyft(train_loader=train_loader, valid_loader=valid_loader, only_one_batch=True, aggregationweight=aggregationweight)
 
 
 def main_train_2D_conventional_federated_manual_batch(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
@@ -330,8 +330,8 @@ def main_test_central_2D(global_config_path="/home/soroosh/Documents/Repositorie
     label_names = test_dataset.chosen_labels
 
     # Changeable network parameters
-    # model = load_resnet50_5FC(num_classes=len(weight))
-    model = load_pretrained_model_1FC(num_classes=len(weight), resnet_num=50)
+    model = load_resnet50_5FC(num_classes=len(weight))
+    # model = load_pretrained_model_1FC(num_classes=len(weight), resnet_num=50)
     # model = load_pretrained_timm_model(num_classes=len(weight), model_name='vit_base_patch16_224')
 
     test_loader = torch.utils.data.DataLoader(dataset=test_dataset, batch_size=params['Network']['batch_size'],
@@ -347,17 +347,25 @@ def main_test_central_2D(global_config_path="/home/soroosh/Documents/Repositorie
     print(f'\t experiment: {experiment_name}\n')
     print(f'\t model tested on the {dataset_name} test set\n')
 
-    print(f'\t Average F1: {average_f1_score.mean() * 100:.2f}% | Average AUROC: {average_AUROC.mean() * 100:.2f}% | Average accuracy: {average_accuracy.mean() * 100:.2f}%'
-    f' | Average specifity: {average_specifity.mean() * 100:.2f}%'
-    f' | Average recall (sensitivity): {average_sensitivity.mean() * 100:.2f}% | Average precision: {average_precision.mean() * 100:.2f}%\n')
+    print(f'\t avg AUROC: {average_AUROC.mean() * 100:.2f}% | avg accuracy: {average_accuracy.mean() * 100:.2f}%'
+    f' | avg specificity: {average_specifity.mean() * 100:.2f}%'
+    f' | avg recall (sensitivity): {average_sensitivity.mean() * 100:.2f}% | avg F1: {average_f1_score.mean() * 100:.2f}%\n')
 
-    print('Individual F1 scores:')
-    for idx, pathology in enumerate(predictor.label_names):
-        print(f'\t{pathology}: {average_f1_score[idx] * 100:.2f}%')
-
-    print('\nIndividual AUROC:')
+    print('Individual AUROC:')
     for idx, pathology in enumerate(predictor.label_names):
         print(f'\t{pathology}: {average_AUROC[idx] * 100:.2f}%')
+
+    print('\nIndividual accuracy:')
+    for idx, pathology in enumerate(predictor.label_names):
+        print(f'\t{pathology}: {average_accuracy[idx] * 100:.2f}%')
+
+    print('\nIndividual sensitivity:')
+    for idx, pathology in enumerate(predictor.label_names):
+        print(f'\t{pathology}: {average_sensitivity[idx] * 100:.2f}%')
+
+    print('\nIndividual specificity:')
+    for idx, pathology in enumerate(predictor.label_names):
+        print(f'\t{pathology}: {average_specifity[idx] * 100:.2f}%')
 
     print('------------------------------------------------------'
           '----------------------------------')
@@ -366,25 +374,42 @@ def main_test_central_2D(global_config_path="/home/soroosh/Documents/Repositorie
     msg = f'----------------------------------------------------------------------------------------\n' \
           f'\t experiment: {experiment_name}\n\n' \
           f'\t model tested on the {dataset_name} test set\n\n' \
-          f'Average F1: {average_f1_score.mean() * 100:.2f}% | Average AUROC: {average_AUROC.mean() * 100:.2f}% | Average accuracy: {average_accuracy.mean() * 100:.2f}% ' \
-          f' | Average specifity: {average_specifity.mean() * 100:.2f}%' \
-          f' | Average recall (sensitivity): {average_sensitivity.mean() * 100:.2f}% | Average precision: {average_precision.mean() * 100:.2f}%\n\n'
+          f'avg AUROC: {average_AUROC.mean() * 100:.2f}% | avg accuracy: {average_accuracy.mean() * 100:.2f}% ' \
+          f' | avg specificity: {average_specifity.mean() * 100:.2f}%' \
+          f' | avg recall (sensitivity): {average_sensitivity.mean() * 100:.2f}% | avg precision: {average_precision.mean() * 100:.2f}% | avg F1: {average_f1_score.mean() * 100:.2f}%\n\n'
 
     with open(os.path.join(params['target_dir'], params['stat_log_path']) + '/test_Stats', 'a') as f:
         f.write(msg)
 
-    msg = f'Individual F1 scores:\n'
-    with open(os.path.join(params['target_dir'], params['stat_log_path']) + '/test_Stats', 'a') as f:
-        f.write(msg)
-    for idx, pathology in enumerate(label_names):
-        msg = f'{pathology}: {average_f1_score[idx] * 100:.2f}% | '
-        with open(os.path.join(params['target_dir'], params['stat_log_path']) + '/test_Stats', 'a') as f:
-            f.write(msg)
-    msg = f'\n\nIndividual AUROC:\n'
+    msg = f'Individual AUROC:\n'
     with open(os.path.join(params['target_dir'], params['stat_log_path']) + '/test_Stats', 'a') as f:
         f.write(msg)
     for idx, pathology in enumerate(label_names):
         msg = f'{pathology}: {average_AUROC[idx] * 100:.2f}% | '
+        with open(os.path.join(params['target_dir'], params['stat_log_path']) + '/test_Stats', 'a') as f:
+            f.write(msg)
+
+    msg = f'\n\nIndividual accuracy:\n'
+    with open(os.path.join(params['target_dir'], params['stat_log_path']) + '/test_Stats', 'a') as f:
+        f.write(msg)
+    for idx, pathology in enumerate(label_names):
+        msg = f'{pathology}: {average_accuracy[idx] * 100:.2f}% | '
+        with open(os.path.join(params['target_dir'], params['stat_log_path']) + '/test_Stats', 'a') as f:
+            f.write(msg)
+
+    msg = f'\n\nIndividual sensitivity:\n'
+    with open(os.path.join(params['target_dir'], params['stat_log_path']) + '/test_Stats', 'a') as f:
+        f.write(msg)
+    for idx, pathology in enumerate(label_names):
+        msg = f'{pathology}: {average_sensitivity[idx] * 100:.2f}% | '
+        with open(os.path.join(params['target_dir'], params['stat_log_path']) + '/test_Stats', 'a') as f:
+            f.write(msg)
+
+    msg = f'\n\nIndividual specificity:\n'
+    with open(os.path.join(params['target_dir'], params['stat_log_path']) + '/test_Stats', 'a') as f:
+        f.write(msg)
+    for idx, pathology in enumerate(label_names):
+        msg = f'{pathology}: {average_specifity[idx] * 100:.2f}% | '
         with open(os.path.join(params['target_dir'], params['stat_log_path']) + '/test_Stats', 'a') as f:
             f.write(msg)
 
@@ -528,15 +553,16 @@ def load_pretrained_timm_model(num_classes=2, model_name='vit_base_patch16_224',
 
 
 if __name__ == '__main__':
-    delete_experiment(experiment_name='conventional_federated_3sites_vindrfull_1fc_2labelseach_lr5e5_batch12', global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml")
+    delete_experiment(experiment_name='ttttbatchaggreg_imagenetpretrain_vindr5k_UKAfull_vitb16_224_1fc_2labelseach_lr5e5_batch5', global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml")
     # main_train_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
     #               valid=True, resume=False, augment=True, experiment_name='cxr5k_imagenetpretrain_resnet50_1fc_lr5e5_greenlabels', dataset_name='cxr14', pretrained=True)
 
-    # main_backbone_train_2D_federated_manual_batch(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
-    #               resume=False, augment=True, experiment_name='batchaggreg_imagenetpretrain_vindr5k_UKAfull_vitb16_224_1fc_2labelseach_lr5e5_batch5', dataset_names_list=['vindr', 'UKA'], aggregationweight=[1, 1], pretrained=True)
+    main_backbone_train_2D_federated_manual_batch(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
+                  resume=False, augment=True, experiment_name='ttttbatchaggreg_imagenetpretrain_vindr5k_UKAfull_vitb16_224_1fc_2labelseach_lr5e5_batch5', dataset_names_list=['vindr', 'UKA'], aggregationweight=[1, 1], pretrained=False)
 
-    main_train_2D_conventional_federated_manual_batch(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
-                  resume=False, augment=True, experiment_name='conventional_federated_3sites_vindrfull_1fc_2labelseach_lr5e5_batch12', dataset_names_list=['vindr_site1', 'vindr_site2', 'vindr_site3'], aggregationweight=[1, 1, 1], pretrained=False)
-
+    # main_train_2D_conventional_federated_manual_batch(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
+    #               resume=False, augment=True, experiment_name='conventional_federated_3sites_vindrfull_1fc_2labelseach_lr5e5_batch12', dataset_names_list=['vindr_site1', 'vindr_site2', 'vindr_site3'], aggregationweight=[1, 1, 1], pretrained=False)
+    # main_test_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
+    #                      experiment_name='imagenetpretrain_vindr5k_5fc_resnet50_lr5e5_2labels', dataset_name='vindr')
     # main_single_head_train_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
     #               valid=True, augment=True, experiment_name='batchaggreg_vindr_3sites_each5k_resnet50_1fc_lr5e5_2labels', dataset_name='vindr_site1', model_file_name='epoch8000_model0_trained_model.pth')

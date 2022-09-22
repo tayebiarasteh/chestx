@@ -509,9 +509,9 @@ class UKA_data_loader_2D_manual:
         self.batch_size = batch_size
         self.file_base_dir = self.params['file_path']
         self.file_base_dir = os.path.join(self.file_base_dir, 'UKA/chest_radiograph')
-        self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "multitasking_project_less_test/final_UKA_master_list.csv"), sep=',')
-        # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "multitasking_project_less_test/5000_final_UKA_master_list.csv"), sep=',')
-        # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "multitasking_project_less_test/2000_final_UKA_master_list.csv"), sep=',')
+        # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "multitasking_project_less_test/final_multitask_UKA_master_list.csv"), sep=',')
+        self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "multitasking_project_less_test/5000_final_multitask_UKA_master_list.csv"), sep=',')
+        # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "multitasking_project_less_test/2000_final_multitask_UKA_master_list.csv"), sep=',')
 
         if mode == 'train':
             self.subset_df = self.org_df[self.org_df['split'] == 'train']

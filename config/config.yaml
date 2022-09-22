@@ -1,5 +1,5 @@
 Network:
-  batch_size: 12 # resnet
+  batch_size: 1 # resnet
 #  batch_size: 1 # ViT
   lr: 5e-5 # vindr
 #  lr: 1e-6 # coronahack
@@ -15,12 +15,12 @@ trained_model_name: trained_model.pth
 # changeable items:
 file_path: /home/soroosh/Documents/datasets/XRay/
 target_dir: /home/soroosh/Documents/Repositories_target_files/chestx/
-#network_save_freq: 25 # number of epochs to save
-network_save_freq: 500 # number of epochs to save
-#display_stats_freq: 5 # valid freq is equal to this
-display_stats_freq: 100 # valid freq is equal to this
-#num_epochs: 1000
-num_epochs: 50000
+network_save_freq: 25 # number of epochs to save
+#network_save_freq: 500 # number of epochs to save
+display_stats_freq: 5 # valid freq is equal to this
+#display_stats_freq: 100 # valid freq is equal to this
+num_epochs: 1000
+#num_epochs: 50000
 
 num_epochs_single_head: 10000
 
