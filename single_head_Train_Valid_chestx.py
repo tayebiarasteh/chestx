@@ -476,7 +476,7 @@ class Training_single_head:
             with open(os.path.join(self.params['target_dir'], self.params['Network_single_head']['stat_log_path']) + '/Stats', 'a') as f:
                 f.write(msg)
             for idx, pathology in enumerate(self.label_names):
-                msg = f'{pathology}: {valid_sensitivity[idx] * 100:.2f}%'
+                msg = f'{pathology}: {valid_sensitivity[idx] * 100:.2f}% | '
                 with open(os.path.join(self.params['target_dir'], self.params['Network_single_head']['stat_log_path']) + '/Stats', 'a') as f:
                     f.write(msg)
 
@@ -484,7 +484,7 @@ class Training_single_head:
             with open(os.path.join(self.params['target_dir'], self.params['Network_single_head']['stat_log_path']) + '/Stats', 'a') as f:
                 f.write(msg)
             for idx, pathology in enumerate(self.label_names):
-                msg = f'{pathology}: {valid_specificity[idx] * 100:.2f}%'
+                msg = f'{pathology}: {valid_specificity[idx] * 100:.2f}% | '
                 with open(os.path.join(self.params['target_dir'], self.params['Network_single_head']['stat_log_path']) + '/Stats', 'a') as f:
                     f.write(msg)
 

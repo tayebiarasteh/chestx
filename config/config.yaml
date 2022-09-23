@@ -1,5 +1,5 @@
 Network:
-  batch_size: 1 # resnet
+  batch_size: 8 # resnet
 #  batch_size: 1 # ViT
   lr: 5e-5 # vindr
 #  lr: 1e-6 # coronahack

@@ -611,63 +611,12 @@ class Training_federated:
 
     def training_setup_conventional_federated(self, train_loader, valid_loader=None, only_one_batch=False, aggregationweight=[1, 1, 1], HE=False, precision_fractional=15):
         """
-
         Parameters
         ----------
         train_loader
         valid_loader
-
-        HE: bool
-            if we want to have homomorphic encryption when aggregating the weights
-
-        precision_fractional: int
-            number of decimal points we want to have when encoding decimal to binary for HE
-            for lossless encoding: encoded_num > 2 ** 63 (if the original number is long)
         """
         self.params = read_config(self.cfg_path)
-
-        client_list = []
-
-        for idx in range(len(train_loader)):
-            # create a couple workers
-            client_list.append(sy.VirtualWorker(hook, id="client" + str(idx)))
-        secure_worker = sy.VirtualWorker(hook, id="secure_worker")
-
-        if len(train_loader) == 2:
-            client_list[0].add_workers([client_list[1], secure_worker])
-            client_list[1].add_workers([client_list[0], secure_worker])
-            secure_worker.add_workers([client_list[0], client_list[1]])
-
-        elif len(train_loader) == 3:
-            client_list[0].add_workers([client_list[1], client_list[2], secure_worker])
-            client_list[1].add_workers([client_list[0], client_list[2], secure_worker])
-            client_list[2].add_workers([client_list[0], client_list[1], secure_worker])
-            secure_worker.add_workers([client_list[0], client_list[1], client_list[2]])
-
-        elif len(train_loader) == 4:
-            client_list[0].add_workers([client_list[1], client_list[2], client_list[3], secure_worker])
-            client_list[1].add_workers([client_list[0], client_list[2], client_list[3], secure_worker])
-            client_list[2].add_workers([client_list[0], client_list[1], client_list[3], secure_worker])
-            client_list[3].add_workers([client_list[0], client_list[1], client_list[2], secure_worker])
-            secure_worker.add_workers([client_list[0], client_list[1], client_list[2], client_list[3]])
-
-        elif len(train_loader) == 5:
-            client_list[0].add_workers([client_list[1], client_list[2], client_list[3], client_list[4], secure_worker])
-            client_list[1].add_workers([client_list[0], client_list[2], client_list[3], client_list[4], secure_worker])
-            client_list[2].add_workers([client_list[0], client_list[1], client_list[3], client_list[4], secure_worker])
-            client_list[3].add_workers([client_list[0], client_list[1], client_list[2], client_list[4], secure_worker])
-            client_list[4].add_workers([client_list[0], client_list[1], client_list[2], client_list[3], secure_worker])
-            secure_worker.add_workers([client_list[0], client_list[1], client_list[2], client_list[3], client_list[4]])
-
-        elif len(train_loader) == 6:
-            client_list[0].add_workers([client_list[1], client_list[2], client_list[3], client_list[4], client_list[5], secure_worker])
-            client_list[1].add_workers([client_list[0], client_list[2], client_list[3], client_list[4], client_list[5], secure_worker])
-            client_list[2].add_workers([client_list[0], client_list[1], client_list[3], client_list[4], client_list[5], secure_worker])
-            client_list[3].add_workers([client_list[0], client_list[1], client_list[2], client_list[4], client_list[5], secure_worker])
-            client_list[4].add_workers([client_list[0], client_list[1], client_list[2], client_list[3], client_list[5], secure_worker])
-            client_list[5].add_workers([client_list[0], client_list[1], client_list[2], client_list[3], client_list[4], secure_worker])
-            secure_worker.add_workers([client_list[0], client_list[1], client_list[2], client_list[3], client_list[4], client_list[5]])
-
 
         self.state_dict_list = []
         for name in self.model_loader[0].state_dict():
@@ -684,14 +633,12 @@ class Training_federated:
             epoch_overhead_time = 0
             epoch_datacopy_time = 0
 
-            secure_worker.clear_objects()
             new_model_client_list = []
             loss_client_list = []
 
             for idx in range(len(train_loader)):
                 communication_start_time = time.time()
-                client_list[idx].clear_objects()
-                model = self.model_loader[idx].copy().send(client_list[idx])
+                model = copy.deepcopy(self.model_loader[idx])
                 total_overhead_time += (time.time() - communication_start_time)
                 epoch_overhead_time += (time.time() - communication_start_time)
                 optimizer_model = torch.optim.Adam(model.parameters(), lr=float(self.params['Network']['lr']),
@@ -701,7 +648,7 @@ class Training_federated:
                 if only_one_batch:
                     new_model_client, loss_client, overhead = self.train_batch_federated(train_loader[idx], optimizer_model, model, self.loss_function_loader[idx])
                 else:
-                    new_model_client, loss_client, overhead = self.train_epoch_federated(train_loader[idx], optimizer_model, model, self.loss_function_loader[idx])
+                    new_model_client, loss_client, overhead = self.train_epoch_federated_nosyft(train_loader[idx], optimizer_model, model, self.loss_function_loader[idx])
                 total_datacopy_time += overhead
                 epoch_datacopy_time += overhead
                 new_model_client_list.append(new_model_client)
@@ -712,98 +659,11 @@ class Training_federated:
             ############# copying backbone state dict weights and biases
 
             temp_dict = {}
-            if HE:
-                for weightbias in self.state_dict_list:
-                    temp_one_param_list = []
-
-                    if len(train_loader) == 2:
-                        temp_one_param_list.append(new_model_client_list[0].state_dict()[weightbias].fix_precision(precision_fractional=precision_fractional).share(
-                            client_list[0], client_list[1], crypto_provider=secure_worker).get())
-                        temp_one_param_list.append(new_model_client_list[1].state_dict()[weightbias].fix_precision(precision_fractional=precision_fractional).share(
-                            client_list[0], client_list[1], crypto_provider=secure_worker).get())
-                        if 'num_batches_tracked' in weightbias:
-                            temp_dict[weightbias] = torch.round((temp_one_param_list[0] + temp_one_param_list[1]).get().float_precision() / 2)
-                        else:
-                            temp_dict[weightbias] = (temp_one_param_list[0] + temp_one_param_list[1]).get().float_precision() / 2
-
-                    elif len(train_loader) == 3:
-                        temp_one_param_list.append(new_model_client_list[0].state_dict()[weightbias].fix_precision(precision_fractional=precision_fractional).share(
-                            client_list[0], client_list[1], client_list[2], crypto_provider=secure_worker).get())
-                        temp_one_param_list.append(new_model_client_list[1].state_dict()[weightbias].fix_precision(precision_fractional=precision_fractional).share(
-                            client_list[0], client_list[1], client_list[2], crypto_provider=secure_worker).get())
-                        temp_one_param_list.append(new_model_client_list[2].state_dict()[weightbias].fix_precision(precision_fractional=precision_fractional).share(
-                            client_list[0], client_list[1], client_list[2], crypto_provider=secure_worker).get())
-                        if 'num_batches_tracked' in weightbias:
-                            temp_dict[weightbias] = torch.round((temp_one_param_list[0] + temp_one_param_list[1] +
-                                                     temp_one_param_list[2]).get().float_precision() / 3)
-                        else:
-                            temp_dict[weightbias] = (temp_one_param_list[0] + temp_one_param_list[1] +
-                                                     temp_one_param_list[2]).get().float_precision() / 3
-
-                    elif len(train_loader) == 4:
-                        temp_one_param_list.append(new_model_client_list[0].state_dict()[weightbias].fix_precision(precision_fractional=precision_fractional).share(
-                            client_list[0], client_list[1], client_list[2], client_list[3], crypto_provider=secure_worker).get())
-                        temp_one_param_list.append(new_model_client_list[1].state_dict()[weightbias].fix_precision(precision_fractional=precision_fractional).share(
-                            client_list[0], client_list[1], client_list[2], client_list[3], crypto_provider=secure_worker).get())
-                        temp_one_param_list.append(new_model_client_list[2].state_dict()[weightbias].fix_precision(precision_fractional=precision_fractional).share(
-                            client_list[0], client_list[1], client_list[2], client_list[3], crypto_provider=secure_worker).get())
-                        temp_one_param_list.append(new_model_client_list[3].state_dict()[weightbias].fix_precision(precision_fractional=precision_fractional).share(
-                            client_list[0], client_list[1], client_list[2], client_list[3], crypto_provider=secure_worker).get())
-                        if 'num_batches_tracked' in weightbias:
-                            temp_dict[weightbias] = torch.round((temp_one_param_list[0] + temp_one_param_list[1] +
-                                                     temp_one_param_list[2] + temp_one_param_list[3]).get().float_precision() / 4)
-                        else:
-                            temp_dict[weightbias] = (temp_one_param_list[0] + temp_one_param_list[1] +
-                                                     temp_one_param_list[2] + temp_one_param_list[3]).get().float_precision() / 4
-
-                    elif len(train_loader) == 5:
-                        temp_one_param_list.append(new_model_client_list[0].state_dict()[weightbias].fix_precision(precision_fractional=precision_fractional).share(
-                            client_list[0], client_list[1], client_list[2], client_list[3], client_list[4], crypto_provider=secure_worker).get())
-                        temp_one_param_list.append(new_model_client_list[1].state_dict()[weightbias].fix_precision(precision_fractional=precision_fractional).share(
-                            client_list[0], client_list[1], client_list[2], client_list[3], client_list[4], crypto_provider=secure_worker).get())
-                        temp_one_param_list.append(new_model_client_list[2].state_dict()[weightbias].fix_precision(precision_fractional=precision_fractional).share(
-                            client_list[0], client_list[1], client_list[2], client_list[3], client_list[4], crypto_provider=secure_worker).get())
-                        temp_one_param_list.append(new_model_client_list[3].state_dict()[weightbias].fix_precision(precision_fractional=precision_fractional).share(
-                            client_list[0], client_list[1], client_list[2], client_list[3], client_list[4], crypto_provider=secure_worker).get())
-                        temp_one_param_list.append(new_model_client_list[4].state_dict()[weightbias].fix_precision(precision_fractional=precision_fractional).share(
-                            client_list[0], client_list[1], client_list[2], client_list[3], client_list[4], crypto_provider=secure_worker).get())
-                        if 'num_batches_tracked' in weightbias:
-                            temp_dict[weightbias] = torch.round((temp_one_param_list[0] + temp_one_param_list[1] + temp_one_param_list[2] +
-                                                     temp_one_param_list[3] + temp_one_param_list[4]).get().float_precision() / 5)
-                        else:
-                            temp_dict[weightbias] = (temp_one_param_list[0] + temp_one_param_list[1] + temp_one_param_list[2] +
-                                                     temp_one_param_list[3] + temp_one_param_list[4]).get().float_precision() / 5
-
-                    elif len(train_loader) == 6:
-                        temp_one_param_list.append(new_model_client_list[0].state_dict()[weightbias].fix_precision(precision_fractional=precision_fractional).share(
-                            client_list[0], client_list[1], client_list[2], client_list[3], client_list[4], client_list[5], crypto_provider=secure_worker).get())
-                        temp_one_param_list.append(new_model_client_list[1].state_dict()[weightbias].fix_precision(precision_fractional=precision_fractional).share(
-                            client_list[0], client_list[1], client_list[2], client_list[3], client_list[4], client_list[5], crypto_provider=secure_worker).get())
-                        temp_one_param_list.append(new_model_client_list[2].state_dict()[weightbias].fix_precision(precision_fractional=precision_fractional).share(
-                            client_list[0], client_list[1], client_list[2], client_list[3], client_list[4], client_list[5], crypto_provider=secure_worker).get())
-                        temp_one_param_list.append(new_model_client_list[3].state_dict()[weightbias].fix_precision(precision_fractional=precision_fractional).share(
-                            client_list[0], client_list[1], client_list[2], client_list[3], client_list[4], client_list[5], crypto_provider=secure_worker).get())
-                        temp_one_param_list.append(new_model_client_list[4].state_dict()[weightbias].fix_precision(precision_fractional=precision_fractional).share(
-                            client_list[0], client_list[1], client_list[2], client_list[3], client_list[4], client_list[5], crypto_provider=secure_worker).get())
-                        temp_one_param_list.append(new_model_client_list[5].state_dict()[weightbias].fix_precision(precision_fractional=precision_fractional).share(
-                            client_list[0], client_list[1], client_list[2], client_list[3], client_list[4], client_list[5], crypto_provider=secure_worker).get())
-                        if 'num_batches_tracked' in weightbias:
-                            temp_dict[weightbias] = torch.round((temp_one_param_list[0] + temp_one_param_list[1] + temp_one_param_list[2] +
-                                                     temp_one_param_list[3] + temp_one_param_list[4] + client_list[5]).get().float_precision() / 6)
-                        else:
-                            temp_dict[weightbias] = (temp_one_param_list[0] + temp_one_param_list[1] + temp_one_param_list[2] +
-                                                     temp_one_param_list[3] + temp_one_param_list[4] + client_list[5]).get().float_precision() / 6
-
-            else:
+            for weightbias in self.state_dict_list:
+                temp_weight_list = []
                 for idx in range(len(train_loader)):
-                    new_model_client_list[idx].move(secure_worker)
-
-                for weightbias in self.state_dict_list:
-                    temp_weight_list = []
-                    for idx in range(len(train_loader)):
-                        temp_weight_list.append(new_model_client_list[idx].state_dict()[weightbias] * aggregationweight[idx])
-                    # temp_dict[weightbias] = (sum(temp_weight_list) / len(temp_weight_list)).clone().get()
-                    temp_dict[weightbias] = (sum(temp_weight_list) / sum(aggregationweight)).clone().get()
+                    temp_weight_list.append(new_model_client_list[idx].state_dict()[weightbias] * aggregationweight[idx])
+                temp_dict[weightbias] = (sum(temp_weight_list) / sum(aggregationweight))
 
             for idx in range(len(train_loader)):
                 self.model_loader[idx].load_state_dict(temp_dict)
@@ -871,7 +731,7 @@ class Training_federated:
 
 
 
-    def train_epoch_federated(self, train_loader, optimizer, model, loss_function):
+    def train_epoch_federated_nosyft(self, train_loader, optimizer, model, loss_function):
         """Training epoch
         """
         batch_loss = 0
@@ -881,9 +741,6 @@ class Training_federated:
         for batchIdx, (image, label) in enumerate(train_loader):
 
             communication_start_time = time.time()
-            loc = model.location
-            image = image.send(loc)
-            label = label.send(loc)
             epoch_datacopy += (time.time() - communication_start_time)
             image = image.to(self.device)
             label = label.to(self.device)
@@ -898,7 +755,6 @@ class Training_federated:
                 optimizer.step()
                 batch_loss += loss_client
 
-        batch_loss = batch_loss.get().data
         avg_loss = batch_loss / len(train_loader)
 
         return model, avg_loss.item(), epoch_datacopy
@@ -1197,7 +1053,7 @@ class Training_federated:
                 with open(os.path.join(self.params['target_dir'], self.params['stat_log_path']) + '/Stats_' + str(idx), 'a') as f:
                     f.write(msg)
                 for i, pathology in enumerate(self.label_names_loader[idx]):
-                    msg = f'{pathology}: {valid_specificity[idx][i] * 100:.2f}%'
+                    msg = f'{pathology}: {valid_specificity[idx][i] * 100:.2f}% | '
                     with open(os.path.join(self.params['target_dir'], self.params['stat_log_path']) + '/Stats_' + str(idx), 'a') as f:
                         f.write(msg)
 
@@ -1205,7 +1061,7 @@ class Training_federated:
                 with open(os.path.join(self.params['target_dir'], self.params['stat_log_path']) + '/Stats_' + str(idx), 'a') as f:
                     f.write(msg)
                 for i, pathology in enumerate(self.label_names_loader[idx]):
-                    msg = f'{pathology}: {valid_sensitivity[idx][i] * 100:.2f}%'
+                    msg = f'{pathology}: {valid_sensitivity[idx][i] * 100:.2f}% | '
                     with open(os.path.join(self.params['target_dir'], self.params['stat_log_path']) + '/Stats_' + str(idx), 'a') as f:
                         f.write(msg)
             except:

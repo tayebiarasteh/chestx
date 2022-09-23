@@ -284,8 +284,8 @@ class chexpert_data_loader_2D(Dataset):
 
         self.subset_df = self.subset_df[self.subset_df['view'] == 'Frontal']
         self.file_path_list = list(self.subset_df['jpg_rel_path'])
-        self.chosen_labels = ['cardiomegaly', 'enlarged_cardiomediastinum', 'no_finding'] # green labels
-        # self.chosen_labels = ['cardiomegaly', 'lung_opacity', 'lung_lesion', 'pneumonia', 'edema']
+        # self.chosen_labels = ['cardiomegaly', 'enlarged_cardiomediastinum', 'no_finding'] # green labels
+        self.chosen_labels = ['cardiomegaly', 'lung_opacity', 'lung_lesion', 'pneumonia', 'edema'] # 5 labels
         # self.chosen_labels = ['lung_opacity', 'pneumonia']
 
 
