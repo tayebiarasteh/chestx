@@ -226,17 +226,17 @@ class Training:
 
                 # saving the model, checkpoint, TensorBoard, etc.
                 if not valid_loader == None:
-                    valid_loss, valid_F1, valid_AUC, valid_accuracy, valid_specifity, valid_sensitivity, valid_precision, optimal_threshold = self.valid_epoch(valid_loader)
+                    valid_loss, valid_F1, valid_AUC, valid_accuracy, valid_specificity, valid_sensitivity, valid_precision, optimal_threshold = self.valid_epoch(valid_loader)
                     end_time = time.time()
                     total_time = end_time - total_start_time
                     iteration_hours, iteration_mins, iteration_secs = self.time_duration(start_time, end_time)
                     total_hours, total_mins, total_secs = self.time_duration(total_start_time, end_time)
 
-                    self.calculate_tb_stats(valid_loss=valid_loss, valid_F1=valid_F1, valid_AUC=valid_AUC, valid_accuracy=valid_accuracy, valid_specificity=valid_specifity,
+                    self.calculate_tb_stats(valid_loss=valid_loss, valid_F1=valid_F1, valid_AUC=valid_AUC, valid_accuracy=valid_accuracy, valid_specificity=valid_specificity,
                                             valid_sensitivity=valid_sensitivity, valid_precision=valid_precision)
                     self.savings_prints(iteration_hours, iteration_mins, iteration_secs, total_hours,
                                         total_mins, total_secs, train_loss, total_time, valid_loss=valid_loss, valid_F1=valid_F1,
-                                        valid_AUC=valid_AUC, valid_accuracy=valid_accuracy, valid_specificity= valid_specifity,
+                                        valid_AUC=valid_AUC, valid_accuracy=valid_accuracy, valid_specificity= valid_specificity,
                                         valid_sensitivity=valid_sensitivity, valid_precision=valid_precision, optimal_thresholds=optimal_threshold)
                 else:
                     end_time = time.time()
@@ -259,7 +259,7 @@ class Training:
         total_f1_score = []
         total_AUROC = []
         total_accuracy = []
-        total_specifity_score = []
+        total_specificity_score = []
         total_sensitivity_score = []
         total_precision_score = []
 
@@ -312,7 +312,7 @@ class Training:
 
         F1_disease = []
         accuracy_disease = []
-        specifity_disease = []
+        specificity_disease = []
         sensitivity_disease = []
         precision_disease = []
 
@@ -323,7 +323,7 @@ class Training:
             TP = disease[1, 1]
             F1_disease.append(2 * TP / (2 * TP + FN + FP + epsilon))
             accuracy_disease.append((TP + TN) / (TP + TN + FP + FN + epsilon))
-            specifity_disease.append(TN / (TN + FP + epsilon))
+            specificity_disease.append(TN / (TN + FP + epsilon))
             sensitivity_disease.append(TP / (TP + FN + epsilon))
             precision_disease.append(TP / (TP + FP + epsilon))
 
@@ -335,7 +335,7 @@ class Training:
             print('hi')
             pass
         total_accuracy.append(np.stack(accuracy_disease))
-        total_specifity_score.append(np.stack(specifity_disease))
+        total_specificity_score.append(np.stack(specificity_disease))
         total_sensitivity_score.append(np.stack(sensitivity_disease))
         total_precision_score.append(np.stack(precision_disease))
 
@@ -343,11 +343,11 @@ class Training:
         average_f1_score = np.stack(total_f1_score).mean(0)
         average_AUROC = np.stack(total_AUROC).mean(0)
         average_accuracy = np.stack(total_accuracy).mean(0)
-        average_specifity = np.stack(total_specifity_score).mean(0)
+        average_specificity = np.stack(total_specificity_score).mean(0)
         average_sensitivity = np.stack(total_sensitivity_score).mean(0)
         average_precision = np.stack(total_precision_score).mean(0)
 
-        return epoch_loss, average_f1_score, average_AUROC, average_accuracy, average_specifity, average_sensitivity, average_precision, optimal_threshold
+        return epoch_loss, average_f1_score, average_AUROC, average_accuracy, average_specificity, average_sensitivity, average_precision, optimal_threshold
 
 
 
@@ -387,7 +387,7 @@ class Training:
             validation sensitivity of the model
 
         valid_specificity: float
-            validation specifity of the model
+            validation specificity of the model
 
         valid_loss: float
             validation loss of the model

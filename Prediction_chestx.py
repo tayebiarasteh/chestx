@@ -311,7 +311,6 @@ class Prediction:
 
         AUC_list = np.stack(AUC_list)
         accuracy_list = np.stack(accuracy_list)
-        # AUC_list = accuracy_list
         specificity_list = np.stack(specificity_list)
         sensitivity_list = np.stack(sensitivity_list)
         F1_list = np.stack(F1_list)

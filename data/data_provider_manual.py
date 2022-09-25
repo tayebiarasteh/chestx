@@ -69,6 +69,8 @@ class vindr_data_loader_2D_manual:
         self.file_path_list = list(self.subset_df['image_id'])
         # self.chosen_labels = ['No finding', 'Aortic enlargement', 'Pleural thickening', 'Cardiomegaly', 'Pleural effusion',
         #                       'Pneumothorax', 'Atelectasis', 'Consolidation'] # 8 labels
+        # self.chosen_labels = ['No finding', 'Aortic enlargement', 'Pleural thickening', 'Cardiomegaly', 'Pleural effusion',
+        #                       'Pneumothorax', 'Atelectasis'] # 7 labels
         # self.chosen_labels = ['No finding', 'Aortic enlargement', 'Pleural thickening', 'Cardiomegaly', 'Pleural effusion']
         # self.chosen_labels = ['Aortic enlargement', 'Cardiomegaly', 'Mediastinal shift', 'No finding'] # green labels
         self.chosen_labels = ['Cardiomegaly', 'Pleural effusion'] # 2 labels
@@ -524,8 +526,8 @@ class UKA_data_loader_2D_manual:
         self.file_path_list = list(self.subset_df['image_id'])
         # self.chosen_labels = ['cardiomegaly', 'congestion', 'pleural_effusion_right', 'pleural_effusion_left', 'pneumonic_infiltrates_right',
         #                       'pneumonic_infiltrates_left', 'atelectasis_right', 'atelectasis_left'] # 8 labels
-        # self.chosen_labels = ['pleural_effusion_left', 'pleural_effusion_right', 'congestion', 'cardiomegaly', 'pneumonic_infiltrates_left', 'pneumonic_infiltrates_right']
-        self.chosen_labels = ['pleural_effusion_right', 'pneumonic_infiltrates_left'] # 2 labels
+        self.chosen_labels = ['pleural_effusion_left', 'pleural_effusion_right', 'cardiomegaly', 'pneumonic_infiltrates_left', 'pneumonic_infiltrates_right'] # 5 labels
+        # self.chosen_labels = ['pleural_effusion_right', 'pneumonic_infiltrates_left'] # 2 labels
 
 
 

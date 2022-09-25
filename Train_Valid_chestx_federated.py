@@ -438,18 +438,18 @@ class Training_federated:
                 valid_accuracy = []
                 valid_F1 = []
                 valid_AUC = []
-                valid_specifity = []
+                valid_specificity = []
                 valid_sensitivity = []
                 valid_precision = []
 
                 for idx in range(len(valid_loader)):
-                    epoch_loss, average_f1_score, average_AUROC, average_accuracy, average_specifity, average_sensitivity, average_precision, optimal_threshold = self.valid_epoch(
+                    epoch_loss, average_f1_score, average_AUROC, average_accuracy, average_specificity, average_sensitivity, average_precision, optimal_threshold = self.valid_epoch(
                         valid_loader[idx], self.model_loader[idx], self.loss_function_loader[idx])
                     valid_loss.append(epoch_loss)
                     valid_F1.append(average_f1_score)
                     valid_AUC.append(average_AUROC)
                     valid_accuracy.append(average_accuracy)
-                    valid_specifity.append(average_specifity)
+                    valid_specificity.append(average_specificity)
                     valid_sensitivity.append(average_sensitivity)
                     valid_precision.append(average_precision)
 
@@ -458,12 +458,12 @@ class Training_federated:
                     iteration_hours, iteration_mins, iteration_secs = self.time_duration(start_time, end_time)
                     total_hours, total_mins, total_secs = self.time_duration(total_start_time, end_time)
 
-                self.calculate_tb_stats(valid_loss=valid_loss, valid_F1=valid_F1, valid_AUC=valid_AUC, valid_accuracy=valid_accuracy, valid_specifity=valid_specifity,
+                self.calculate_tb_stats(valid_loss=valid_loss, valid_F1=valid_F1, valid_AUC=valid_AUC, valid_accuracy=valid_accuracy, valid_specificity=valid_specificity,
                                             valid_sensitivity=valid_sensitivity, valid_precision=valid_precision)
                 self.savings_prints(iteration_hours, iteration_mins, iteration_secs, total_hours, total_mins,
                                     total_secs, train_loss, total_time, total_overhead_time, total_datacopy_time,
                                     valid_loss=valid_loss, valid_F1=valid_F1, valid_AUC=valid_AUC, valid_accuracy=valid_accuracy,
-                                    valid_specificity=valid_specifity, valid_sensitivity=valid_sensitivity, valid_precision=valid_precision, optimal_thresholds=optimal_threshold)
+                                    valid_specificity=valid_specificity, valid_sensitivity=valid_sensitivity, valid_precision=valid_precision, optimal_thresholds=optimal_threshold)
 
 
     def training_setup_federated_nosyft(self, train_loader, valid_loader=None, only_one_batch=False, aggregationweight=[1, 1, 1]):
@@ -580,18 +580,18 @@ class Training_federated:
                 valid_accuracy = []
                 valid_F1 = []
                 valid_AUC = []
-                valid_specifity = []
+                valid_specificity = []
                 valid_sensitivity = []
                 valid_precision = []
 
                 for idx in range(len(valid_loader)):
-                    epoch_loss, average_f1_score, average_AUROC, average_accuracy, average_specifity, average_sensitivity, average_precision, optimal_threshold = self.valid_epoch(
+                    epoch_loss, average_f1_score, average_AUROC, average_accuracy, average_specificity, average_sensitivity, average_precision, optimal_threshold = self.valid_epoch(
                         valid_loader[idx], self.model_loader[idx], self.loss_function_loader[idx])
                     valid_loss.append(epoch_loss)
                     valid_F1.append(average_f1_score)
                     valid_AUC.append(average_AUROC)
                     valid_accuracy.append(average_accuracy)
-                    valid_specifity.append(average_specifity)
+                    valid_specificity.append(average_specificity)
                     valid_sensitivity.append(average_sensitivity)
                     valid_precision.append(average_precision)
 
@@ -600,12 +600,12 @@ class Training_federated:
                     iteration_hours, iteration_mins, iteration_secs = self.time_duration(start_time, end_time)
                     total_hours, total_mins, total_secs = self.time_duration(total_start_time, end_time)
 
-                self.calculate_tb_stats(valid_loss=valid_loss, valid_F1=valid_F1, valid_AUC=valid_AUC, valid_accuracy=valid_accuracy, valid_specificity=valid_specifity,
+                self.calculate_tb_stats(valid_loss=valid_loss, valid_F1=valid_F1, valid_AUC=valid_AUC, valid_accuracy=valid_accuracy, valid_specificity=valid_specificity,
                                         valid_sensitivity=valid_sensitivity, valid_precision=valid_precision)
                 self.savings_prints(iteration_hours, iteration_mins, iteration_secs, total_hours, total_mins,
                                     total_secs, train_loss, total_time, total_overhead_time, total_datacopy_time,
                                     valid_loss=valid_loss, valid_F1=valid_F1, valid_AUC=valid_AUC, valid_accuracy=valid_accuracy,
-                                    valid_specificity=valid_specifity, valid_sensitivity=valid_sensitivity, valid_precision=valid_precision, optimal_thresholds=optimal_threshold)
+                                    valid_specificity=valid_specificity, valid_sensitivity=valid_sensitivity, valid_precision=valid_precision, optimal_thresholds=optimal_threshold)
 
 
 
@@ -702,18 +702,18 @@ class Training_federated:
                 valid_accuracy = []
                 valid_F1 = []
                 valid_AUC = []
-                valid_specifity = []
+                valid_specificity = []
                 valid_sensitivity = []
                 valid_precision = []
 
                 for idx in range(len(valid_loader)):
-                    epoch_loss, average_f1_score, average_AUROC, average_accuracy, average_specifity, average_sensitivity, average_precision, optimal_threshold = self.valid_epoch(
+                    epoch_loss, average_f1_score, average_AUROC, average_accuracy, average_specificity, average_sensitivity, average_precision, optimal_threshold = self.valid_epoch(
                         valid_loader[idx], self.model_loader[idx], self.loss_function_loader[idx])
                     valid_loss.append(epoch_loss)
                     valid_F1.append(average_f1_score)
                     valid_AUC.append(average_AUROC)
                     valid_accuracy.append(average_accuracy)
-                    valid_specifity.append(average_specifity)
+                    valid_specificity.append(average_specificity)
                     valid_sensitivity.append(average_sensitivity)
                     valid_precision.append(average_precision)
 
@@ -722,12 +722,12 @@ class Training_federated:
                     iteration_hours, iteration_mins, iteration_secs = self.time_duration(start_time, end_time)
                     total_hours, total_mins, total_secs = self.time_duration(total_start_time, end_time)
 
-                self.calculate_tb_stats(valid_loss=valid_loss, valid_F1=valid_F1, valid_AUC=valid_AUC, valid_accuracy=valid_accuracy, valid_specificity=valid_specifity,
+                self.calculate_tb_stats(valid_loss=valid_loss, valid_F1=valid_F1, valid_AUC=valid_AUC, valid_accuracy=valid_accuracy, valid_specificity=valid_specificity,
                                         valid_sensitivity=valid_sensitivity, valid_precision=valid_precision)
                 self.savings_prints(iteration_hours, iteration_mins, iteration_secs, total_hours, total_mins,
                                     total_secs, train_loss, total_time, total_overhead_time, total_datacopy_time,
                                     valid_loss=valid_loss, valid_F1=valid_F1, valid_AUC=valid_AUC, valid_accuracy=valid_accuracy,
-                                    valid_specificity=valid_specifity, valid_sensitivity=valid_sensitivity, valid_precision=valid_precision, optimal_thresholds=optimal_threshold)
+                                    valid_specificity=valid_specificity, valid_sensitivity=valid_sensitivity, valid_precision=valid_precision, optimal_thresholds=optimal_threshold)
 
 
 
@@ -823,7 +823,7 @@ class Training_federated:
         total_f1_score = []
         total_AUROC = []
         total_accuracy = []
-        total_specifity_score = []
+        total_specificity_score = []
         total_sensitivity_score = []
         total_precision_score = []
 
@@ -875,7 +875,7 @@ class Training_federated:
 
         F1_disease = []
         accuracy_disease = []
-        specifity_disease = []
+        specificity_disease = []
         sensitivity_disease = []
         precision_disease = []
 
@@ -888,7 +888,7 @@ class Training_federated:
             TP = confusion[1, 1]
             F1_disease.append(2 * TP / (2 * TP + FN + FP + epsilon))
             accuracy_disease.append((TP + TN) / (TP + TN + FP + FN + epsilon))
-            specifity_disease.append(TN / (TN + FP + epsilon))
+            specificity_disease.append(TN / (TN + FP + epsilon))
             sensitivity_disease.append(TP / (TP + FN + epsilon))
             precision_disease.append(TP / (TP + FP + epsilon))
 
@@ -902,7 +902,7 @@ class Training_federated:
                 TP = disease[1, 1]
                 F1_disease.append(2 * TP / (2 * TP + FN + FP + epsilon))
                 accuracy_disease.append((TP + TN) / (TP + TN + FP + FN + epsilon))
-                specifity_disease.append(TN / (TN + FP + epsilon))
+                specificity_disease.append(TN / (TN + FP + epsilon))
                 sensitivity_disease.append(TP / (TP + FN + epsilon))
                 precision_disease.append(TP / (TP + FP + epsilon))
 
@@ -914,18 +914,18 @@ class Training_federated:
             print('hi')
             pass
         total_accuracy.append(np.stack(accuracy_disease))
-        total_specifity_score.append(np.stack(specifity_disease))
+        total_specificity_score.append(np.stack(specificity_disease))
         total_sensitivity_score.append(np.stack(sensitivity_disease))
         total_precision_score.append(np.stack(precision_disease))
 
         average_f1_score = np.stack(total_f1_score).mean(0)
         average_AUROC = np.stack(total_AUROC).mean(0)
         average_accuracy = np.stack(total_accuracy).mean(0)
-        average_specifity = np.stack(total_specifity_score).mean(0)
+        average_specificity = np.stack(total_specificity_score).mean(0)
         average_sensitivity = np.stack(total_sensitivity_score).mean(0)
         average_precision = np.stack(total_precision_score).mean(0)
 
-        return epoch_loss, average_f1_score, average_AUROC, average_accuracy, average_specifity, average_sensitivity, average_precision, optimal_threshold
+        return epoch_loss, average_f1_score, average_AUROC, average_accuracy, average_specificity, average_sensitivity, average_precision, optimal_threshold
 
 
 

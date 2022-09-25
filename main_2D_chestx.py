@@ -348,7 +348,7 @@ def main_test_central_2D(global_config_path="/home/soroosh/Documents/Repositorie
     # Initialize prediction
     predictor = Prediction(cfg_path, label_names)
     predictor.setup_model(model=model)
-    average_f1_score, average_AUROC, average_accuracy, average_specifity, average_sensitivity, average_precision = predictor.evaluate_2D(test_loader)
+    average_f1_score, average_AUROC, average_accuracy, average_specificity, average_sensitivity, average_precision = predictor.evaluate_2D(test_loader)
 
     print('------------------------------------------------------'
           '----------------------------------')
@@ -356,7 +356,7 @@ def main_test_central_2D(global_config_path="/home/soroosh/Documents/Repositorie
     print(f'\t model tested on the {dataset_name} test set\n')
 
     print(f'\t avg AUROC: {average_AUROC.mean() * 100:.2f}% | avg accuracy: {average_accuracy.mean() * 100:.2f}%'
-    f' | avg specificity: {average_specifity.mean() * 100:.2f}%'
+    f' | avg specificity: {average_specificity.mean() * 100:.2f}%'
     f' | avg recall (sensitivity): {average_sensitivity.mean() * 100:.2f}% | avg F1: {average_f1_score.mean() * 100:.2f}%\n')
 
     print('Individual AUROC:')
@@ -373,7 +373,7 @@ def main_test_central_2D(global_config_path="/home/soroosh/Documents/Repositorie
 
     print('\nIndividual specificity:')
     for idx, pathology in enumerate(predictor.label_names):
-        print(f'\t{pathology}: {average_specifity[idx] * 100:.2f}%')
+        print(f'\t{pathology}: {average_specificity[idx] * 100:.2f}%')
 
     print('------------------------------------------------------'
           '----------------------------------')
@@ -383,7 +383,7 @@ def main_test_central_2D(global_config_path="/home/soroosh/Documents/Repositorie
           f'\t experiment: {experiment_name}\n\n' \
           f'\t model tested on the {dataset_name} test set\n\n' \
           f'avg AUROC: {average_AUROC.mean() * 100:.2f}% | avg accuracy: {average_accuracy.mean() * 100:.2f}% ' \
-          f' | avg specificity: {average_specifity.mean() * 100:.2f}%' \
+          f' | avg specificity: {average_specificity.mean() * 100:.2f}%' \
           f' | avg recall (sensitivity): {average_sensitivity.mean() * 100:.2f}% | avg precision: {average_precision.mean() * 100:.2f}% | avg F1: {average_f1_score.mean() * 100:.2f}%\n\n'
 
     with open(os.path.join(params['target_dir'], params['stat_log_path']) + '/test_Stats', 'a') as f:
@@ -417,7 +417,7 @@ def main_test_central_2D(global_config_path="/home/soroosh/Documents/Repositorie
     with open(os.path.join(params['target_dir'], params['stat_log_path']) + '/test_Stats', 'a') as f:
         f.write(msg)
     for idx, pathology in enumerate(label_names):
-        msg = f'{pathology}: {average_specifity[idx] * 100:.2f}% | '
+        msg = f'{pathology}: {average_specificity[idx] * 100:.2f}% | '
         with open(os.path.join(params['target_dir'], params['stat_log_path']) + '/test_Stats', 'a') as f:
             f.write(msg)
 
@@ -652,8 +652,8 @@ def main_test_central_2D_pvalue_out_of_bootstrap(global_config_path="/home/soroo
     AUC_list1 = predictor1.bootstrapper(pred_array1.cpu().numpy(), target_array1.int().cpu().numpy(), index_list)
 
     # Changeable network parameters
-    # model2 = load_resnet50_5FC(num_classes=len(weight))
-    model2 = load_pretrained_model_1FC(num_classes=len(weight), resnet_num=50)
+    model2 = load_resnet50_5FC(num_classes=len(weight))
+    # model2 = load_pretrained_model_1FC(num_classes=len(weight), resnet_num=50)
     # model2 = load_pretrained_timm_model(num_classes=len(weight), model_name='vit_base_patch16_224')
 
     # Initialize prediction 2
@@ -698,8 +698,8 @@ def main_test_central_2D_pvalue_out_of_bootstrap(global_config_path="/home/soroo
 
 if __name__ == '__main__':
     # delete_experiment(experiment_name='conventional_federated_3sites_vindrfull_1fc_2labelseach_lr5e5_batch12', global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml")
-    # main_train_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
-    #               valid=True, resume=False, augment=True, experiment_name='cxr5k_imagenetpretrain_resnet50_1fc_lr5e5_greenlabels', dataset_name='cxr14', pretrained=True)
+    main_train_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
+                  valid=True, resume=False, augment=True, experiment_name='temp', dataset_name='vindr', pretrained=True)
 
     # main_backbone_train_2D_federated_manual_batch(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
     #               resume=False, augment=True, experiment_name='ttttbatchaggreg_imagenetpretrain_vindr5k_UKAfull_vitb16_224_1fc_2labelseach_lr5e5_batch5', dataset_names_list=['vindr', 'UKA'], aggregationweight=[1, 1], pretrained=False)
@@ -710,10 +710,10 @@ if __name__ == '__main__':
     #                      experiment_name='chexpert5k_5fc_resnet50_lr5e5_batch12_5labels', dataset_name='chexpert')
     # main_test_central_2D_with_bootstrapping(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
     #                      experiment_name='chexpert5k_5fc_resnet50_lr5e5_batch12_5labels', dataset_name='chexpert')
-
-    main_test_central_2D_pvalue_out_of_bootstrap(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
-                         experiment_name1='vindr5k_lr9e5_1fc_from8K_ofUKAfull_2labelseach', experiment_name2='vindr_5000_batch16_resnet50_lr5e5_Cardiomegaly_Pleuraleffusion',
-                                                 experiment1_epoch_num=475, experiment2_epoch_num=575, dataset_name='vindr')
+    #
+    # main_test_central_2D_pvalue_out_of_bootstrap(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
+    #                      experiment_name1='mimic5k_lr9e5_1fc_from7.5K_ofchexpert5k_vindr5k_cxr5k_UKA5k_5labelseach', experiment_name2='mimic5k_5fc_resnet50_lr5e5_batch12_5labels',
+    #                                              experiment1_epoch_num=150, experiment2_epoch_num=375, dataset_name='mimic')
 
     # main_single_head_train_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
     #               valid=True, augment=True, experiment_name='batchaggreg_vindr_3sites_each5k_resnet50_1fc_lr5e5_2labels', dataset_name='vindr_site1', model_file_name='epoch8000_model0_trained_model.pth')

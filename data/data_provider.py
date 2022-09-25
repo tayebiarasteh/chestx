@@ -67,9 +67,11 @@ class vindr_data_loader_2D(Dataset):
         self.file_path_list = list(self.subset_df['image_id'])
         # self.chosen_labels = ['No finding', 'Aortic enlargement', 'Pleural thickening', 'Cardiomegaly', 'Pleural effusion',
         #                       'Pneumothorax', 'Atelectasis', 'Consolidation'] # 8 labels
+        self.chosen_labels = ['No finding', 'Aortic enlargement', 'Pleural thickening', 'Cardiomegaly', 'Pleural effusion',
+                              'Pneumothorax', 'Atelectasis'] # 7 labels
         # self.chosen_labels = ['No finding', 'Aortic enlargement', 'Pleural thickening', 'Cardiomegaly', 'Pleural effusion'] # 5 labels
         # self.chosen_labels = ['Aortic enlargement', 'Cardiomegaly', 'Mediastinal shift', 'No finding'] # green labels
-        self.chosen_labels = ['Cardiomegaly', 'Pleural effusion'] # 2 labels
+        # self.chosen_labels = ['Cardiomegaly', 'Pleural effusion'] # 2 labels
         # self.chosen_labels = ['Pleural effusion']
 
 
@@ -493,8 +495,8 @@ class UKA_data_loader_2D(Dataset):
         self.file_path_list = list(self.subset_df['image_id'])
         # self.chosen_labels = ['cardiomegaly', 'congestion', 'pleural_effusion_right', 'pleural_effusion_left', 'pneumonic_infiltrates_right',
         #                       'pneumonic_infiltrates_left', 'atelectasis_right', 'atelectasis_left'] # 8 labels
-        # self.chosen_labels = ['pleural_effusion_left', 'pleural_effusion_right', 'congestion', 'cardiomegaly', 'pneumonic_infiltrates_left', 'pneumonic_infiltrates_right']
-        self.chosen_labels = ['pleural_effusion_right', 'pneumonic_infiltrates_left'] # 2 labels
+        self.chosen_labels = ['pleural_effusion_left', 'pleural_effusion_right', 'cardiomegaly', 'pneumonic_infiltrates_left', 'pneumonic_infiltrates_right'] # 5 labels
+        # self.chosen_labels = ['pleural_effusion_right', 'pneumonic_infiltrates_left'] # 2 labels
 
 
 
@@ -606,8 +608,8 @@ class cxr14_data_loader_2D(Dataset):
             self.subset_df = self.org_df[self.org_df['split'] == 'test']
 
         self.file_path_list = list(self.subset_df['img_rel_path'])
-        self.chosen_labels = ['cardiomegaly', 'no_finding'] # green labels
-        # self.chosen_labels = ['cardiomegaly', 'effusion', 'pneumonia', 'consolidation', 'no_finding']
+        # self.chosen_labels = ['cardiomegaly', 'no_finding'] # green labels
+        self.chosen_labels = ['cardiomegaly', 'effusion', 'pneumonia', 'consolidation', 'no_finding'] # 5 labels
         # self.chosen_labels = ['consolidation', 'effusion']
         # self.chosen_labels = ['consolidation']
         # self.chosen_labels = ['pneumonia']
