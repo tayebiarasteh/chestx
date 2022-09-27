@@ -1076,7 +1076,7 @@ class Training_federated:
         for idx in range(len(valid_loss)):
 
             self.writer.add_scalar('Valid_loss_model_' + str(idx), valid_loss[idx], self.epoch)
-            # self.writer.add_scalar('valid_avg_F1_model_' + str(idx), valid_F1[idx].mean(), self.epoch)
+            self.writer.add_scalar('valid_avg_F1_model_' + str(idx), valid_F1[idx].mean(), self.epoch)
             self.writer.add_scalar('Valid_avg_AUROC_model_' + str(idx), valid_AUC[idx].mean(), self.epoch)
 
             # for i, pathology in enumerate(self.label_names_loader[idx]):

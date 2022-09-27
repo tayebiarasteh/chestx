@@ -652,8 +652,8 @@ def main_test_central_2D_pvalue_out_of_bootstrap(global_config_path="/home/soroo
     AUC_list1 = predictor1.bootstrapper(pred_array1.cpu().numpy(), target_array1.int().cpu().numpy(), index_list)
 
     # Changeable network parameters
-    model2 = load_resnet50_5FC(num_classes=len(weight))
-    # model2 = load_pretrained_model_1FC(num_classes=len(weight), resnet_num=50)
+    # model2 = load_resnet50_5FC(num_classes=len(weight))
+    model2 = load_pretrained_model_1FC(num_classes=len(weight), resnet_num=50)
     # model2 = load_pretrained_timm_model(num_classes=len(weight), model_name='vit_base_patch16_224')
 
     # Initialize prediction 2
@@ -696,10 +696,11 @@ def main_test_central_2D_pvalue_out_of_bootstrap(global_config_path="/home/soroo
 
 
 
+
 if __name__ == '__main__':
     # delete_experiment(experiment_name='conventional_federated_3sites_vindrfull_1fc_2labelseach_lr5e5_batch12', global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml")
-    main_train_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
-                  valid=True, resume=False, augment=True, experiment_name='temp', dataset_name='vindr', pretrained=True)
+    # main_train_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
+    #               valid=True, resume=False, augment=True, experiment_name='temp', dataset_name='vindr', pretrained=True)
 
     # main_backbone_train_2D_federated_manual_batch(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
     #               resume=False, augment=True, experiment_name='ttttbatchaggreg_imagenetpretrain_vindr5k_UKAfull_vitb16_224_1fc_2labelseach_lr5e5_batch5', dataset_names_list=['vindr', 'UKA'], aggregationweight=[1, 1], pretrained=False)
@@ -711,9 +712,9 @@ if __name__ == '__main__':
     # main_test_central_2D_with_bootstrapping(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
     #                      experiment_name='chexpert5k_5fc_resnet50_lr5e5_batch12_5labels', dataset_name='chexpert')
     #
-    # main_test_central_2D_pvalue_out_of_bootstrap(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
-    #                      experiment_name1='mimic5k_lr9e5_1fc_from7.5K_ofchexpert5k_vindr5k_cxr5k_UKA5k_5labelseach', experiment_name2='mimic5k_5fc_resnet50_lr5e5_batch12_5labels',
-    #                                              experiment1_epoch_num=150, experiment2_epoch_num=375, dataset_name='mimic')
+    main_test_central_2D_pvalue_out_of_bootstrap(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
+                         experiment_name1='vindr5k_lr9e5_1fc_from15K_ofUKAfull_7labels', experiment_name2='vindr5k_1fc_resnet50_lr5e5_7labels_batch12',
+                                                 experiment1_epoch_num=1160, experiment2_epoch_num=400, dataset_name='vindr')
 
     # main_single_head_train_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
     #               valid=True, augment=True, experiment_name='batchaggreg_vindr_3sites_each5k_resnet50_1fc_lr5e5_2labels', dataset_name='vindr_site1', model_file_name='epoch8000_model0_trained_model.pth')

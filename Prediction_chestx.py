@@ -16,6 +16,7 @@ from sklearn import metrics
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 import itertools
+import pandas as pd
 
 from config.serde import read_config
 
@@ -383,5 +384,12 @@ class Prediction:
             msg = f'{pathology}: {specificity_list[:, idx].mean():.2f} +- {specificity_list[:, idx].std():.2f} | '
             with open(os.path.join(self.params['target_dir'], self.params['stat_log_path']) + '/test_Stats', 'a') as f:
                 f.write(msg)
+
+        try:
+            df = pd.DataFrame(AUC_list, columns=['AUC_1', 'AUC_2', 'AUC_3', 'AUC_4', 'AUC_5', 'AUC_6', 'AUC_7'])
+            df.insert(0, 'AUC_mean', AUC_list.mean(1))
+        except:
+            df = pd.DataFrame(AUC_list.mean(1), columns=['AUC_mean'])
+        df.to_csv(os.path.join(self.params['target_dir'], self.params['stat_log_path']) + '/bootstrapped_AUC_results.csv', sep=',', index=False)
 
         return AUC_list
