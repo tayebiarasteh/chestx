@@ -623,11 +623,11 @@ def main_test_central_2D_pvalue_out_of_bootstrap(global_config_path="/home/soroo
     elif dataset_name == 'coronahack':
         test_dataset = coronahack_data_loader_2D(cfg_path=cfg_path1, mode='test', augment=False)
     elif dataset_name == 'chexpert':
-        test_dataset = chexpert_data_loader_2D(cfg_path=cfg_path1, mode='valid', augment=False)
+        test_dataset = chexpert_data_loader_2D(cfg_path=cfg_path1, mode='test', augment=False)
     elif dataset_name == 'mimic':
         test_dataset = mimic_data_loader_2D(cfg_path=cfg_path1, mode='test', augment=False)
     elif dataset_name == 'UKA':
-        test_dataset = UKA_data_loader_2D(cfg_path=cfg_path1, mode='valid', augment=False)
+        test_dataset = UKA_data_loader_2D(cfg_path=cfg_path1, mode='test', augment=False)
     elif dataset_name == 'cxr14':
         test_dataset = cxr14_data_loader_2D(cfg_path=cfg_path1, mode='test', augment=False)
     weight = test_dataset.pos_weight()
@@ -713,8 +713,8 @@ if __name__ == '__main__':
     #                      experiment_name='chexpert5k_5fc_resnet50_lr5e5_batch12_5labels', dataset_name='chexpert')
     #
     main_test_central_2D_pvalue_out_of_bootstrap(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
-                         experiment_name1='vindr5k_lr9e5_1fc_from15K_ofUKAfull_7labels', experiment_name2='vindr5k_1fc_resnet50_lr5e5_7labels_batch12',
-                                                 experiment1_epoch_num=1160, experiment2_epoch_num=400, dataset_name='vindr')
+                         experiment_name1='vindr2k_lr9e5_1fc_from23K_ofUKAfull_7labels', experiment_name2='vindr2k_1fc_resnet50_lr5e5_7labels',
+                                                 experiment1_epoch_num=3965, experiment2_epoch_num=1025, dataset_name='vindr')
 
     # main_single_head_train_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
     #               valid=True, augment=True, experiment_name='batchaggreg_vindr_3sites_each5k_resnet50_1fc_lr5e5_2labels', dataset_name='vindr_site1', model_file_name='epoch8000_model0_trained_model.pth')
