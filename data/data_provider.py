@@ -480,7 +480,7 @@ class UKA_data_loader_2D(Dataset):
         self.augment = augment
         self.file_base_dir = self.params['file_path']
         self.file_base_dir = os.path.join(self.file_base_dir, 'UKA/chest_radiograph')
-        self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "multitasking_project_less_test/final_multitask_UKA_master_list.csv"), sep=',')
+        self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "DP_project_also_original/original_UKA_master_list.csv"), sep=',')
         # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "multitasking_project_less_test/5000_final_multitask_UKA_master_list.csv"), sep=',')
         # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "multitasking_project_less_test/2000_final_multitask_UKA_master_list.csv"), sep=',')
 
@@ -594,7 +594,6 @@ class cxr14_data_loader_2D(Dataset):
         self.augment = augment
         self.file_base_dir = self.params['file_path']
         self.file_base_dir = os.path.join(self.file_base_dir, 'NIH_ChestX-ray14')
-        # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "final_cxr14_master_list.csv"), sep=',')
         self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "officialsoroosh_cxr14_master_list.csv"), sep=',')
         # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "5000_officialsoroosh_cxr14_master_list.csv"), sep=',')
         # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "2000_officialsoroosh_cxr14_master_list.csv"), sep=',')

@@ -713,8 +713,24 @@ if __name__ == '__main__':
     #                      experiment_name='chexpert5k_5fc_resnet50_lr5e5_batch12_5labels', dataset_name='chexpert')
     #
     main_test_central_2D_pvalue_out_of_bootstrap(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
-                         experiment_name1='vindr2k_lr9e5_1fc_from23K_ofUKAfull_7labels', experiment_name2='vindr2k_1fc_resnet50_lr5e5_7labels',
-                                                 experiment1_epoch_num=3965, experiment2_epoch_num=1025, dataset_name='vindr')
+                         experiment_name1='chexpertfull_lr9e5_1fc_from11.5K_ofbig_experiment_5centers_5labels', experiment_name2='chexpertfull_resnet50_1fc_lr5e5_5labels',
+                                                 experiment1_epoch_num=34, experiment2_epoch_num=28, dataset_name='chexpert')
+
+    # main_test_central_2D_pvalue_out_of_bootstrap(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
+    #                      experiment_name1='chexpertfull_lr9e5_1fc_from11.5K_ofbig_experiment_5centers_5labels', experiment_name2='cxrfull_resnet50_1fc_lr5e5_5labels',
+    #                                              experiment1_epoch_num=34, experiment2_epoch_num=36, dataset_name='cxr14')
+
+    # main_test_central_2D_pvalue_out_of_bootstrap(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
+    #                      experiment_name1='vindrfull_lr9e5_1fc_from12.5K_ofbig_experiment_5centers_5labels', experiment_name2='vindrfull_resnet50_1fc_lr5e5_5labels',
+    #                                              experiment1_epoch_num=43, experiment2_epoch_num=82, dataset_name='vindr')
+
+    # main_test_central_2D_pvalue_out_of_bootstrap(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
+    #                      experiment_name1='vindrfull_lr9e5_1fc_from12.5K_ofbig_experiment_5centers_5labels', experiment_name2='UKAfull_resnet50_1fc_lr5e5_5labels',
+    #                                              experiment1_epoch_num=43, experiment2_epoch_num=22, dataset_name='UKA')
+    #
+    # main_test_central_2D_pvalue_out_of_bootstrap(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
+    #                      experiment_name1='vindrfull_lr9e5_1fc_from12.5K_ofbig_experiment_5centers_5labels', experiment_name2='mimicfull_resnet50_1fc_lr5e5_5labels',
+    #                                              experiment1_epoch_num=43, experiment2_epoch_num=32, dataset_name='mimic')
 
     # main_single_head_train_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
     #               valid=True, augment=True, experiment_name='batchaggreg_vindr_3sites_each5k_resnet50_1fc_lr5e5_2labels', dataset_name='vindr_site1', model_file_name='epoch8000_model0_trained_model.pth')
