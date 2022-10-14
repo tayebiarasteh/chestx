@@ -291,7 +291,8 @@ class chexpert_data_loader_2D_manual:
         self.batch_size = batch_size
         self.file_base_dir = self.params['file_path']
         # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "CheXpert-v1.0", "master_list.csv"), sep=',')
-        self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "CheXpert-v1.0", "nothree_master_list_20percenttest.csv"), sep=',')
+        # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "CheXpert-v1.0", "nothree_master_list_20percenttest.csv"), sep=',')
+        self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "CheXpert-v1.0", "5000_nothree_master_list_20percenttest.csv"), sep=',')
         # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "CheXpert-v1.0", "5000_nothree_master_list.csv"), sep=',')
         # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "CheXpert-v1.0", "2000_nothree_master_list.csv"), sep=',')
 
@@ -305,7 +306,8 @@ class chexpert_data_loader_2D_manual:
         self.subset_df = self.subset_df[self.subset_df['view'] == 'Frontal']
         self.file_path_list = list(self.subset_df['jpg_rel_path'])
         # self.chosen_labels = ['cardiomegaly', 'enlarged_cardiomediastinum', 'no_finding'] # green labels
-        self.chosen_labels = ['cardiomegaly', 'lung_opacity', 'lung_lesion', 'pneumonia', 'edema'] # 5 labels
+        # self.chosen_labels = ['cardiomegaly', 'lung_opacity', 'lung_lesion', 'pneumonia', 'edema'] # 5 labels
+        self.chosen_labels = ['no_finding', 'consolidation', 'edema', 'cardiomegaly', 'pleural_effusion', 'pneumothorax', 'atelectasis'] # domain transfer on 7-label vindr labels ('consolidation' and 'edema' are out)
         # self.chosen_labels = ['lung_opacity', 'pneumonia']
 
 
@@ -401,8 +403,8 @@ class mimic_data_loader_2D_manual:
         self.file_base_dir = self.params['file_path']
         self.file_base_dir = os.path.join(self.file_base_dir, "MIMIC")
         # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "master_list.csv"), sep=',')
-        self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "nothree_master_list.csv"), sep=',')
-        # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "5000_nothree_master_list.csv"), sep=',')
+        # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "nothree_master_list.csv"), sep=',')
+        self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "5000_nothree_master_list.csv"), sep=',')
         # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "2000_nothree_master_list.csv"), sep=',')
 
         if mode == 'train':
@@ -416,7 +418,8 @@ class mimic_data_loader_2D_manual:
         APview = self.subset_df[self.subset_df['view'] == 'AP']
         self.subset_df = PAview.append(APview)
         self.file_path_list = list(self.subset_df['jpg_rel_path'])
-        self.chosen_labels = ['enlarged_cardiomediastinum', 'consolidation', 'pleural_effusion', 'pneumothorax', 'atelectasis'] # 5 labels
+        # self.chosen_labels = ['enlarged_cardiomediastinum', 'consolidation', 'pleural_effusion', 'pneumothorax', 'atelectasis'] # 5 labels
+        self.chosen_labels = ['no_finding', 'consolidation', 'edema', 'cardiomegaly', 'pleural_effusion', 'pneumothorax', 'atelectasis'] # domain transfer on 7-label vindr labels ('consolidation' and 'edema' are out)
         # self.chosen_labels = ['consolidation', 'pleural_effusion']
 
 
@@ -633,8 +636,9 @@ class cxr14_data_loader_2D_manual:
         self.batch_size = batch_size
         self.file_base_dir = self.params['file_path']
         self.file_base_dir = os.path.join(self.file_base_dir, 'NIH_ChestX-ray14')
-        self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "officialsoroosh_cxr14_master_list.csv"), sep=',')
-        # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "5000_officialsoroosh_cxr14_master_list.csv"), sep=',')
+        # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "final_cxr14_master_list.csv"), sep=',')
+        # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "officialsoroosh_cxr14_master_list.csv"), sep=',')
+        self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "5000_officialsoroosh_cxr14_master_list.csv"), sep=',')
         # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "2000_officialsoroosh_cxr14_master_list.csv"), sep=',')
         self.file_base_dir = os.path.join(self.file_base_dir, 'CXR14', 'preprocessed')
 
@@ -647,7 +651,8 @@ class cxr14_data_loader_2D_manual:
 
         self.file_path_list = list(self.subset_df['img_rel_path'])
         # self.chosen_labels = ['cardiomegaly', 'no_finding'] # green labels
-        self.chosen_labels = ['cardiomegaly', 'effusion', 'pneumonia', 'consolidation', 'no_finding'] # 5 labels
+        # self.chosen_labels = ['cardiomegaly', 'effusion', 'pneumonia', 'consolidation', 'no_finding'] # 5 labels
+        self.chosen_labels = ['no_finding', 'pneumonia', 'pleural_thickening', 'cardiomegaly', 'effusion', 'pneumothorax', 'atelectasis'] # domain transfer on 7-label vindr labels ('pneumonia' is out)
         # self.chosen_labels = ['consolidation', 'effusion']
         # self.chosen_labels = ['consolidation']
         # self.chosen_labels = ['pneumonia']
