@@ -26,7 +26,7 @@ epsilon = 1e-15
 
 
 class Training:
-    def __init__(self, cfg_path, num_epochs=10, resume=False, label_names=None):
+    def __init__(self, cfg_path, resume=False, label_names=None):
         """This class represents training and validation processes.
 
         Parameters
@@ -34,15 +34,11 @@ class Training:
         cfg_path: str
             Config file path of the experiment
 
-        num_epochs: int
-            Total number of epochs for training
-
         resume: bool
             if we are resuming training from a checkpoint
         """
         self.params = read_config(cfg_path)
         self.cfg_path = cfg_path
-        self.num_epochs = num_epochs
         self.label_names = label_names
 
         if resume == False:
@@ -139,7 +135,6 @@ class Training:
         # self.model_info['optimiser'] = optimiser.__name__
         self.model_info['total_param_num'] = total_param_num
         self.model_info['loss_function'] = loss_function.__name__
-        self.model_info['num_epochs'] = self.num_epochs
         self.params['Network'] = self.model_info
         write_config(self.params, self.cfg_path, sort_keys=True)
 
@@ -193,7 +188,7 @@ class Training:
         self.params = read_config(self.cfg_path)
         total_start_time = time.time()
 
-        for epoch in range(self.num_epochs - self.epoch):
+        for epoch in range(self.params['Network']['num_epochs'] - self.epoch):
             self.epoch += 1
 
             # initializing the loss list
@@ -220,6 +215,20 @@ class Training:
 
             train_loss = batch_loss / len(train_loader)
             self.writer.add_scalar('Train_loss_avg', train_loss, self.epoch)
+
+            # Saves information about training to config file
+            self.params['Network']['num_epoch'] = self.epoch
+            write_config(self.params, self.cfg_path, sort_keys=True)
+
+            ######## Save a checkpoint every epoch ########
+            torch.save({'epoch': self.epoch,
+                        'model_state_dict': self.model.state_dict(),
+                        'optimizer_state_dict': self.optimiser.state_dict(),
+                        'loss_state_dict': self.loss_function.state_dict(),
+                        'model_info': self.model_info, 'best_loss': self.best_loss},
+                       os.path.join(self.params['target_dir'], self.params['network_output_path'],
+                                    self.params['checkpoint_name']))
+            ######## Save a checkpoint every epoch ########
 
             # Validation iteration & calculate metrics
             if (self.epoch) % (self.params['display_stats_freq']) == 0:
@@ -416,7 +425,7 @@ class Training:
                                                                  self.params['network_output_path'], self.params['trained_model_name']))
 
         # Saving every couple of epochs
-        if (self.epoch) % self.params['network_save_freq'] == 0:
+        if (self.epoch) % self.params['display_stats_freq'] == 0:
             torch.save(self.model.state_dict(), os.path.join(self.params['target_dir'], self.params['network_output_path'],
                        'epoch{}_'.format(self.epoch) + self.params['trained_model_name']))
 
@@ -424,7 +433,7 @@ class Training:
         torch.save({'epoch': self.epoch,
                     'model_state_dict': self.model.state_dict(),
                     'optimizer_state_dict': self.optimiser.state_dict(),
-                    'loss_state_dict': self.loss_function.state_dict(), 'num_epochs': self.num_epochs,
+                    'loss_state_dict': self.loss_function.state_dict(),
                     'model_info': self.model_info, 'best_loss': self.best_loss},
                    os.path.join(self.params['target_dir'], self.params['network_output_path'], self.params['checkpoint_name']))
 

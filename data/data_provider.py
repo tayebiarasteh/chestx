@@ -273,8 +273,8 @@ class chexpert_data_loader_2D(Dataset):
         self.augment = augment
         self.file_base_dir = self.params['file_path']
         # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "CheXpert-v1.0", "master_list.csv"), sep=',')
-        # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "CheXpert-v1.0", "nothree_master_list_20percenttest.csv"), sep=',')
-        self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "CheXpert-v1.0", "5000_nothree_master_list_20percenttest.csv"), sep=',')
+        self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "CheXpert-v1.0", "nothree_master_list_20percenttest.csv"), sep=',')
+        # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "CheXpert-v1.0", "5000_nothree_master_list_20percenttest.csv"), sep=',')
         # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "CheXpert-v1.0", "5000_nothree_master_list.csv"), sep=',')
         # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "CheXpert-v1.0", "2000_nothree_master_list.csv"), sep=',')
 
@@ -288,8 +288,8 @@ class chexpert_data_loader_2D(Dataset):
         self.subset_df = self.subset_df[self.subset_df['view'] == 'Frontal']
         self.file_path_list = list(self.subset_df['jpg_rel_path'])
         # self.chosen_labels = ['cardiomegaly', 'enlarged_cardiomediastinum', 'no_finding'] # green labels
-        # self.chosen_labels = ['cardiomegaly', 'lung_opacity', 'lung_lesion', 'pneumonia', 'edema'] # 5 labels
-        self.chosen_labels = ['no_finding', 'consolidation', 'edema', 'cardiomegaly', 'pleural_effusion', 'pneumothorax', 'atelectasis'] # domain transfer on 7-label vindr labels ('consolidation' and 'edema' are out)
+        self.chosen_labels = ['cardiomegaly', 'lung_opacity', 'lung_lesion', 'pneumonia', 'edema'] # 5 labels
+        # self.chosen_labels = ['no_finding', 'consolidation', 'edema', 'cardiomegaly', 'pleural_effusion', 'pneumothorax', 'atelectasis'] # domain transfer on 7-label vindr labels ('consolidation' and 'edema' are out)
         # self.chosen_labels = ['lung_opacity', 'pneumonia']
 
 
@@ -379,8 +379,8 @@ class mimic_data_loader_2D(Dataset):
         self.file_base_dir = self.params['file_path']
         self.file_base_dir = os.path.join(self.file_base_dir, "MIMIC")
         # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "master_list.csv"), sep=',')
-        # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "nothree_master_list.csv"), sep=',')
-        self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "5000_nothree_master_list.csv"), sep=',')
+        self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "nothree_master_list.csv"), sep=',')
+        # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "5000_nothree_master_list.csv"), sep=',')
         # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "2000_nothree_master_list.csv"), sep=',')
 
         if mode == 'train':
@@ -394,8 +394,8 @@ class mimic_data_loader_2D(Dataset):
         APview = self.subset_df[self.subset_df['view'] == 'AP']
         self.subset_df = PAview.append(APview)
         self.file_path_list = list(self.subset_df['jpg_rel_path'])
-        # self.chosen_labels = ['enlarged_cardiomediastinum', 'consolidation', 'pleural_effusion', 'pneumothorax', 'atelectasis'] # 5 labels
-        self.chosen_labels = ['no_finding', 'consolidation', 'edema', 'cardiomegaly', 'pleural_effusion', 'pneumothorax', 'atelectasis'] # domain transfer on 7-label vindr labels ('consolidation' and 'edema' are out)
+        self.chosen_labels = ['enlarged_cardiomediastinum', 'consolidation', 'pleural_effusion', 'pneumothorax', 'atelectasis'] # 5 labels
+        # self.chosen_labels = ['no_finding', 'consolidation', 'edema', 'cardiomegaly', 'pleural_effusion', 'pneumothorax', 'atelectasis'] # domain transfer on 7-label vindr labels ('consolidation' and 'edema' are out)
         # self.chosen_labels = ['consolidation', 'pleural_effusion']
 
 
@@ -498,7 +498,8 @@ class UKA_data_loader_2D(Dataset):
         self.file_path_list = list(self.subset_df['image_id'])
         # self.chosen_labels = ['cardiomegaly', 'congestion', 'pleural_effusion_right', 'pleural_effusion_left', 'pneumonic_infiltrates_right',
         #                       'pneumonic_infiltrates_left', 'atelectasis_right', 'atelectasis_left'] # 8 labels
-        self.chosen_labels = ['pleural_effusion_left', 'pleural_effusion_right', 'cardiomegaly', 'pneumonic_infiltrates_left', 'pneumonic_infiltrates_right'] # 5 labels
+        # self.chosen_labels = ['pleural_effusion_left', 'pleural_effusion_right', 'cardiomegaly', 'pneumonic_infiltrates_left', 'pneumonic_infiltrates_right'] # 5 labels
+        self.chosen_labels = ['cardiomegaly', 'pleural_effusion_left'] # domain transfer for cardiomegaly
         # self.chosen_labels = ['pleural_effusion_right', 'pneumonic_infiltrates_left'] # 2 labels
 
 

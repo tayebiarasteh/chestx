@@ -30,7 +30,7 @@ epsilon = 1e-15
 
 
 class Training_federated:
-    def __init__(self, cfg_path, num_epochs=10, resume=False, label_names_loader=None):
+    def __init__(self, cfg_path, resume=False, label_names_loader=None):
         """This class represents training and validation processes.
 
         Parameters
@@ -38,15 +38,11 @@ class Training_federated:
         cfg_path: str
             Config file path of the experiment
 
-        num_epochs: int
-            Total number of epochs for training
-
         resume: bool
             if we are resuming training from a checkpoint
         """
         self.params = read_config(cfg_path)
         self.cfg_path = cfg_path
-        self.num_epochs = num_epochs
         self.label_names_loader = label_names_loader
 
         if resume == False:
@@ -143,7 +139,6 @@ class Training_federated:
         # self.model_info['optimiser'] = optimiser.__name__
         # self.model_info['total_param_num'] = total_param_num
         # self.model_info['loss_function'] = loss_function.__name__
-        self.model_info['num_epochs'] = self.num_epochs
         self.params['Network'] = self.model_info
         write_config(self.params, self.cfg_path, sort_keys=True)
 
@@ -261,7 +256,7 @@ class Training_federated:
         total_overhead_time = 0
         total_datacopy_time = 0
 
-        for epoch in range(self.num_epochs - self.epoch):
+        for epoch in range(self.params['Network']['num_epochs'] - self.epoch):
             self.epoch += 1
 
             start_time = time.time()
@@ -430,6 +425,21 @@ class Training_federated:
                 print('loss client{}: {:.3f}'.format((idx + 1), loss_client_list[idx]))
                 self.writer.add_scalar('Train_loss_client' + str(idx + 1), loss_client_list[idx], self.epoch)
 
+            # Saves information about training to config file
+            self.params['Network']['num_epoch'] = self.epoch
+            write_config(self.params, self.cfg_path, sort_keys=True)
+
+            ######## Save a checkpoint every epoch ########
+            for idx in range(len(self.model_loader)):
+                torch.save({'epoch': self.epoch,
+                            'model_state_dict': self.model_loader[idx].state_dict(),
+                            'optimizer_state_dict': self.optimizer_loader[idx].state_dict(),
+                            'loss_state_dict': self.loss_function_loader[idx].state_dict(),
+                            'model_info': self.model_info},
+                           os.path.join(self.params['target_dir'], self.params['network_output_path'],
+                                        'model' + str(idx) + '_' + self.params['checkpoint_name']))
+            ######## Save a checkpoint every epoch ########
+
             # Validation iteration & calculate metrics
             if (self.epoch) % (self.params['display_stats_freq']) == 0:
 
@@ -494,7 +504,7 @@ class Training_federated:
         total_overhead_time = 0
         total_datacopy_time = 0
 
-        for epoch in range(self.num_epochs - self.epoch):
+        for epoch in range(self.params['Network']['num_epochs'] - self.epoch):
             self.epoch += 1
 
             start_time = time.time()
@@ -572,6 +582,21 @@ class Training_federated:
                 print('loss client{}: {:.3f}'.format((idx + 1), loss_client_list[idx]))
                 self.writer.add_scalar('Train_loss_client' + str(idx + 1), loss_client_list[idx], self.epoch)
 
+            # Saves information about training to config file
+            self.params['Network']['num_epoch'] = self.epoch
+            write_config(self.params, self.cfg_path, sort_keys=True)
+
+            ######## Save a checkpoint every epoch ########
+            for idx in range(len(self.model_loader)):
+                torch.save({'epoch': self.epoch,
+                            'model_state_dict': self.model_loader[idx].state_dict(),
+                            'optimizer_state_dict': self.optimizer_loader[idx].state_dict(),
+                            'loss_state_dict': self.loss_function_loader[idx].state_dict(),
+                            'model_info': self.model_info},
+                           os.path.join(self.params['target_dir'], self.params['network_output_path'],
+                                        'model' + str(idx) + '_' + self.params['checkpoint_name']))
+            ######## Save a checkpoint every epoch ########
+
             # Validation iteration & calculate metrics
             if (self.epoch) % (self.params['display_stats_freq']) == 0:
 
@@ -626,7 +651,7 @@ class Training_federated:
         total_overhead_time = 0
         total_datacopy_time = 0
 
-        for epoch in range(self.num_epochs - self.epoch):
+        for epoch in range(self.params['Network']['num_epochs'] - self.epoch):
             self.epoch += 1
 
             start_time = time.time()
@@ -693,6 +718,21 @@ class Training_federated:
             for idx in range(len(train_loader)):
                 print('loss client{}: {:.3f}'.format((idx + 1), loss_client_list[idx]))
                 self.writer.add_scalar('Train_loss_client' + str(idx + 1), loss_client_list[idx], self.epoch)
+
+            # Saves information about training to config file
+            self.params['Network']['num_epoch'] = self.epoch
+            write_config(self.params, self.cfg_path, sort_keys=True)
+
+            ######## Save a checkpoint every epoch ########
+            for idx in range(len(self.model_loader)):
+                torch.save({'epoch': self.epoch,
+                            'model_state_dict': self.model_loader[idx].state_dict(),
+                            'optimizer_state_dict': self.optimizer_loader[idx].state_dict(),
+                            'loss_state_dict': self.loss_function_loader[idx].state_dict(),
+                            'model_info': self.model_info},
+                           os.path.join(self.params['target_dir'], self.params['network_output_path'],
+                                        'model' + str(idx) + '_' + self.params['checkpoint_name']))
+            ######## Save a checkpoint every epoch ########
 
             # Validation iteration & calculate metrics
             if (self.epoch) % (self.params['display_stats_freq']) == 0:
@@ -972,7 +1012,7 @@ class Training_federated:
         for idx in range(len(self.model_loader)):
 
             # Saving every couple of epochs
-            if (self.epoch) % self.params['network_save_freq'] == 0:
+            if (self.epoch) % self.params['display_stats_freq'] == 0:
                 torch.save(self.model_loader[idx].state_dict(), os.path.join(self.params['target_dir'], self.params['network_output_path'],
                            'epoch{}_'.format(self.epoch) + 'model' + str(idx) + '_' + self.params['trained_model_name']))
 
@@ -980,7 +1020,7 @@ class Training_federated:
             torch.save({'epoch': self.epoch,
                         'model_state_dict': self.model_loader[idx].state_dict(),
                         'optimizer_state_dict': self.optimizer_loader[idx].state_dict(),
-                        'loss_state_dict': self.loss_function_loader[idx].state_dict(), 'num_epochs': self.num_epochs,
+                        'loss_state_dict': self.loss_function_loader[idx].state_dict(),
                         'model_info': self.model_info},
                        os.path.join(self.params['target_dir'], self.params['network_output_path'], 'model' + str(idx) + '_' + self.params['checkpoint_name']))
 

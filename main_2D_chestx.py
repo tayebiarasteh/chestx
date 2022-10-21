@@ -97,7 +97,7 @@ def main_train_central_2D(global_config_path="/home/soroosh/Documents/Repositori
     optimizer = torch.optim.Adam(model.parameters(), lr=float(params['Network']['lr']),
                                  weight_decay=float(params['Network']['weight_decay']), amsgrad=params['Network']['amsgrad'])
 
-    trainer = Training(cfg_path, num_epochs=params['num_epochs'], resume=resume, label_names=label_names)
+    trainer = Training(cfg_path, resume=resume, label_names=label_names)
     if resume == True:
         trainer.load_checkpoint(model=model, optimiser=optimizer, loss_function=loss_function, weight=weight, label_names=label_names, singlehead=singlehead)
     else:
@@ -195,7 +195,7 @@ def main_backbone_train_2D_federated_manual_batch(global_config_path="/home/soro
                                                          pin_memory=True, drop_last=False, shuffle=False, num_workers=4)
         valid_loader.append(valid_loader_model)
 
-    trainer = Training_federated(cfg_path, num_epochs=params['num_epochs'], resume=resume, label_names_loader=label_names_loader)
+    trainer = Training_federated(cfg_path, resume=resume, label_names_loader=label_names_loader)
 
     if resume == True:
         trainer.load_checkpoint(model_loader=model_loader, optimizer_loader=optimizer_loader, loss_function_loader=loss_function_loader, label_names_loader=label_names_loader, weight_loader=weight_loader)
@@ -299,7 +299,7 @@ def main_train_2D_conventional_federated_epoch(global_config_path="/home/soroosh
                                                          pin_memory=True, drop_last=False, shuffle=False, num_workers=4)
         valid_loader.append(valid_loader_model)
 
-    trainer = Training_federated(cfg_path, num_epochs=params['num_epochs'], resume=resume, label_names_loader=label_names_loader)
+    trainer = Training_federated(cfg_path, resume=resume, label_names_loader=label_names_loader)
 
     if resume == True:
         trainer.load_checkpoint(model_loader=model_loader, optimizer_loader=optimizer_loader, loss_function_loader=loss_function_loader, label_names_loader=label_names_loader, weight_loader=weight_loader)
@@ -497,7 +497,7 @@ def main_single_head_train_central_2D(global_config_path="/home/soroosh/Document
     optimizer = torch.optim.Adam(model.parameters(), lr=float(params['Network_single_head']['lr']),
                                  weight_decay=float(params['Network_single_head']['weight_decay']), amsgrad=params['Network_single_head']['amsgrad'])
 
-    trainer = Training_single_head(cfg_path, dataset_name, num_epochs_single_head=params['num_epochs_single_head'], label_names=label_names)
+    trainer = Training_single_head(cfg_path, dataset_name, label_names=label_names)
 
     trainer.setup_model(model=model, optimiser=optimizer, loss_function=loss_function, model_file_name=model_file_name, weight=weight)
     trainer.train_epoch(train_loader=train_loader, valid_loader=valid_loader)
@@ -558,7 +558,7 @@ def load_pretrained_timm_model(num_classes=2, model_name='vit_base_patch16_224',
 
 
 def main_test_central_2D_with_bootstrapping(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml", experiment_name='central_exp_for_test',
-                 dataset_name='vindr'):
+                 dataset_name='vindr', epoch_num=100):
     """Main function for multi label prediction
 
     Parameters
@@ -574,19 +574,19 @@ def main_test_central_2D_with_bootstrapping(global_config_path="/home/soroosh/Do
     elif dataset_name == 'coronahack':
         test_dataset = coronahack_data_loader_2D(cfg_path=cfg_path, mode='test', augment=False)
     elif dataset_name == 'chexpert':
-        test_dataset = chexpert_data_loader_2D(cfg_path=cfg_path, mode='valid', augment=False)
+        test_dataset = chexpert_data_loader_2D(cfg_path=cfg_path, mode='test', augment=False)
     elif dataset_name == 'mimic':
         test_dataset = mimic_data_loader_2D(cfg_path=cfg_path, mode='test', augment=False)
     elif dataset_name == 'UKA':
-        test_dataset = UKA_data_loader_2D(cfg_path=cfg_path, mode='valid', augment=False)
+        test_dataset = UKA_data_loader_2D(cfg_path=cfg_path, mode='test', augment=False)
     elif dataset_name == 'cxr14':
         test_dataset = cxr14_data_loader_2D(cfg_path=cfg_path, mode='test', augment=False)
     weight = test_dataset.pos_weight()
     label_names = test_dataset.chosen_labels
 
     # Changeable network parameters
-    model = load_resnet50_5FC(num_classes=len(weight))
-    # model = load_pretrained_model_1FC(num_classes=len(weight), resnet_num=50)
+    # model = load_resnet50_5FC(num_classes=len(weight))
+    model = load_pretrained_model_1FC(num_classes=len(weight), resnet_num=50)
     # model = load_pretrained_timm_model(num_classes=len(weight), model_name='vit_base_patch16_224')
 
     test_loader = torch.utils.data.DataLoader(dataset=test_dataset, batch_size=params['Network']['batch_size'],
@@ -598,7 +598,7 @@ def main_test_central_2D_with_bootstrapping(global_config_path="/home/soroosh/Do
 
     # Initialize prediction
     predictor = Prediction(cfg_path, label_names)
-    predictor.setup_model(model=model)
+    predictor.setup_model(model=model, epoch_num=epoch_num)
     pred_array, target_array = predictor.predict_only(test_loader)
 
     AUC_list = predictor.bootstrapper(pred_array.cpu().numpy(), target_array.int().cpu().numpy(), index_list)
@@ -709,12 +709,13 @@ if __name__ == '__main__':
     #               resume=False, augment=True, experiment_name='conventional_federated_3sites_vindrfull_1fc_2labelseach_lr5e5_batch12', dataset_names_list=['vindr_site1', 'vindr_site2', 'vindr_site3'], aggregationweight=[1, 1, 1], pretrained=False)
     # main_test_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
     #                      experiment_name='chexpert5k_5fc_resnet50_lr5e5_batch12_5labels', dataset_name='chexpert')
-    # main_test_central_2D_with_bootstrapping(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
-    #                      experiment_name='chexpert5k_5fc_resnet50_lr5e5_batch12_5labels', dataset_name='chexpert')
-    #
-    main_test_central_2D_pvalue_out_of_bootstrap(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
-                         experiment_name1='chexpertfull_lr9e5_1fc_from11.5K_ofbig_experiment_5centers_5labels', experiment_name2='chexpertfull_resnet50_1fc_lr5e5_5labels',
-                                                 experiment1_epoch_num=34, experiment2_epoch_num=28, dataset_name='chexpert')
+
+    main_test_central_2D_with_bootstrapping(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
+                         experiment_name='vindrfull_lr9e5_1fc_from18.5K_ofUKAfull_2labelseach', dataset_name='UKA', epoch_num=200)
+
+    # main_test_central_2D_pvalue_out_of_bootstrap(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
+    #                      experiment_name1='chexpertfull_lr9e5_1fc_from11.5K_ofbig_experiment_5centers_5labels', experiment_name2='chexpertfull_resnet50_1fc_lr5e5_5labels',
+    #                                              experiment1_epoch_num=34, experiment2_epoch_num=28, dataset_name='chexpert')
 
     # main_test_central_2D_pvalue_out_of_bootstrap(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
     #                      experiment_name1='chexpertfull_lr9e5_1fc_from11.5K_ofbig_experiment_5centers_5labels', experiment_name2='cxrfull_resnet50_1fc_lr5e5_5labels',

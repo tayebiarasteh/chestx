@@ -1237,6 +1237,7 @@ class csv_reducer():
 
         train_df = org_df[org_df['split'] == 'train']
         valid_df = org_df[org_df['split'] == 'valid']
+        test_df = org_df[org_df['split'] == 'test']
 
         train_list = train_df['jpg_rel_path'].unique().tolist()
         random.shuffle(train_list)
@@ -1249,6 +1250,7 @@ class csv_reducer():
 
         final_df = final_df.sort_values(['jpg_rel_path'])
         final_df = final_df.append(valid_df)
+        final_df = final_df.append(test_df)
         final_df.to_csv(output_df_path, sep=',', index=False)
 
 
