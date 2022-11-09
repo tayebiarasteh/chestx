@@ -67,9 +67,9 @@ class vindr_data_loader_2D(Dataset):
         self.file_path_list = list(self.subset_df['image_id'])
         # self.chosen_labels = ['No finding', 'Aortic enlargement', 'Pleural thickening', 'Cardiomegaly', 'Pleural effusion',
         #                       'Pneumothorax', 'Atelectasis', 'Consolidation'] # 8 labels
-        # self.chosen_labels = ['No finding', 'Aortic enlargement', 'Pleural thickening', 'Cardiomegaly', 'Pleural effusion',
-        #                       'Pneumothorax', 'Atelectasis'] # 7 labels
-        self.chosen_labels = ['No finding', 'Aortic enlargement', 'Pleural thickening', 'Cardiomegaly', 'Pleural effusion'] # 5 labels
+        self.chosen_labels = ['No finding', 'Aortic enlargement', 'Pleural thickening', 'Cardiomegaly', 'Pleural effusion',
+                              'Pneumothorax', 'Atelectasis'] # 7 labels
+        # self.chosen_labels = ['No finding', 'Aortic enlargement', 'Pleural thickening', 'Cardiomegaly', 'Pleural effusion'] # 5 labels
         # self.chosen_labels = ['Aortic enlargement', 'Cardiomegaly', 'Mediastinal shift', 'No finding'] # green labels
         # self.chosen_labels = ['Cardiomegaly', 'Pleural effusion'] # 2 labels
         # self.chosen_labels = ['Pleural effusion']
@@ -499,8 +499,8 @@ class UKA_data_loader_2D(Dataset):
         # self.chosen_labels = ['cardiomegaly', 'congestion', 'pleural_effusion_right', 'pleural_effusion_left', 'pneumonic_infiltrates_right',
         #                       'pneumonic_infiltrates_left', 'atelectasis_right', 'atelectasis_left'] # 8 labels
         # self.chosen_labels = ['pleural_effusion_left', 'pleural_effusion_right', 'cardiomegaly', 'pneumonic_infiltrates_left', 'pneumonic_infiltrates_right'] # 5 labels
-        self.chosen_labels = ['cardiomegaly', 'pleural_effusion_left'] # domain transfer for cardiomegaly
-        # self.chosen_labels = ['pleural_effusion_right', 'pneumonic_infiltrates_left'] # 2 labels
+        # self.chosen_labels = ['cardiomegaly', 'pleural_effusion_left'] # domain transfer for cardiomegaly
+        self.chosen_labels = ['pleural_effusion_right', 'pneumonic_infiltrates_left'] # 2 labels
 
 
 
@@ -598,9 +598,9 @@ class cxr14_data_loader_2D(Dataset):
         self.augment = augment
         self.file_base_dir = self.params['file_path']
         self.file_base_dir = os.path.join(self.file_base_dir, 'NIH_ChestX-ray14')
-        # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "final_cxr14_master_list.csv"), sep=',')
+        self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "final_cxr14_master_list.csv"), sep=',')
         # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "officialsoroosh_cxr14_master_list.csv"), sep=',')
-        self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "5000_officialsoroosh_cxr14_master_list.csv"), sep=',')
+        # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "5000_officialsoroosh_cxr14_master_list.csv"), sep=',')
         # self.org_df = pd.read_csv(os.path.join(self.file_base_dir, "2000_officialsoroosh_cxr14_master_list.csv"), sep=',')
         self.file_base_dir = os.path.join(self.file_base_dir, 'CXR14', 'preprocessed')
 
@@ -613,8 +613,8 @@ class cxr14_data_loader_2D(Dataset):
 
         self.file_path_list = list(self.subset_df['img_rel_path'])
         # self.chosen_labels = ['cardiomegaly', 'no_finding'] # green labels
-        # self.chosen_labels = ['cardiomegaly', 'effusion', 'pneumonia', 'consolidation', 'no_finding'] # 5 labels
-        self.chosen_labels = ['no_finding', 'pneumonia', 'pleural_thickening', 'cardiomegaly', 'effusion', 'pneumothorax', 'atelectasis'] # domain transfer on 7-label vindr labels ('pneumonia' is out)
+        self.chosen_labels = ['cardiomegaly', 'effusion', 'pneumonia', 'consolidation', 'no_finding'] # 5 labels
+        # self.chosen_labels = ['no_finding', 'pneumonia', 'pleural_thickening', 'cardiomegaly', 'effusion', 'pneumothorax', 'atelectasis'] # domain transfer on 7-label vindr labels ('pneumonia' is out)
         # self.chosen_labels = ['consolidation', 'effusion']
         # self.chosen_labels = ['consolidation']
         # self.chosen_labels = ['pneumonia']

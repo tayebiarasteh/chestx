@@ -450,6 +450,76 @@ class normalizer_resizer():
 
 
 
+    def vindrpediatric_normalizer_resizer(self):
+
+        path = "/home/soroosh/Documents/datasets/vindr-pcxr/original"
+
+        train_file_list = glob.glob(os.path.join(path, 'train/*.dicom'))
+        for file_path in tqdm(train_file_list):
+
+            RefDs = dicom.dcmread(file_path)
+
+            img = RefDs.pixel_array
+
+            # resize
+            resize_ratio = np.divide((HEIGHT, WIDTH), img.shape)
+            img = zoom(img, resize_ratio, order=2)
+
+            # normalization
+            min_ = np.min(img)
+            max_ = np.max(img)
+            scale = max_ - min_
+            img = (img - min_) / scale
+
+            # converting to the range [0 255]
+            img = img_as_ubyte(img)
+
+            # invert the values if necessary
+            if RefDs[0x0028, 0x0004].value == 'MONOCHROME1':
+                img = np.invert(img)
+
+            # histogram equalization
+            img = cv2.equalizeHist(img)
+            output_path = file_path.replace('/original/', '/preprocessed/')
+            output_path = output_path.replace('.dicom', '.jpg')
+            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
+            cv2.imwrite(output_path, img)
+
+
+        test_file_list = glob.glob(os.path.join(path, 'test/*.dicom'))
+        for file_path in test_file_list:
+
+            RefDs = dicom.dcmread(file_path)
+
+            img = RefDs.pixel_array
+
+            resize_ratio = np.divide((HEIGHT, WIDTH), img.shape)
+            img = zoom(img, resize_ratio, order=2)
+
+            # normalization
+            min_ = np.min(img)
+            max_ = np.max(img)
+            scale = max_ - min_
+            img = (img - min_) / scale
+
+            # converting to the range [0 255]
+            img = img_as_ubyte(img)
+
+            # invert the values if necessary
+            if RefDs[0x0028, 0x0004].value == 'MONOCHROME1':
+                img = np.invert(img)
+
+            # histogram equalization
+            img = cv2.equalizeHist(img)
+            output_path = file_path.replace('/original/', '/preprocessed/')
+            output_path = output_path.replace('.dicom', '.jpg')
+            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
+            cv2.imwrite(output_path, img)
+
+
+
     def chexpert_normalizer_resizer(self):
         base_path = '/mnt/hdd/Share/Chexpert_dataset/'
         valid_path = os.path.join(base_path, 'CheXpert-v1.0/valid.csv')
@@ -1198,7 +1268,7 @@ class csv_reducer():
                                             'Tuberculosis', 'Other diseases', 'No finding'])
 
         org_df_path = '/home/soroosh/Documents/datasets/XRay/vindr-cxr1/officialsoroosh_master_list.csv'
-        output_df_path = '/home/soroosh/Documents/datasets/XRay/vindr-cxr1/reduced_officialsoroosh_master_list.csv'
+        output_df_path = '/home/soroosh/Documents/datasets/XRay/vindr-cxr1/new2000_officialsoroosh_master_list.csv'
 
         org_df = pd.read_csv(org_df_path, sep=',')
 
@@ -1217,6 +1287,37 @@ class csv_reducer():
 
         final_df = final_df.sort_values(['image_id'])
         final_df = final_df.append(valid_df)
+        final_df = final_df.append(test_df)
+        final_df.to_csv(output_df_path, sep=',', index=False)
+
+
+    def vindr_pediatric(self, num_images):
+
+        # initiating the df
+        final_df = pd.DataFrame(columns=['image_id', 'split', 'No finding', 'Bronchitis', 'Brocho-pneumonia', 'Other disease', 'Bronchiolitis',
+                                        'Situs inversus', 'Pneumonia', 'Pleuro-pneumonia', 'Diagphramatic hernia', 'Tuberculosis', 'Congenital emphysema',
+                                        'CPAM', 'Hyaline membrane disease', 'Mediastinal tumor', 'Lung tumor', 'rad_ID'])
+
+        org_df_path = '/home/soroosh/Documents/datasets/XRay/vindr-pcxr/master_list_vindr-pcxr.csv'
+        output_df_path = '/home/soroosh/Documents/datasets/XRay/vindr-pcxr/reduced_master_list_vindr-pcxr.csv'
+
+        org_df = pd.read_csv(org_df_path, sep=',')
+
+        train_df = org_df[org_df['split'] == 'train']
+        # valid_df = org_df[org_df['split'] == 'valid']
+        test_df = org_df[org_df['split'] == 'test']
+
+        train_list = train_df['image_id'].unique().tolist()
+        random.shuffle(train_list)
+
+        chosen_list = train_list[:num_images]
+
+        for patient in tqdm(chosen_list):
+            selected_patient_df = train_df[train_df['image_id'] == patient]
+            final_df = final_df.append(selected_patient_df)
+
+        final_df = final_df.sort_values(['image_id'])
+        # final_df = final_df.append(valid_df)
         final_df = final_df.append(test_df)
         final_df.to_csv(output_df_path, sep=',', index=False)
 
@@ -1325,14 +1426,14 @@ class csv_reducer():
     def UKA(self, num_images):
 
         # initiating the df
-        final_df = pd.DataFrame(columns=['image_id', 'split', 'subset', 'ExposureinuAs', 'cardiomegaly', 'congestion', 'pleural_effusion_right', 'pleural_effusion_left',
-                     'pneumonic_infiltrates_right', 'pneumonic_infiltrates_left', 'disturbances_right',	'disturbances_left', 'pneumothorax_right', 'pneumothorax_left', 'subject_id'])
-        # final_df = pd.DataFrame(columns=['image_id', 'split', 'subset', 'birth_date', 'examination_date', 'study_time',
-        #                                     'patient_sex', 'ExposureinuAs', 'cardiomegaly', 'congestion', 'pleural_effusion_right', 'pleural_effusion_left',
+        # final_df = pd.DataFrame(columns=['image_id', 'split', 'subset', 'ExposureinuAs', 'cardiomegaly', 'congestion', 'pleural_effusion_right', 'pleural_effusion_left',
         #              'pneumonic_infiltrates_right', 'pneumonic_infiltrates_left', 'disturbances_right',	'disturbances_left', 'pneumothorax_right', 'pneumothorax_left', 'subject_id'])
+        final_df = pd.DataFrame(columns=['image_id', 'split', 'subset', 'birth_date', 'examination_date', 'study_time',
+                                            'patient_sex', 'ExposureinuAs', 'cardiomegaly', 'congestion', 'pleural_effusion_right', 'pleural_effusion_left',
+                     'pneumonic_infiltrates_right', 'pneumonic_infiltrates_left', 'disturbances_right',	'disturbances_left', 'pneumothorax_right', 'pneumothorax_left', 'subject_id'])
 
-        org_df_path = '/home/soroosh/Documents/datasets/XRay/UKA/chest_radiograph/final_UKA_master_list.csv'
-        output_df_path = '/home/soroosh/Documents/datasets/XRay/UKA/chest_radiograph/5000_final_UKA_master_list.csv'
+        org_df_path = '/home/soroosh/Documents/datasets/XRay/UKA/chest_radiograph/DP_project_also_original/original_UKA_master_list.csv'
+        output_df_path = '/home/soroosh/Documents/datasets/XRay/UKA/chest_radiograph/DP_project_also_original/15000_final_multitask_UKA_master_list.csv'
 
         org_df = pd.read_csv(org_df_path, sep=',')
 
@@ -1578,7 +1679,7 @@ if __name__ == '__main__':
     # handler5.coronahack(num_images=2000)
     # handler5.mimic(num_images=2000)
     # handler5.cxr14_validmaker(num_images=3000)
-    # handler5.vindr(num_images=2000)
+    handler5.vindr_pediatric(num_images=5000)
     # handler5.UKA_test_reducer(num_images=4000)
     # handler5.chexpert(num_images=2000)
-    handler5.chexpert(num_images=5000)
+    # handler5.UKA(num_images=15000)
