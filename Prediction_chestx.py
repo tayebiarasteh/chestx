@@ -320,25 +320,25 @@ class Prediction:
               '----------------------------------')
         print('\t experiment:' + self.params['experiment_name'] + '\n')
 
-        print(f'\t avg AUROC: {AUC_list.mean():.2f} +- {AUC_list.std():.2f} | avg accuracy: {accuracy_list.mean():.2f} +- {accuracy_list.std():.2f}'
-              f' | avg specificity: {specificity_list.mean():.2f} +- {specificity_list.std():.2f}'
-              f' | avg recall (sensitivity): {sensitivity_list.mean():.2f} +- {sensitivity_list.std():.2f} | avg F1: {F1_list.mean():.2f} +- {F1_list.std():.2f}\n')
+        print(f'\t avg AUROC: {AUC_list.mean():.2f} ± {AUC_list.std():.2f} | avg accuracy: {accuracy_list.mean():.2f} ± {accuracy_list.std():.2f}'
+              f' | avg specificity: {specificity_list.mean():.2f} ± {specificity_list.std():.2f}'
+              f' | avg recall (sensitivity): {sensitivity_list.mean():.2f} ± {sensitivity_list.std():.2f} | avg F1: {F1_list.mean():.2f} ± {F1_list.std():.2f}\n')
 
         print('Individual AUROC:')
         for idx, pathology in enumerate(self.label_names):
-            print(f'\t{pathology}: {AUC_list[:, idx].mean():.2f} +- {AUC_list[:, idx].std():.2f}')
+            print(f'\t{pathology}: {AUC_list[:, idx].mean():.2f} ± {AUC_list[:, idx].std():.2f}')
 
         print('\nIndividual accuracy:')
         for idx, pathology in enumerate(self.label_names):
-            print(f'\t{pathology}: {accuracy_list[:, idx].mean():.2f} +- {accuracy_list[:, idx].std():.2f}')
+            print(f'\t{pathology}: {accuracy_list[:, idx].mean():.2f} ± {accuracy_list[:, idx].std():.2f}')
 
         print('\nIndividual sensitivity:')
         for idx, pathology in enumerate(self.label_names):
-            print(f'\t{pathology}: {sensitivity_list[:, idx].mean():.2f} +- {sensitivity_list[:, idx].std():.2f}')
+            print(f'\t{pathology}: {sensitivity_list[:, idx].mean():.2f} ± {sensitivity_list[:, idx].std():.2f}')
 
         print('\nIndividual specificity:')
         for idx, pathology in enumerate(self.label_names):
-            print(f'\t{pathology}: {specificity_list[:, idx].mean():.2f} +- {specificity_list[:, idx].std():.2f}')
+            print(f'\t{pathology}: {specificity_list[:, idx].mean():.2f} ± {specificity_list[:, idx].std():.2f}')
 
         print('------------------------------------------------------'
               '----------------------------------')
@@ -346,9 +346,9 @@ class Prediction:
         # saving the stats
         msg = f'\n\n----------------------------------------------------------------------------------------\n' \
               '\t experiment:' + self.params['experiment_name'] + '\n\n' \
-              f'avg AUROC: {AUC_list.mean():.2f} +- {AUC_list.std():.2f} | avg accuracy: {accuracy_list.mean():.2f} +- {accuracy_list.std():.2f} ' \
-              f' | avg specificity: {specificity_list.mean():.2f} +- {specificity_list.std():.2f}' \
-              f' | avg recall (sensitivity): {sensitivity_list.mean():.2f} +- {sensitivity_list.std():.2f} | avg F1: {F1_list.mean():.2f} +- {F1_list.std():.2f}\n\n'
+              f'avg AUROC: {AUC_list.mean():.2f} ± {AUC_list.std():.2f} | avg accuracy: {accuracy_list.mean():.2f} ± {accuracy_list.std():.2f} ' \
+              f' | avg specificity: {specificity_list.mean():.2f} ± {specificity_list.std():.2f}' \
+              f' | avg recall (sensitivity): {sensitivity_list.mean():.2f} ± {sensitivity_list.std():.2f} | avg F1: {F1_list.mean():.2f} ± {F1_list.std():.2f}\n\n'
 
         with open(os.path.join(self.params['target_dir'], self.params['stat_log_path']) + '/test_Stats', 'a') as f:
             f.write(msg)
@@ -357,7 +357,7 @@ class Prediction:
         with open(os.path.join(self.params['target_dir'], self.params['stat_log_path']) + '/test_Stats', 'a') as f:
             f.write(msg)
         for idx, pathology in enumerate(self.label_names):
-            msg = f'{pathology}: {AUC_list[:, idx].mean():.2f} +- {AUC_list[:, idx].std():.2f} | '
+            msg = f'{pathology}: {AUC_list[:, idx].mean():.2f} ± {AUC_list[:, idx].std():.2f} | '
             with open(os.path.join(self.params['target_dir'], self.params['stat_log_path']) + '/test_Stats', 'a') as f:
                 f.write(msg)
 
@@ -365,7 +365,7 @@ class Prediction:
         with open(os.path.join(self.params['target_dir'], self.params['stat_log_path']) + '/test_Stats', 'a') as f:
             f.write(msg)
         for idx, pathology in enumerate(self.label_names):
-            msg = f'{pathology}: {accuracy_list[:, idx].mean():.2f} +- {accuracy_list[:, idx].std():.2f} | '
+            msg = f'{pathology}: {accuracy_list[:, idx].mean():.2f} ± {accuracy_list[:, idx].std():.2f} | '
             with open(os.path.join(self.params['target_dir'], self.params['stat_log_path']) + '/test_Stats', 'a') as f:
                 f.write(msg)
 
@@ -373,7 +373,7 @@ class Prediction:
         with open(os.path.join(self.params['target_dir'], self.params['stat_log_path']) + '/test_Stats', 'a') as f:
             f.write(msg)
         for idx, pathology in enumerate(self.label_names):
-            msg = f'{pathology}: {sensitivity_list[:, idx].mean():.2f} +- {sensitivity_list[:, idx].std():.2f} | '
+            msg = f'{pathology}: {sensitivity_list[:, idx].mean():.2f} ± {sensitivity_list[:, idx].std():.2f} | '
             with open(os.path.join(self.params['target_dir'], self.params['stat_log_path']) + '/test_Stats', 'a') as f:
                 f.write(msg)
 
@@ -381,15 +381,14 @@ class Prediction:
         with open(os.path.join(self.params['target_dir'], self.params['stat_log_path']) + '/test_Stats', 'a') as f:
             f.write(msg)
         for idx, pathology in enumerate(self.label_names):
-            msg = f'{pathology}: {specificity_list[:, idx].mean():.2f} +- {specificity_list[:, idx].std():.2f} | '
+            msg = f'{pathology}: {specificity_list[:, idx].mean():.2f} ± {specificity_list[:, idx].std():.2f} | '
             with open(os.path.join(self.params['target_dir'], self.params['stat_log_path']) + '/test_Stats', 'a') as f:
                 f.write(msg)
 
-        try:
-            df = pd.DataFrame(AUC_list, columns=['AUC_1', 'AUC_2', 'AUC_3', 'AUC_4', 'AUC_5', 'AUC_6', 'AUC_7'])
-            df.insert(0, 'AUC_mean', AUC_list.mean(1))
-        except:
-            df = pd.DataFrame(AUC_list.mean(1), columns=['AUC_mean'])
+        df = pd.DataFrame(AUC_list.mean(1), columns=['AUC_mean'])
+        for idx in range(AUC_list.shape[-1]):
+            df.insert(idx + 1, 'AUC_' + str(idx + 1), AUC_list[:, idx])
+
         df.to_csv(os.path.join(self.params['target_dir'], self.params['stat_log_path']) + '/bootstrapped_AUC_results.csv', sep=',', index=False)
 
         return AUC_list

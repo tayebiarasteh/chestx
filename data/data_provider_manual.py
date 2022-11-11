@@ -606,7 +606,8 @@ class UKA_data_loader_2D_manual:
         output_tensor = torch.zeros((len(self.chosen_labels)))
 
         for idx, diseases in enumerate(self.chosen_labels):
-            disease_length = sum(train_df[diseases].values == 1)
+            disease_length = sum(train_df[diseases].values == 3)
+            disease_length += sum(train_df[diseases].values == 4)
             output_tensor[idx] = (full_length - disease_length) / (disease_length + epsilon)
 
         return output_tensor
