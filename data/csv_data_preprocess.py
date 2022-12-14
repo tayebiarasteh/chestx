@@ -1025,6 +1025,42 @@ class normalizer_resizer():
         final_df.to_csv(final_df_output_path, sep=',', index=False)
 
 
+    def padchest_normalizer_resizer(self):
+        base_path = "/home/soroosh/Documents/datasets/XRay/padchest/"
+
+        df_path = os.path.join(base_path, 'padchest_master_list.csv')
+        df = pd.read_csv(df_path, sep=',')
+
+        file_list = df['ImageID'].to_list()
+        for file in tqdm(file_list):
+            ImageDir = df[df['ImageID'] == file]['ImageDir'].values[0]
+
+            image_path = os.path.join(base_path, 'original_images', str(ImageDir), file)
+            image = cv2.imread(image_path)
+
+            # color to gray
+            src = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+            # resize
+            resize_ratio = np.divide((HEIGHT, WIDTH), src.shape)
+            img = zoom(src, resize_ratio, order=2)
+
+            # normalization
+            min_ = np.min(img)
+            max_ = np.max(img)
+            scale = max_ - min_
+            img = (img - min_) / scale
+
+            # converting to the range [0 255]
+            img = img_as_ubyte(img)
+
+            # histogram equalization
+            img = cv2.equalizeHist(img)
+            output_path = image_path.replace('/original_images/', '/preprocessed/')
+            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+            cv2.imwrite(output_path, img)
+
+
 
 
 class csv_summarizer():
@@ -1349,7 +1385,6 @@ class csv_summarizer():
 
         final_df = final_df.sort_values(['split'])
         final_df.to_csv(output_path, sep=',', index=False)
-
 
 
 
@@ -1879,8 +1914,8 @@ class csv_reducer():
 
 if __name__ == '__main__':
     # handler = csv_preprocess_mimic()
-    handler = csv_preprocess_padchest()
-    handler.csv_fixer()
+    # handler = csv_preprocess_padchest()
+    # handler.csv_fixer()
     # handler.csv_creator()
     # handler.class_num_change()
     # handler.threetwo_remover()
@@ -1888,7 +1923,8 @@ if __name__ == '__main__':
     # hendler3.vindr()
     # hendler3.cxr14()
 
-    # handler2 = normalizer_resizer()
+    handler2 = normalizer_resizer()
+    handler2.padchest_normalizer_resizer()
     # handler2.mimic_normalizer_resizer()
     # handler2.vindr_normalizer_resizer()
     # handler2.chexpert_normalizer_resizer()
