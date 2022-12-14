@@ -383,74 +383,77 @@ class csv_preprocess_padchest():
             gender = df[df['ImageID'] == file]['PatientSex_DICOM'].values[0]
             split = 'train'
 
-            if 'normal' in labels:
-                no_finding = 1
-            elif 'pulmonary fibrosis' in labels:
-                pulmonary_fibrosis = 1
-            elif 'chronic changes' in labels:
-                chronic_changes = 1
-            elif 'kyphosis' in labels:
-                kyphosis = 1
-            elif 'nodule' in labels:
-                nodule_mass = 1
-            elif 'mass' in labels:
-                nodule_mass = 1
-            elif 'unchanged' in labels:
-                unchanged = 1
-            elif 'pleural effusion' in labels:
-                pleural_effusion = 1
-            elif 'pleural thickening' in labels:
-                pleural_thickening = 1
-            elif 'sternotomy' in labels:
-                sternotomy = 1
-            elif 'infiltrates' in labels:
-                infiltrates = 1
-            elif 'scoliosis' in labels:
-                scoliosis = 1
-            elif 'atelectasis' in labels:
-                atelectasis = 1
-            elif 'hernia' in labels:
-                hernia = 1
-            elif 'pneumonia' in labels:
-                pneumonia = 1
-            elif 'consolidation' in labels:
-                consolidation = 1
-            elif 'COPD signs' in labels:
-                COPD_signs = 1
-            elif 'emphysema' in labels:
-                emphysema = 1
-            elif 'cardiomegaly' in labels:
-                cardiomegaly = 1
-            elif 'aortic elongation' in labels:
-                aortic_elongation = 1
-            elif 'cavitation' in labels:
-                cavitation = 1
-            elif 'volume loss' in labels:
-                volume_loss = 1
-            elif 'congestion' in labels:
-                congestion = 1
-            elif 'pacemaker' in labels:
-                pacemaker = 1
-            elif 'bronchiectasis' in labels:
-                bronchiectasis = 1
-            elif 'air trapping' in labels:
-                air_trapping = 1
+            try:
+                if 'normal' in labels:
+                    no_finding = 1
+                if 'pulmonary fibrosis' in labels:
+                    pulmonary_fibrosis = 1
+                if 'chronic changes' in labels:
+                    chronic_changes = 1
+                if 'kyphosis' in labels:
+                    kyphosis = 1
+                if 'nodule' in labels:
+                    nodule_mass = 1
+                if 'mass' in labels:
+                    nodule_mass = 1
+                if 'unchanged' in labels:
+                    unchanged = 1
+                if 'pleural effusion' in labels:
+                    pleural_effusion = 1
+                if 'pleural thickening' in labels:
+                    pleural_thickening = 1
+                if 'sternotomy' in labels:
+                    sternotomy = 1
+                if 'infiltrates' in labels:
+                    infiltrates = 1
+                if 'scoliosis' in labels:
+                    scoliosis = 1
+                if 'atelectasis' in labels:
+                    atelectasis = 1
+                if 'hernia' in labels:
+                    hernia = 1
+                if 'pneumonia' in labels:
+                    pneumonia = 1
+                if 'consolidation' in labels:
+                    consolidation = 1
+                if 'COPD signs' in labels:
+                    COPD_signs = 1
+                if 'emphysema' in labels:
+                    emphysema = 1
+                if 'cardiomegaly' in labels:
+                    cardiomegaly = 1
+                if 'aortic elongation' in labels:
+                    aortic_elongation = 1
+                if 'cavitation' in labels:
+                    cavitation = 1
+                if 'volume loss' in labels:
+                    volume_loss = 1
+                if 'congestion' in labels:
+                    congestion = 1
+                if 'pacemaker' in labels:
+                    pacemaker = 1
+                if 'bronchiectasis' in labels:
+                    bronchiectasis = 1
+                if 'air trapping' in labels:
+                    air_trapping = 1
 
-            tempp = pd.DataFrame([[ImageID, ImageDir, split, StudyDate, StudyID, PatientID, birthdate, gender, view, Pediatric,
-                     MethodLabel, Modality, no_finding, pulmonary_fibrosis, chronic_changes, kyphosis,
-                     nodule_mass, unchanged, pleural_effusion, pleural_thickening,
-                     sternotomy, infiltrates, scoliosis, atelectasis, hernia, pneumonia,
-                     consolidation, COPD_signs, emphysema, cardiomegaly, aortic_elongation,
-                     cavitation, volume_loss, congestion, pacemaker, bronchiectasis, air_trapping]],
-                                 columns=['ImageID', 'ImageDir', 'split', 'StudyDate', 'StudyID', 'PatientID',
-                                          'birthdate', 'gender', 'view', 'Pediatric',
-                     'MethodLabel', 'Modality', 'no_finding', 'pulmonary_fibrosis', 'chronic_changes', 'kyphosis',
-                     'nodule_mass', 'unchanged', 'pleural_effusion', 'pleural_thickening',
-                     'sternotomy', 'infiltrates', 'scoliosis', 'atelectasis', 'hernia', 'pneumonia',
-                     'consolidation', 'COPD_signs', 'emphysema', 'cardiomegaly', 'aortic_elongation',
-                     'cavitation', 'volume_loss', 'congestion', 'pacemaker', 'bronchiectasis', 'air_trapping'])
-            final_data = final_data.append(tempp)
-            final_data.to_csv(output_path, sep=',', index=False)
+                tempp = pd.DataFrame([[ImageID, ImageDir, split, StudyDate, StudyID, PatientID, birthdate, gender, view, Pediatric,
+                         MethodLabel, Modality, no_finding, pulmonary_fibrosis, chronic_changes, kyphosis,
+                         nodule_mass, unchanged, pleural_effusion, pleural_thickening,
+                         sternotomy, infiltrates, scoliosis, atelectasis, hernia, pneumonia,
+                         consolidation, COPD_signs, emphysema, cardiomegaly, aortic_elongation,
+                         cavitation, volume_loss, congestion, pacemaker, bronchiectasis, air_trapping]],
+                                     columns=['ImageID', 'ImageDir', 'split', 'StudyDate', 'StudyID', 'PatientID',
+                                              'birthdate', 'gender', 'view', 'Pediatric',
+                         'MethodLabel', 'Modality', 'no_finding', 'pulmonary_fibrosis', 'chronic_changes', 'kyphosis',
+                         'nodule_mass', 'unchanged', 'pleural_effusion', 'pleural_thickening',
+                         'sternotomy', 'infiltrates', 'scoliosis', 'atelectasis', 'hernia', 'pneumonia',
+                         'consolidation', 'COPD_signs', 'emphysema', 'cardiomegaly', 'aortic_elongation',
+                         'cavitation', 'volume_loss', 'congestion', 'pacemaker', 'bronchiectasis', 'air_trapping'])
+                final_data = final_data.append(tempp)
+                final_data.to_csv(output_path, sep=',', index=False)
+            except:
+                continue
 
             if (index + 1) == 30000:
                 final_data.to_csv(output_path1, sep=',', index=False)
@@ -1028,14 +1031,9 @@ class normalizer_resizer():
     def padchest_normalizer_resizer(self):
         base_path = "/home/soroosh/Documents/datasets/XRay/padchest/"
 
-        df_path = os.path.join(base_path, 'padchest_master_list.csv')
-        df = pd.read_csv(df_path, sep=',')
+        file_list = glob.glob(os.path.join(base_path, 'original_images/*/*.png'))
 
-        file_list = df['ImageID'].to_list()
-        for file in tqdm(file_list):
-            ImageDir = df[df['ImageID'] == file]['ImageDir'].values[0]
-
-            image_path = os.path.join(base_path, 'original_images', str(ImageDir), file)
+        for image_path in tqdm(file_list):
             image = cv2.imread(image_path)
 
             # color to gray
@@ -1059,7 +1057,6 @@ class normalizer_resizer():
             output_path = image_path.replace('/original_images/', '/preprocessed/')
             os.makedirs(os.path.dirname(output_path), exist_ok=True)
             cv2.imwrite(output_path, img)
-
 
 
 
