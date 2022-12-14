@@ -337,6 +337,185 @@ class csv_preprocess_mimic():
         final_data.to_csv(newoutput_path, sep=',', index=False)
 
 
+class csv_preprocess_padchest():
+    def __init__(self, cfg_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml"):
+        self.params = read_config(cfg_path)
+
+    def csv_fixer(self):
+        final_data = pd.DataFrame(
+            columns=['ImageID', 'ImageDir', 'split', 'StudyDate', 'StudyID', 'PatientID', 'birthdate', 'gender', 'view', 'Pediatric',
+                     'MethodLabel', 'Modality', 'no_finding', 'pulmonary_fibrosis', 'chronic_changes', 'kyphosis',
+                     'nodule_mass', 'unchanged', 'pleural_effusion', 'pleural_thickening',
+                     'sternotomy', 'infiltrates', 'scoliosis', 'atelectasis', 'hernia', 'pneumonia',
+                     'consolidation', 'COPD_signs', 'emphysema', 'cardiomegaly', 'aortic_elongation',
+                     'cavitation', 'volume_loss', 'congestion', 'pacemaker', 'bronchiectasis', 'air_trapping'])
+
+        path = "/home/soroosh/Documents/datasets/XRay/padchest/original_labels/PADCHEST_chest_x_ray_images_labels_160K_01.02.19.csv"
+        output_path = "/home/soroosh/Documents/datasets/XRay/padchest/padchest_master_list.csv"
+
+        output_path1 = "/home/soroosh/Documents/datasets/XRay/padchest/padchest_master_list1.csv"
+        output_path2 = "/home/soroosh/Documents/datasets/XRay/padchest/padchest_master_list2.csv"
+        output_path3 = "/home/soroosh/Documents/datasets/XRay/padchest/padchest_master_list3.csv"
+        output_path4 = "/home/soroosh/Documents/datasets/XRay/padchest/padchest_master_list4.csv"
+
+
+        df = pd.read_csv(path, sep=',', low_memory=False)
+        files = list(df['ImageID'])
+        files.sort()
+
+        for index, file in enumerate(tqdm(files)):
+            no_finding, pulmonary_fibrosis, chronic_changes, kyphosis, nodule_mass = 0, 0, 0, 0, 0
+            unchanged, pleural_effusion, pleural_thickening, sternotomy, infiltrates = 0, 0, 0, 0, 0
+            scoliosis, atelectasis, hernia, pneumonia, consolidation, COPD_signs, emphysema, cardiomegaly = 0, 0, 0 ,0 ,0 ,0 ,0, 0
+            aortic_elongation, cavitation, volume_loss, congestion, pacemaker, bronchiectasis, air_trapping = 0, 0, 0, 0, 0, 0, 0
+            labels = df[df['ImageID'] == file]['Labels'].values[0]
+
+            ImageID = df[df['ImageID'] == file]['ImageID'].values[0]
+            ImageDir = df[df['ImageID'] == file]['ImageDir'].values[0]
+            StudyID = df[df['ImageID'] == file]['StudyID'].values[0]
+            PatientID = df[df['ImageID'] == file]['PatientID'].values[0]
+            birthdate = df[df['ImageID'] == file]['PatientBirth'].values[0]
+            view = df[df['ImageID'] == file]['Projection'].values[0]
+            Pediatric = df[df['ImageID'] == file]['Pediatric'].values[0]
+            MethodLabel = df[df['ImageID'] == file]['MethodLabel'].values[0]
+            Modality = df[df['ImageID'] == file]['Modality_DICOM'].values[0]
+            StudyDate = df[df['ImageID'] == file]['StudyDate_DICOM'].values[0]
+            gender = df[df['ImageID'] == file]['PatientSex_DICOM'].values[0]
+            split = 'train'
+
+            if 'normal' in labels:
+                no_finding = 1
+            elif 'pulmonary fibrosis' in labels:
+                pulmonary_fibrosis = 1
+            elif 'chronic changes' in labels:
+                chronic_changes = 1
+            elif 'kyphosis' in labels:
+                kyphosis = 1
+            elif 'nodule' in labels:
+                nodule_mass = 1
+            elif 'mass' in labels:
+                nodule_mass = 1
+            elif 'unchanged' in labels:
+                unchanged = 1
+            elif 'pleural effusion' in labels:
+                pleural_effusion = 1
+            elif 'pleural thickening' in labels:
+                pleural_thickening = 1
+            elif 'sternotomy' in labels:
+                sternotomy = 1
+            elif 'infiltrates' in labels:
+                infiltrates = 1
+            elif 'scoliosis' in labels:
+                scoliosis = 1
+            elif 'atelectasis' in labels:
+                atelectasis = 1
+            elif 'hernia' in labels:
+                hernia = 1
+            elif 'pneumonia' in labels:
+                pneumonia = 1
+            elif 'consolidation' in labels:
+                consolidation = 1
+            elif 'COPD signs' in labels:
+                COPD_signs = 1
+            elif 'emphysema' in labels:
+                emphysema = 1
+            elif 'cardiomegaly' in labels:
+                cardiomegaly = 1
+            elif 'aortic elongation' in labels:
+                aortic_elongation = 1
+            elif 'cavitation' in labels:
+                cavitation = 1
+            elif 'volume loss' in labels:
+                volume_loss = 1
+            elif 'congestion' in labels:
+                congestion = 1
+            elif 'pacemaker' in labels:
+                pacemaker = 1
+            elif 'bronchiectasis' in labels:
+                bronchiectasis = 1
+            elif 'air trapping' in labels:
+                air_trapping = 1
+
+            tempp = pd.DataFrame([[ImageID, ImageDir, split, StudyDate, StudyID, PatientID, birthdate, gender, view, Pediatric,
+                     MethodLabel, Modality, no_finding, pulmonary_fibrosis, chronic_changes, kyphosis,
+                     nodule_mass, unchanged, pleural_effusion, pleural_thickening,
+                     sternotomy, infiltrates, scoliosis, atelectasis, hernia, pneumonia,
+                     consolidation, COPD_signs, emphysema, cardiomegaly, aortic_elongation,
+                     cavitation, volume_loss, congestion, pacemaker, bronchiectasis, air_trapping]],
+                                 columns=['ImageID', 'ImageDir', 'split', 'StudyDate', 'StudyID', 'PatientID',
+                                          'birthdate', 'gender', 'view', 'Pediatric',
+                     'MethodLabel', 'Modality', 'no_finding', 'pulmonary_fibrosis', 'chronic_changes', 'kyphosis',
+                     'nodule_mass', 'unchanged', 'pleural_effusion', 'pleural_thickening',
+                     'sternotomy', 'infiltrates', 'scoliosis', 'atelectasis', 'hernia', 'pneumonia',
+                     'consolidation', 'COPD_signs', 'emphysema', 'cardiomegaly', 'aortic_elongation',
+                     'cavitation', 'volume_loss', 'congestion', 'pacemaker', 'bronchiectasis', 'air_trapping'])
+            final_data = final_data.append(tempp)
+            final_data.to_csv(output_path, sep=',', index=False)
+
+            if (index + 1) == 30000:
+                final_data.to_csv(output_path1, sep=',', index=False)
+                del final_data
+                final_data = pd.DataFrame(
+                    columns=['ImageID', 'ImageDir', 'split', 'StudyDate', 'StudyID', 'PatientID', 'birthdate', 'gender',
+                             'view', 'Pediatric',
+                             'MethodLabel', 'Modality', 'no_finding', 'pulmonary_fibrosis', 'chronic_changes',
+                             'kyphosis',
+                             'nodule_mass', 'unchanged', 'pleural_effusion', 'pleural_thickening',
+                             'sternotomy', 'infiltrates', 'scoliosis', 'atelectasis', 'hernia', 'pneumonia',
+                             'consolidation', 'COPD_signs', 'emphysema', 'cardiomegaly', 'aortic_elongation',
+                             'cavitation', 'volume_loss', 'congestion', 'pacemaker', 'bronchiectasis', 'air_trapping'])
+
+            elif (index + 1) == 60000:
+                final_data.to_csv(output_path2, sep=',', index=False)
+                del final_data
+                final_data = pd.DataFrame(
+                    columns=['ImageID', 'ImageDir', 'split', 'StudyDate', 'StudyID', 'PatientID', 'birthdate', 'gender',
+                             'view', 'Pediatric',
+                             'MethodLabel', 'Modality', 'no_finding', 'pulmonary_fibrosis', 'chronic_changes',
+                             'kyphosis',
+                             'nodule_mass', 'unchanged', 'pleural_effusion', 'pleural_thickening',
+                             'sternotomy', 'infiltrates', 'scoliosis', 'atelectasis', 'hernia', 'pneumonia',
+                             'consolidation', 'COPD_signs', 'emphysema', 'cardiomegaly', 'aortic_elongation',
+                             'cavitation', 'volume_loss', 'congestion', 'pacemaker', 'bronchiectasis', 'air_trapping'])
+
+            elif (index + 1) == 90000:
+                final_data.to_csv(output_path3, sep=',', index=False)
+                del final_data
+                final_data = pd.DataFrame(
+                    columns=['ImageID', 'ImageDir', 'split', 'StudyDate', 'StudyID', 'PatientID', 'birthdate', 'gender',
+                             'view', 'Pediatric',
+                             'MethodLabel', 'Modality', 'no_finding', 'pulmonary_fibrosis', 'chronic_changes',
+                             'kyphosis',
+                             'nodule_mass', 'unchanged', 'pleural_effusion', 'pleural_thickening',
+                             'sternotomy', 'infiltrates', 'scoliosis', 'atelectasis', 'hernia', 'pneumonia',
+                             'consolidation', 'COPD_signs', 'emphysema', 'cardiomegaly', 'aortic_elongation',
+                             'cavitation', 'volume_loss', 'congestion', 'pacemaker', 'bronchiectasis', 'air_trapping'])
+
+            elif (index + 1) == 120000:
+                final_data.to_csv(output_path4, sep=',', index=False)
+                del final_data
+                final_data = pd.DataFrame(
+                    columns=['ImageID', 'ImageDir', 'split', 'StudyDate', 'StudyID', 'PatientID', 'birthdate', 'gender',
+                             'view', 'Pediatric',
+                             'MethodLabel', 'Modality', 'no_finding', 'pulmonary_fibrosis', 'chronic_changes',
+                             'kyphosis',
+                             'nodule_mass', 'unchanged', 'pleural_effusion', 'pleural_thickening',
+                             'sternotomy', 'infiltrates', 'scoliosis', 'atelectasis', 'hernia', 'pneumonia',
+                             'consolidation', 'COPD_signs', 'emphysema', 'cardiomegaly', 'aortic_elongation',
+                             'cavitation', 'volume_loss', 'congestion', 'pacemaker', 'bronchiectasis', 'air_trapping'])
+
+        # merging the dataframes
+        df1 = pd.read_csv(output_path1, sep=',')
+        df2 = pd.read_csv(output_path2, sep=',')
+        df3 = pd.read_csv(output_path3, sep=',')
+        df4 = pd.read_csv(output_path4, sep=',')
+        ultimate_df = df1.append(df2)
+        ultimate_df = ultimate_df.append(df3)
+        ultimate_df = ultimate_df.append(df4)
+        ultimate_df = ultimate_df.append(final_data)
+
+        ultimate_df.to_csv(output_path, sep=',', index=False)
+
 
 class normalizer_resizer():
     def __init__(self, cfg_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml"):
@@ -1651,11 +1830,57 @@ class csv_reducer():
         final_df.to_csv(output_df_path, sep=',', index=False)
 
 
+    def padchest_testmaker(self):
+
+        final_test_df = pd.DataFrame(
+            columns=['ImageID', 'ImageDir', 'split', 'StudyDate', 'StudyID', 'PatientID', 'birthdate', 'gender', 'view', 'Pediatric',
+                     'MethodLabel', 'Modality', 'no_finding', 'pulmonary_fibrosis', 'chronic_changes', 'kyphosis',
+                     'nodule_mass', 'unchanged', 'pleural_effusion', 'pleural_thickening',
+                     'sternotomy', 'infiltrates', 'scoliosis', 'atelectasis', 'hernia', 'pneumonia',
+                     'consolidation', 'COPD_signs', 'emphysema', 'cardiomegaly', 'aortic_elongation',
+                     'cavitation', 'volume_loss', 'congestion', 'pacemaker', 'bronchiectasis', 'air_trapping'])
+        final_train_df = pd.DataFrame(
+            columns=['ImageID', 'ImageDir', 'split', 'StudyDate', 'StudyID', 'PatientID', 'birthdate', 'gender', 'view', 'Pediatric',
+                     'MethodLabel', 'Modality', 'no_finding', 'pulmonary_fibrosis', 'chronic_changes', 'kyphosis',
+                     'nodule_mass', 'unchanged', 'pleural_effusion', 'pleural_thickening',
+                     'sternotomy', 'infiltrates', 'scoliosis', 'atelectasis', 'hernia', 'pneumonia',
+                     'consolidation', 'COPD_signs', 'emphysema', 'cardiomegaly', 'aortic_elongation',
+                     'cavitation', 'volume_loss', 'congestion', 'pacemaker', 'bronchiectasis', 'air_trapping'])
+
+        path = "/home/soroosh/Documents/datasets/XRay/padchest/padchest_master_list.csv"
+        output_path = "/home/soroosh/Documents/datasets/XRay/padchest/padchest_master_list_20percenttest.csv"
+
+        org_df = pd.read_csv(path, sep=',')
+
+        train_patients = org_df['PatientID'].unique().tolist()
+        random.shuffle(train_patients)
+        num_test_pats = int(len(train_patients) * 0.2)
+
+        test_list = train_patients[:num_test_pats]
+        train_list = train_patients[num_test_pats:]
+
+        for patient in tqdm(test_list):
+            selected_patient_df = org_df[org_df['PatientID'] == patient]
+            final_test_df = final_test_df.append(selected_patient_df)
+
+        for patient in tqdm(train_list):
+            selected_patient_df = org_df[org_df['PatientID'] == patient]
+            final_train_df = final_train_df.append(selected_patient_df)
+
+        final_test_df.loc[final_test_df.split == 'train', 'split'] = 'test'
+        final_test_df = final_test_df.sort_values(['ImageID'])
+        final_train_df = final_train_df.sort_values(['ImageID'])
+
+        final_df = final_train_df.append(final_test_df)
+        final_df.to_csv(output_path, sep=',', index=False)
+
 
 
 
 if __name__ == '__main__':
     # handler = csv_preprocess_mimic()
+    handler = csv_preprocess_padchest()
+    handler.csv_fixer()
     # handler.csv_creator()
     # handler.class_num_change()
     # handler.threetwo_remover()
@@ -1676,10 +1901,11 @@ if __name__ == '__main__':
     # handler4.threetwo_remover()
 
     handler5 = csv_reducer()
+    handler5.padchest_testmaker()
     # handler5.coronahack(num_images=2000)
     # handler5.mimic(num_images=2000)
     # handler5.cxr14_validmaker(num_images=3000)
-    handler5.vindr_pediatric(num_images=5000)
+    # handler5.vindr_pediatric(num_images=5000)
     # handler5.UKA_test_reducer(num_images=4000)
     # handler5.chexpert(num_images=2000)
     # handler5.UKA(num_images=15000)
