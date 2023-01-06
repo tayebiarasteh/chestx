@@ -13,9 +13,7 @@ import numpy as np
 from tensorboardX import SummaryWriter
 import torch
 import torch.nn.functional as F
-# import torchmetrics
 from sklearn import metrics
-import matplotlib.pyplot as plt
 
 from config.serde import read_config, write_config
 
@@ -124,15 +122,12 @@ class Training:
         print('----------------------------------------------------\n')
 
         self.model = model.to(self.device)
-        # self.model = self.model.half() # float16
 
         self.loss_weight = weight.to(self.device)
         self.loss_function = loss_function(pos_weight=self.loss_weight)
         self.optimiser = optimiser
 
         # Saves the model, optimiser,loss function name for writing to config file
-        # self.model_info['model'] = model.__name__
-        # self.model_info['optimiser'] = optimiser.__name__
         self.model_info['total_param_num'] = total_param_num
         self.model_info['loss_function'] = loss_function.__name__
         self.params['Network'] = self.model_info
@@ -307,13 +302,6 @@ class Training:
             fpr, tpr, thresholds = metrics.roc_curve(labels_cache[:, idx], preds_with_sigmoid_cache[:, idx], pos_label=1)
             optimal_idx = np.argmax(tpr - fpr)
             optimal_threshold[idx] = thresholds[optimal_idx]
-
-            # metrics.RocCurveDisplay(fpr=fpr, tpr=tpr).plot()
-            # plt.annotate('working point', xy=(fpr[optimal_idx], tpr[optimal_idx]), xycoords='data',
-            #              arrowprops=dict(facecolor='red'))
-            # plt.grid()
-            # plt.title(self.label_names[idx] + f' | threshold: {optimal_threshold[idx]:.4f} | epoch: {self.epoch}')
-            # plt.savefig(self.label_names[idx] + '.png')
 
         predicted_labels = (preds_with_sigmoid_cache > optimal_threshold).astype(np.int32)
 
