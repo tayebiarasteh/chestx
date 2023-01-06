@@ -8,14 +8,11 @@ https://github.com/tayebiarasteh/
 
 import os.path
 import time
-import pdb
 import numpy as np
 from tensorboardX import SummaryWriter
 import torch
 import torch.nn.functional as F
-# import torchmetrics
 from sklearn import metrics
-import matplotlib.pyplot as plt
 
 from config.serde import read_config, write_config
 
@@ -98,7 +95,6 @@ class Training_single_head:
         else:
             elapsed_mins = int(elapsed_time / 60)
             elapsed_secs = elapsed_time - (elapsed_mins * 60)
-            # elapsed_secs = int(elapsed_time - (elapsed_mins * 60))
         return elapsed_hours, elapsed_mins, elapsed_secs
 
 
@@ -126,22 +122,7 @@ class Training_single_head:
 
         pretrained_state_dict = torch.load(os.path.join(self.params['target_dir'], self.params['network_output_path'], model_file_name))
 
-        # temp_dict_model = {}
-        # for weightbias in model_state_dict_list:
-        #     if 'fc.18' in weightbias:
-        #         temp_dict_model[weightbias] = model.state_dict()[weightbias]
-        #     else:
-        #         temp_dict_model[weightbias] = pretrained_state_dict[weightbias]
-        # model.load_state_dict(temp_dict_model)
-
         model.load_state_dict(pretrained_state_dict)
-
-        # for param in model.parameters():
-        #     param.requires_grad = False
-        # for param in model.fc.parameters():
-        #     param.requires_grad = True
-        # for param in model.fc[18].parameters():
-        #     param.requires_grad = True
 
         # prints the network's total number of trainable parameters and
         # stores it to the experiment config
@@ -150,15 +131,12 @@ class Training_single_head:
         print('----------------------------------------------------\n')
 
         self.model = model.to(self.device)
-        # self.model = self.model.half() # float16
 
         self.loss_weight = weight.to(self.device)
         self.loss_function = loss_function(pos_weight=self.loss_weight)
         self.optimiser = optimiser
 
         # Saves the model, optimiser,loss function name for writing to config file
-        # self.model_info['model'] = model.__name__
-        # self.model_info['optimiser'] = optimiser.__name__
         self.model_info['total_param_num'] = total_param_num
         self.model_info['loss_function'] = loss_function.__name__
         self.params['Network_single_head'] = self.model_info
