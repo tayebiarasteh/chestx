@@ -671,7 +671,6 @@ def main_test_central_2D_pvalue_out_of_bootstrap(global_config_path="/home/soroo
         if ratio1 <= 0.05:
             print(f'\t{pathology} p-value: {ratio1}; model 1 significantly higher AUC than model 2')
         else:
-            # print(f'\t{pathology} p-value: {ratio}; model 1 NOT significantly higher AUC than model 2')
             counter = AUC_list2[:, idx] > AUC_list1[:, idx]
             ratio2 = (len(counter) - counter.sum()) / len(counter)
             if ratio2 <= 0.05:
@@ -680,14 +679,14 @@ def main_test_central_2D_pvalue_out_of_bootstrap(global_config_path="/home/soroo
                 print(f'\t{pathology} p-value: {ratio1}; models NOT significantly different for this label')
 
     print('\nAvg AUC of labels p-values:\n')
-    AUC_list1 = AUC_list1.mean(1)
-    AUC_list2 = AUC_list2.mean(1)
-    counter = AUC_list1 > AUC_list2
+    avgAUC_list1 = AUC_list1.mean(1)
+    avgAUC_list2 = AUC_list2.mean(1)
+    counter = avgAUC_list1 > avgAUC_list2
     ratio1 = (len(counter) - counter.sum()) / len(counter)
     if ratio1 <= 0.05:
         print(f'\tp-value: {ratio1}; model 1 significantly higher AUC than model 2 on average')
     else:
-        counter = AUC_list2 > AUC_list1
+        counter = avgAUC_list2 > avgAUC_list1
         ratio2 = (len(counter) - counter.sum()) / len(counter)
         if ratio2 <= 0.05:
             print(f'\tp-value: {ratio2}; model 2 significantly higher AUC than model 1 on average')
@@ -695,9 +694,62 @@ def main_test_central_2D_pvalue_out_of_bootstrap(global_config_path="/home/soroo
             print(f'\tp-value: {ratio1}; models NOT significantly different on average for all labels')
 
 
+    msg = f'\n\nindividual labels p-values:\n'
+    with open(os.path.join(params1['target_dir'], params1['stat_log_path']) + '/test_Stats', 'a') as f:
+        f.write(msg)
+    with open(os.path.join(params2['target_dir'], params2['stat_log_path']) + '/test_Stats', 'a') as f:
+        f.write(msg)
+    for idx, pathology in enumerate(label_names):
+        counter = AUC_list1[:, idx] > AUC_list2[:, idx]
+        ratio1 = (len(counter) - counter.sum()) / len(counter)
+        if ratio1 <= 0.05:
+            msg = f'\t{pathology} p-value: {ratio1}; model 1 significantly higher AUC than model 2'
+        else:
+            counter = AUC_list2[:, idx] > AUC_list1[:, idx]
+            ratio2 = (len(counter) - counter.sum()) / len(counter)
+            if ratio2 <= 0.05:
+                msg = f'\t{pathology} p-value: {ratio2}; model 2 significantly higher AUC than model 1'
+            else:
+                msg = f'\t{pathology} p-value: {ratio1}; models NOT significantly different for this label'
+
+        with open(os.path.join(params1['target_dir'], params1['stat_log_path']) + '/test_Stats', 'a') as f:
+            f.write(msg)
+        with open(os.path.join(params2['target_dir'], params2['stat_log_path']) + '/test_Stats', 'a') as f:
+            f.write(msg)
+
+
+    msg = f'\n\nAvg AUC of labels p-values:\n'
+    with open(os.path.join(params1['target_dir'], params1['stat_log_path']) + '/test_Stats', 'a') as f:
+        f.write(msg)
+    with open(os.path.join(params2['target_dir'], params2['stat_log_path']) + '/test_Stats', 'a') as f:
+        f.write(msg)
+    avgAUC_list1 = AUC_list1.mean(1)
+    avgAUC_list2 = AUC_list2.mean(1)
+    counter = avgAUC_list1 > avgAUC_list2
+    ratio1 = (len(counter) - counter.sum()) / len(counter)
+    if ratio1 <= 0.05:
+        msg = f'\tp-value: {ratio1}; model 1 significantly higher AUC than model 2 on average'
+    else:
+        counter = avgAUC_list2 > avgAUC_list1
+        ratio2 = (len(counter) - counter.sum()) / len(counter)
+        if ratio2 <= 0.05:
+            msg = f'\tp-value: {ratio2}; model 2 significantly higher AUC than model 1 on average'
+        else:
+            msg = f'\tp-value: {ratio1}; models NOT significantly different on average for all labels'
+
+    with open(os.path.join(params1['target_dir'], params1['stat_log_path']) + '/test_Stats', 'a') as f:
+        f.write(msg)
+    with open(os.path.join(params2['target_dir'], params2['stat_log_path']) + '/test_Stats', 'a') as f:
+        f.write(msg)
+
+
 
 
 if __name__ == '__main__':
+    from data.csv_data_preprocess import normalizer_resizer
+    handler2 = normalizer_resizer()
+    handler2.padchest_normalizer_resizer()
+
     # delete_experiment(experiment_name='conventional_federated_3sites_vindrfull_1fc_2labelseach_lr5e5_batch12', global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml")
     # main_train_central_2D(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
     #               valid=True, resume=False, augment=True, experiment_name='temp', dataset_name='vindr', pretrained=True)
@@ -715,9 +767,9 @@ if __name__ == '__main__':
     # main_test_central_2D_with_bootstrapping(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
     #                      experiment_name='mimicfull_central5label_cardiomegaly_effusion_pneumonia_consolidation_nofinding', dataset_name='cxr14', epoch_num=28)
 
-    main_test_central_2D_pvalue_out_of_bootstrap(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
-                         experiment_name1='vindr2k_lr9e5_1fc_from23K_ofUKAfull_7labels', experiment_name2='vindr_new2k_1fc_resnet50_lr5e5_7labels',
-                                                 experiment1_epoch_num=3965, experiment2_epoch_num=970, dataset_name='vindr')
+    # main_test_central_2D_pvalue_out_of_bootstrap(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
+    #                      experiment_name1='vindr2k_lr9e5_1fc_from23K_ofUKAfull_7labels', experiment_name2='vindr_new2k_1fc_resnet50_lr5e5_7labels',
+    #                                              experiment1_epoch_num=3965, experiment2_epoch_num=970, dataset_name='vindr')
 
     # main_test_central_2D_pvalue_out_of_bootstrap(global_config_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml",
     #                      experiment_name1='vindr2k_lr9e5_1fc_from23K_ofUKAfull_7labels', experiment_name2='vindr_2k_1fc_resnet50_lr5e5_7labels',

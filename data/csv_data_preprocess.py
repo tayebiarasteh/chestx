@@ -524,7 +524,6 @@ class normalizer_resizer():
     def __init__(self, cfg_path="/home/soroosh/Documents/Repositories/chestx/config/config.yaml"):
         pass
 
-
     def mimic_normalizer_resizer(self):
         base_path = '/home/soroosh/Documents/datasets/MIMIC'
 
@@ -533,7 +532,6 @@ class normalizer_resizer():
 
         file_list = df['jpg_rel_path'].to_list()
         for file_path in tqdm(file_list):
-
             image_path = os.path.join(base_path, file_path)
             image = cv2.imread(image_path)
 
@@ -560,7 +558,181 @@ class normalizer_resizer():
 
             cv2.imwrite(output_path, img)
 
+    def mimic_further_normalizer_resizer(self):
+        base_path = '/home/soroosh/Documents/datasets/XRay/MIMIC'
 
+        df_path = os.path.join(base_path, 'mimic_master_list.csv')
+        df = pd.read_csv(df_path, sep=',')
+
+        file_list = df['jpg_rel_path'].to_list()
+        for file_path in tqdm(file_list):
+            image_path = os.path.join(base_path, file_path)
+            image_path = image_path.replace('/files/', '/preprocessed/')
+
+            image = cv2.imread(image_path)
+
+            # color to gray
+            img = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+            # resize
+            resize_ratio = np.divide((256, 256), img.shape)
+            img = zoom(img, resize_ratio, order=2)
+
+            # normalization
+            min_ = np.min(img)
+            max_ = np.max(img)
+            scale = max_ - min_
+            img = (img - min_) / scale
+
+            # converting to the range [0 255]
+            img = img_as_ubyte(img)
+
+            # histogram equalization
+            img = cv2.equalizeHist(img)
+            output_path = image_path.replace('/preprocessed/', '/preprocessed256/')
+            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
+            cv2.imwrite(output_path, img)
+
+    def UKA_further_normalizer_resizer(self):
+        file_list = glob.glob('/home/soroosh/Documents/datasets/XRay/UKA/chest_radiograph/UKA_preprocessed/*/*.jpg')
+        for image_path in tqdm(file_list):
+            image = cv2.imread(image_path)
+
+            # color to gray
+            img = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+            # resize
+            resize_ratio = np.divide((224, 224), img.shape)
+            img = zoom(img, resize_ratio, order=2)
+
+            # normalization
+            min_ = np.min(img)
+            max_ = np.max(img)
+            scale = max_ - min_
+            img = (img - min_) / scale
+
+            # converting to the range [0 255]
+            img = img_as_ubyte(img)
+
+            # histogram equalization
+            img = cv2.equalizeHist(img)
+            output_path = image_path.replace('/UKA_preprocessed/', '/UKA_preprocessed224/')
+            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
+            cv2.imwrite(output_path, img)
+
+    def chexpert_further_normalizer_resizer(self):
+        file_list = glob.glob('/home/soroosh/Documents/datasets/XRay/CheXpert-v1.0/preprocessed/*/*/*/*.jpg')
+        for image_path in tqdm(file_list):
+            image = cv2.imread(image_path)
+
+            # color to gray
+            img = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+            # resize
+            resize_ratio = np.divide((256, 256), img.shape)
+            img = zoom(img, resize_ratio, order=2)
+
+            # normalization
+            min_ = np.min(img)
+            max_ = np.max(img)
+            scale = max_ - min_
+            img = (img - min_) / scale
+
+            # converting to the range [0 255]
+            img = img_as_ubyte(img)
+
+            # histogram equalization
+            img = cv2.equalizeHist(img)
+            output_path = image_path.replace('/preprocessed/', '/preprocessed256/')
+            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
+            cv2.imwrite(output_path, img)
+
+    def cxr14_further_normalizer_resizer(self):
+        file_list = glob.glob('/home/soroosh/Documents/datasets/XRay/NIH_ChestX-ray14/CXR14/preprocessed/*/*/*.png')
+        for image_path in tqdm(file_list):
+            image = cv2.imread(image_path)
+
+            # color to gray
+            img = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+            # resize
+            resize_ratio = np.divide((256, 256), img.shape)
+            img = zoom(img, resize_ratio, order=2)
+
+            # normalization
+            min_ = np.min(img)
+            max_ = np.max(img)
+            scale = max_ - min_
+            img = (img - min_) / scale
+
+            # converting to the range [0 255]
+            img = img_as_ubyte(img)
+
+            # histogram equalization
+            img = cv2.equalizeHist(img)
+            output_path = image_path.replace('/preprocessed/', '/preprocessed256/')
+            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
+            cv2.imwrite(output_path, img)
+
+    def vindrpcxr_further_normalizer_resizer(self):
+        file_list = glob.glob('/home/soroosh/Documents/datasets/XRay/vindr-pcxr/preprocessed/*/*.jpg')
+        for image_path in tqdm(file_list):
+            image = cv2.imread(image_path)
+
+            # color to gray
+            img = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+            # resize
+            resize_ratio = np.divide((256, 256), img.shape)
+            img = zoom(img, resize_ratio, order=2)
+
+            # normalization
+            min_ = np.min(img)
+            max_ = np.max(img)
+            scale = max_ - min_
+            img = (img - min_) / scale
+
+            # converting to the range [0 255]
+            img = img_as_ubyte(img)
+
+            # histogram equalization
+            img = cv2.equalizeHist(img)
+            output_path = image_path.replace('/preprocessed/', '/preprocessed256/')
+            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
+            cv2.imwrite(output_path, img)
+
+    def vindr_further_normalizer_resizer(self):
+        file_list = glob.glob('/home/soroosh/Documents/datasets/XRay/vindr-cxr1/preprocessed/*/*.jpg')
+        for image_path in tqdm(file_list):
+            image = cv2.imread(image_path)
+
+            # color to gray
+            img = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+            # resize
+            resize_ratio = np.divide((256, 256), img.shape)
+            img = zoom(img, resize_ratio, order=2)
+
+            # normalization
+            min_ = np.min(img)
+            max_ = np.max(img)
+            scale = max_ - min_
+            img = (img - min_) / scale
+
+            # converting to the range [0 255]
+            img = img_as_ubyte(img)
+
+            # histogram equalization
+            img = cv2.equalizeHist(img)
+            output_path = image_path.replace('/preprocessed/', '/preprocessed256/')
+            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
+            cv2.imwrite(output_path, img)
 
     def vindr_normalizer_resizer(self):
 
@@ -598,7 +770,6 @@ class normalizer_resizer():
 
             cv2.imwrite(output_path, img)
 
-
         test_file_list = glob.glob(os.path.join(path, 'test/*.dicom'))
         for file_path in test_file_list:
 
@@ -630,13 +801,12 @@ class normalizer_resizer():
 
             cv2.imwrite(output_path, img)
 
-
-
     def vindrpediatric_normalizer_resizer(self):
 
-        path = "/home/soroosh/Documents/datasets/vindr-pcxr/original"
+        path = "/home/soroosh/Documents/datasets/XRay/vindr-pcxr/original"
 
         train_file_list = glob.glob(os.path.join(path, 'train/*.dicom'))
+
         for file_path in tqdm(train_file_list):
 
             RefDs = dicom.dcmread(file_path)
@@ -668,7 +838,6 @@ class normalizer_resizer():
 
             cv2.imwrite(output_path, img)
 
-
         test_file_list = glob.glob(os.path.join(path, 'test/*.dicom'))
         for file_path in test_file_list:
 
@@ -699,8 +868,6 @@ class normalizer_resizer():
             os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
             cv2.imwrite(output_path, img)
-
-
 
     def chexpert_normalizer_resizer(self):
         base_path = '/mnt/hdd/Share/Chexpert_dataset/'
@@ -709,7 +876,6 @@ class normalizer_resizer():
 
         valid_file_list = valid_df['Path'].to_list()
         for file_path in tqdm(valid_file_list):
-
             image_path = os.path.join(base_path, file_path)
             image = cv2.imread(image_path)
 
@@ -734,14 +900,12 @@ class normalizer_resizer():
             output_path = image_path.replace('/CheXpert-v1.0/', '/CheXpert-v1.0/preprocessed/')
             os.makedirs(os.path.dirname(output_path), exist_ok=True)
             cv2.imwrite(output_path, img)
-
 
         train_path = os.path.join(base_path, 'CheXpert-v1.0/train.csv')
         train_df = pd.read_csv(train_path, sep=',')
 
         train_file_list = train_df['Path'].to_list()
         for file_path in tqdm(train_file_list):
-
             image_path = os.path.join(base_path, file_path)
             image = cv2.imread(image_path)
 
@@ -766,8 +930,6 @@ class normalizer_resizer():
             output_path = image_path.replace('/CheXpert-v1.0/', '/CheXpert-v1.0/preprocessed/')
             os.makedirs(os.path.dirname(output_path), exist_ok=True)
             cv2.imwrite(output_path, img)
-
-
 
     def pediatric_corona_normalizer_resizer(self):
         base_path = '/home/soroosh/Documents/datasets/Coronahack_Chest_XRay/original'
@@ -807,15 +969,16 @@ class normalizer_resizer():
 
             cv2.imwrite(output_path, img)
 
-
-
     def UKA_normalizer_resizer(self):
 
         base_path = "/data/chest_radiograph/dicom_files"
         flag = 0
         final_df = pd.DataFrame(columns=['image_id', 'split', 'subset', 'birth_date', 'examination_date', 'study_time',
-                                            'patient_sex', 'ExposureinuAs', 'cardiomegaly', 'congestion', 'pleural_effusion_right', 'pleural_effusion_left',
-                     'pneumonic_infiltrates_right', 'pneumonic_infiltrates_left', 'disturbances_right',	'disturbances_left', 'pneumothorax_right', 'pneumothorax_left', 'subject_id'])
+                                         'patient_sex', 'ExposureinuAs', 'cardiomegaly', 'congestion',
+                                         'pleural_effusion_right', 'pleural_effusion_left',
+                                         'pneumonic_infiltrates_right', 'pneumonic_infiltrates_left',
+                                         'disturbances_right', 'disturbances_left', 'pneumothorax_right',
+                                         'pneumothorax_left', 'subject_id'])
 
         label_path = '/data/chest_radiograph/UKA_master_list.csv'
         final_df_output_path = '/data/chest_radiograph/final_UKA_master_list.csv'
@@ -886,11 +1049,17 @@ class normalizer_resizer():
 
                 cv2.imwrite(output_path, img)
                 tempp = pd.DataFrame(
-                    [[chosen_df['image_id'].values[0], chosen_df['split'].values[0], subset, chosen_df['birth_date'].values[0], chosen_df['examination_date'].values[0], chosen_df['study_time'].values[0],
-                      chosen_df['patient_sex'].values[0], chosen_df['ExposureinuAs'].values[0], chosen_df['cardiomegaly'].values[0], chosen_df['congestion'].values[0], chosen_df['pleural_effusion_right'].values[0],
-                             chosen_df['pleural_effusion_left'].values[0],
-                             chosen_df['pneumonic_infiltrates_right'].values[0], chosen_df['pneumonic_infiltrates_left'].values[0], chosen_df['disturbances_right'].values[0],
-                             chosen_df['disturbances_left'].values[0], chosen_df['pneumothorax_right'].values[0], chosen_df['pneumothorax_left'].values[0], chosen_df['subject_id'].values[0]]],
+                    [[chosen_df['image_id'].values[0], chosen_df['split'].values[0], subset,
+                      chosen_df['birth_date'].values[0], chosen_df['examination_date'].values[0],
+                      chosen_df['study_time'].values[0],
+                      chosen_df['patient_sex'].values[0], chosen_df['ExposureinuAs'].values[0],
+                      chosen_df['cardiomegaly'].values[0], chosen_df['congestion'].values[0],
+                      chosen_df['pleural_effusion_right'].values[0],
+                      chosen_df['pleural_effusion_left'].values[0],
+                      chosen_df['pneumonic_infiltrates_right'].values[0],
+                      chosen_df['pneumonic_infiltrates_left'].values[0], chosen_df['disturbances_right'].values[0],
+                      chosen_df['disturbances_left'].values[0], chosen_df['pneumothorax_right'].values[0],
+                      chosen_df['pneumothorax_left'].values[0], chosen_df['subject_id'].values[0]]],
                     columns=['image_id', 'split', 'subset', 'birth_date', 'examination_date', 'study_time',
                              'patient_sex', 'ExposureinuAs', 'cardiomegaly', 'congestion', 'pleural_effusion_right',
                              'pleural_effusion_left',
@@ -902,7 +1071,6 @@ class normalizer_resizer():
             except:
                 flag += 1
                 print(flag, file_path)
-
 
     def UKA_csvfixer(self):
         path_org = '/home/soroosh/Documents/datasets/XRay/UKA/chest_radiograph/org_UKA_master_list.csv'
@@ -940,7 +1108,6 @@ class normalizer_resizer():
             final_df_org = final_df_org.append(chosen_df[0:1])
             final_df_org.to_csv(final_path_org, sep=',', index=False)
 
-
         for img in tqdm(file_list):
             image_id = os.path.basename(img).replace('.jpg', '')
             chosen_df = small4k_df[small4k_df['image_id'] == int(image_id)]
@@ -949,16 +1116,16 @@ class normalizer_resizer():
             final_df_4K = final_df_4K.append(chosen_df[0:1])
             final_df_4K.to_csv(final_path_4K, sep=',', index=False)
 
-
     def cxr14_normalizer_resizer(self):
         base_path = '/mnt/hdd/Share/NIH_ChestX-ray14/CXR14/files'
 
         flag = 0
-        final_df = pd.DataFrame(columns=['image_id', 'img_rel_path', 'patient_id', 'split', 'atelectasis', 'cardiomegaly', 'effusion',
-                                            'infiltration', 'mass', 'nodule', 'pneumonia', 'pneumothorax', 'consolidation',
-                     'edema', 'emphysema', 'fibrosis',	'pleural_thickening', 'hernia', 'no_finding',
-                                         'followup_num', 'age', 'gender', 'view_position', 'n_x_pixels',
-                                         'n_y_pixels', 'x_spacing', 'y_spacing'])
+        final_df = pd.DataFrame(
+            columns=['image_id', 'img_rel_path', 'patient_id', 'split', 'atelectasis', 'cardiomegaly', 'effusion',
+                     'infiltration', 'mass', 'nodule', 'pneumonia', 'pneumothorax', 'consolidation',
+                     'edema', 'emphysema', 'fibrosis', 'pleural_thickening', 'hernia', 'no_finding',
+                     'followup_num', 'age', 'gender', 'view_position', 'n_x_pixels',
+                     'n_y_pixels', 'x_spacing', 'y_spacing'])
 
         label_path = '/mnt/hdd/Share/NIH_ChestX-ray14/cxr14_master_list.csv'
         final_df_output_path = '/mnt/hdd/Share/NIH_ChestX-ray14/final_cxr14_master_list.csv'
@@ -1003,20 +1170,26 @@ class normalizer_resizer():
                 cv2.imwrite(output_path, img)
 
                 tempp = pd.DataFrame(
-                    [[chosen_df['image_id'].values[0], img_rel_path, chosen_df['patient_id'].values[0], chosen_df['split'].values[0],
-                      chosen_df['atelectasis'].values[0], chosen_df['cardiomegaly'].values[0], chosen_df['effusion'].values[0],
-                                            chosen_df['infiltration'].values[0], chosen_df['mass'].values[0], chosen_df['nodule'].values[0],
-                      chosen_df['pneumonia'].values[0], chosen_df['pneumothorax'].values[0], chosen_df['consolidation'].values[0],
-                     chosen_df['edema'].values[0], chosen_df['emphysema'].values[0], chosen_df['fibrosis'].values[0],
-                      chosen_df['pleural_thickening'].values[0], chosen_df['hernia'].values[0], chosen_df['no_finding'].values[0],
-                                         chosen_df['followup_num'].values[0], chosen_df['age'].values[0], chosen_df['gender'].values[0],
+                    [[chosen_df['image_id'].values[0], img_rel_path, chosen_df['patient_id'].values[0],
+                      chosen_df['split'].values[0],
+                      chosen_df['atelectasis'].values[0], chosen_df['cardiomegaly'].values[0],
+                      chosen_df['effusion'].values[0],
+                      chosen_df['infiltration'].values[0], chosen_df['mass'].values[0], chosen_df['nodule'].values[0],
+                      chosen_df['pneumonia'].values[0], chosen_df['pneumothorax'].values[0],
+                      chosen_df['consolidation'].values[0],
+                      chosen_df['edema'].values[0], chosen_df['emphysema'].values[0], chosen_df['fibrosis'].values[0],
+                      chosen_df['pleural_thickening'].values[0], chosen_df['hernia'].values[0],
+                      chosen_df['no_finding'].values[0],
+                      chosen_df['followup_num'].values[0], chosen_df['age'].values[0], chosen_df['gender'].values[0],
                       chosen_df['view_position'].values[0], chosen_df['n_x_pixels'].values[0],
-                                         chosen_df['n_y_pixels'].values[0], chosen_df['x_spacing'].values[0], chosen_df['y_spacing'].values[0]]],
-                    columns=['image_id', 'img_rel_path', 'patient_id', 'split', 'atelectasis', 'cardiomegaly', 'effusion',
-                                            'infiltration', 'mass', 'nodule', 'pneumonia', 'pneumothorax', 'consolidation',
-                     'edema', 'emphysema', 'fibrosis',	'pleural_thickening', 'hernia', 'no_finding',
-                                         'followup_num', 'age', 'gender', 'view_position', 'n_x_pixels',
-                                         'n_y_pixels', 'x_spacing', 'y_spacing'])
+                      chosen_df['n_y_pixels'].values[0], chosen_df['x_spacing'].values[0],
+                      chosen_df['y_spacing'].values[0]]],
+                    columns=['image_id', 'img_rel_path', 'patient_id', 'split', 'atelectasis', 'cardiomegaly',
+                             'effusion',
+                             'infiltration', 'mass', 'nodule', 'pneumonia', 'pneumothorax', 'consolidation',
+                             'edema', 'emphysema', 'fibrosis', 'pleural_thickening', 'hernia', 'no_finding',
+                             'followup_num', 'age', 'gender', 'view_position', 'n_x_pixels',
+                             'n_y_pixels', 'x_spacing', 'y_spacing'])
                 final_df = final_df.append(tempp)
                 final_df.to_csv(final_df_output_path, sep=',', index=False)
 
@@ -1027,17 +1200,23 @@ class normalizer_resizer():
         final_df = final_df.sort_values(['split'])
         final_df.to_csv(final_df_output_path, sep=',', index=False)
 
-
     def padchest_normalizer_resizer(self):
         base_path = "/home/soroosh/Documents/datasets/XRay/padchest/"
 
         file_list = glob.glob(os.path.join(base_path, 'original_images/*/*.png'))
 
         for image_path in tqdm(file_list):
-            image = cv2.imread(image_path)
 
-            # color to gray
-            src = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            try:
+                image = cv2.imread(image_path)
+
+                # color to gray
+                src = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            except:
+                print(image_path)
+                with open("/home/soroosh/Documents/datasets/XRay/padchest" + '/error_files', 'a') as f:
+                    f.write(image_path)
+                continue
 
             # resize
             resize_ratio = np.divide((HEIGHT, WIDTH), src.shape)
@@ -1920,8 +2099,8 @@ if __name__ == '__main__':
     # hendler3.vindr()
     # hendler3.cxr14()
 
-    handler2 = normalizer_resizer()
-    handler2.padchest_normalizer_resizer()
+    # handler2 = normalizer_resizer()
+    # handler2.padchest_normalizer_resizer()
     # handler2.mimic_normalizer_resizer()
     # handler2.vindr_normalizer_resizer()
     # handler2.chexpert_normalizer_resizer()
