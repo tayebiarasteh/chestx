@@ -9,15 +9,15 @@ Overview
 * This is the official repository of the paper [**Collaborative Training of Medical Artificial Intelligence Models with non-uniform Labels**](https://arxiv.org/abs/2211.13606).
 * Pre-print version: [https://arxiv.org/abs/2211.13606](https://arxiv.org/abs/2211.13606)
 
-
-![](./intro.png)
-
+------
 
 Introduction
 ------
 Artificial intelligence (AI) methods are revolutionizing medical image analysis. However, robust AI models require large multi-site datasets for training. While multiple stakeholders have provided publicly available datasets, the ways in which these data are labeled differ widely. For example, one dataset of chest radiographs might contain labels denoting the presence of metastases in the lung, while another dataset of chest radiograph might focus on the presence of pneumonia. With conventional approaches, these data cannot be used together to train a single AI model. We propose a new framework that we call flexible federated learning (FFL) for collaborative training on such data. Using publicly available data of 695,000 chest radiographs from five institutions - each with differing labels - we demonstrate that large and heterogeneously labeled datasets can be used to train one big AI model with this framework. We find that models trained with FFL are superior to models that are trained on matching annotations only. This may pave the way for training of truly large-scale AI models that make efficient use of all existing data.
 
+![](./intro.png)
 
+------
 ### Prerequisites
 
 The software is developed in **Python 3.8**. For the deep learning, the **PyTorch 1.4** framework is used. The secure federated learning process was developed using **PySyft 0.2.9**.
@@ -40,7 +40,7 @@ $ pip install syft==0.2.9
 
 **Note:** These might take a few minutes.
 
-
+------
 Code structure
 ---
 
@@ -58,7 +58,7 @@ Our source code for flexible federated learning as well as training and evaluati
 * *./single_head_Train_Valid_chestx.py* contains the training and validation processes for further training of individual classification heads.
 * *./Prediction_chestx.py* all the prediction and testing processes.
 
-
+------
 ### In case you use this repository, please cite the original paper:
 
 S. Tayebi Arasteh, P. Isfort, M. Saehn, G. Mueller-Franzes, F. Khader, J.N. Kather, C. Kuhl, S. Nebelung, D. Truhn. "*Collaborative Training of Medical Artificial Intelligence Models with non-uniform Labels*". ArXiv, 2211.13606, https://arxiv.org/abs/2211.13606, 2022.
