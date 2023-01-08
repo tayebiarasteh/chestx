@@ -3,13 +3,14 @@
 
 [![Open Source Love](https://badges.frapsoft.com/os/v2/open-source.svg?v=103)](https://github.com/ellerbrock/open-source-badges/)
 
+
 Overview
 ------
 
+* Code DOI: https://doi.org/10.5281/zenodo.7513925
 * This is the official repository of the paper [**Collaborative Training of Medical Artificial Intelligence Models with non-uniform Labels**](https://arxiv.org/abs/2211.13606).
 * Pre-print version: [https://arxiv.org/abs/2211.13606](https://arxiv.org/abs/2211.13606)
 
-------
 
 Introduction
 ------
@@ -17,7 +18,7 @@ Artificial intelligence (AI) methods are revolutionizing medical image analysis.
 
 ![](./intro.png)
 
-------
+
 ### Prerequisites
 
 The software is developed in **Python 3.8**. For the deep learning, the **PyTorch 1.4** framework is used. The secure federated learning process was developed using **PySyft 0.2.9**.
@@ -40,7 +41,7 @@ $ pip install syft==0.2.9
 
 **Note:** These might take a few minutes.
 
-------
+
 Code structure
 ---
 
