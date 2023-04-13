@@ -1,15 +1,11 @@
 # Flexible Federated Learning (FFL)
 
 
-[![Open Source Love](https://badges.frapsoft.com/os/v2/open-source.svg?v=103)](https://github.com/ellerbrock/open-source-badges/)
-
-
 Overview
 ------
 
 * Code DOI: https://doi.org/10.5281/zenodo.7513925
-* This is the official repository of the paper [**Collaborative Training of Medical Artificial Intelligence Models with non-uniform Labels**](https://arxiv.org/abs/2211.13606).
-* Pre-print version: [https://arxiv.org/abs/2211.13606](https://arxiv.org/abs/2211.13606)
+* This is the official repository of the paper [**Collaborative training of medical artificial intelligence models with non-uniform labels**](https://www.nature.com/articles/s41598-023-33303-y).
 
 
 Introduction
@@ -62,16 +58,16 @@ Our source code for flexible federated learning as well as training and evaluati
 ------
 ### In case you use this repository, please cite the original paper:
 
-S. Tayebi Arasteh, P. Isfort, M. Saehn, G. Mueller-Franzes, F. Khader, J.N. Kather, C. Kuhl, S. Nebelung, D. Truhn. "*Collaborative Training of Medical Artificial Intelligence Models with non-uniform Labels*". ArXiv, 2211.13606, https://arxiv.org/abs/2211.13606, 2022.
+S. Tayebi Arasteh, P. Isfort, M. Saehn, G. Mueller-Franzes, F. Khader, J.N. Kather, C. Kuhl, S. Nebelung, D. Truhn. Collaborative training of medical artificial intelligence models with non-uniform labels. *Sci Rep* **13**, 6046 (2023). https://doi.org/10.1038/s41598-023-33303-y.
 
 ### BibTex
 
-    @article {FFL2022,
+    @article {FFL2023,
       author = {Tayebi Arasteh, Soroosh and Isfort, Peter and Saehn, Marwin and Mueller-Franzes, Gustav and Khader, Firas and Kather, Jakob Nikolas and Kuhl, Christiane and Nebelung, Sven and Truhn, Daniel},
-      title = {Collaborative Training of Medical Artificial Intelligence Models with non-uniform Labels},
-      year = {2022},
-      doi = {10.48550/ARXIV.2211.13606},
-      publisher = {arXiv},
-      URL = {https://arxiv.org/abs/2211.13606},
-      journal = {arXiv}
+      title = {Collaborative training of medical artificial intelligence models with non-uniform labels},
+      year = {2023},
+      doi = {10.1038/s41598-023-33303-y},
+      publisher = {Nature Portfolio},
+      URL = {https://www.nature.com/articles/s41598-023-33303-y},
+      journal = {Scientific Reports}
     }
