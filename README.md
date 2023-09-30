@@ -26,7 +26,7 @@ Main Python modules required for the software can be installed from ./requiremen
 1. Create a Python3 environment by installing the conda `environment.yml` file:
 
 ```
-$ conda env create -f environment.yml
+$ conda env create -f environment.yaml
 $ source activate FFL
 $ pip install syft==0.2.9
 ```
